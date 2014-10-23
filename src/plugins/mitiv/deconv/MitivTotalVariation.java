@@ -28,6 +28,7 @@ package plugins.mitiv.deconv;
 import java.util.ArrayList;
 
 import mitiv.array.Double1D;
+import mitiv.array.Double2D;
 import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
@@ -41,6 +42,8 @@ import icy.sequence.Sequence;
 import icy.sequence.SequenceEvent;
 import icy.sequence.SequenceListener;
 import commands.TotalVariationDeconvolution;
+import plugins.adufour.blocks.lang.Block;
+import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzGroup;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
@@ -53,7 +56,7 @@ import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 
-public class MitivTotalVariation extends EzPlug implements EzStoppable, SequenceListener, EzVarListener<String> {
+public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, SequenceListener, EzVarListener<String> {
 
     public class tvViewer implements ReconstructionViewer{
 
@@ -85,6 +88,7 @@ public class MitivTotalVariation extends EzPlug implements EzStoppable, Sequence
 
     private EzVarSequence psfSequence = new EzVarSequence("PSF");
     private EzVarSequence imageSequence = new EzVarSequence("Image");
+    private EzVarSequence output = new EzVarSequence("Output"); //In headLess mode only
     private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted ?", psfSplitted);
     private EzVarDouble eZmu = new EzVarDouble("Mu", 0, Double.MAX_VALUE, 0.1);
     private EzVarDouble eZepsilon = new EzVarDouble("Epsilon", 0, Double.MAX_VALUE, 1);
@@ -154,7 +158,12 @@ public class MitivTotalVariation extends EzPlug implements EzStoppable, Sequence
         maxIter = eZmaxIter.getValue();
         psfSplitted = eZpsfSplitted.getValue();
         coef = eZcoef.getValue();
-        reuse = eZrestart.getValue();
+        if (isHeadLess()) {
+            reuse = false;
+        }else {
+            reuse = eZrestart.getValue();
+        }
+
         //Testing epsilon and grtol
         if (mu < 0) {
             message("Regularization level MU must be strictly positive");
@@ -222,35 +231,60 @@ public class MitivTotalVariation extends EzPlug implements EzStoppable, Sequence
 
                 ArrayList<IcyBufferedImage> listImg = imageSequence.getValue().getAllImage();
                 ArrayList<IcyBufferedImage> listPSf= psfSequence.getValue().getAllImage();
-                //3D
                 DoubleArray imgArray, psfArray;
-                double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
-                double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
-                double[] weight = createWeight(image);
-                weight = CommonUtils.imagePad(weight, width, height, sizeZ, coef);
-                image = CommonUtils.imagePad(image, width, height, sizeZ, coef);
-                if (psf.getWidth() == width && psf.getHeight() == height) {
-                    psfTmp = CommonUtils.imagePad(psfTmp, width, height, sizeZ, coef);
-                } else {
-                    psfTmp = CommonUtils.imagePad(psfTmp, psf.getWidth(), psf.getHeight(), sizeZ, ((double)width/psf.getWidth())*coef ,coef);
+                double[] weight;
+                if (listImg.size() == 1) { //2D
+                    double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
+                    double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
+                    weight = createWeight(image);
+                    weight = CommonUtils.imagePad(weight, width, height, sizeZ, coef, 1);
+                    image = CommonUtils.imagePad(image, width, height, sizeZ, coef, 1);
+                    if (psf.getWidth() == width && psf.getHeight() == height) {
+                        psfTmp = CommonUtils.imagePad(psfTmp, width, height, sizeZ, coef, 1);
+                    } else {
+                        psfTmp = CommonUtils.imagePad(psfTmp, psf.getWidth(), psf.getHeight(), sizeZ, ((double)width/psf.getWidth())*coef ,coef);
+                    }
+
+                    shape = new int[]{(int)(width*coef), (int)(height*coef)};
+
+                    imgArray =  Double2D.wrap(image, shape);
+                    if (psfSplitted) {
+                        psfArray =  Double2D.wrap(psfTmp, shape);
+                    } else {
+                        double[] psfShift = new double[shape[0]*shape[1]];
+                        CommonUtils.psfPadding1D(psfShift, shape[0], shape[1], psfTmp, shape[0], shape[1], false);
+                        psfArray =  Double2D.wrap(psfShift, shape);
+                    }
+                } else { //3D
+                    double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
+                    double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
+                    weight = createWeight(image);
+                    weight = CommonUtils.imagePad(weight, width, height, sizeZ, coef);
+                    image = CommonUtils.imagePad(image, width, height, sizeZ, coef);
+                    if (psf.getWidth() == width && psf.getHeight() == height) {
+                        psfTmp = CommonUtils.imagePad(psfTmp, width, height, sizeZ, coef);
+                    } else {
+                        psfTmp = CommonUtils.imagePad(psfTmp, psf.getWidth(), psf.getHeight(), sizeZ, ((double)width/psf.getWidth())*coef ,coef);
+                    }
+
+                    shape = new int[]{(int)(width*coef), (int)(height*coef), (int)(sizeZ*coef)};
+
+                    imgArray =  Double3D.wrap(image, shape);
+                    if (psfSplitted) {
+                        psfArray =  Double3D.wrap(psfTmp, shape);
+                    } else {
+                        double[] psfShift = new double[shape[0]*shape[1]*shape[2]];
+                        CommonUtils.fftShift3D(psfTmp, psfShift , shape[0], shape[1], shape[2]);
+                        psfArray =  Double3D.wrap(psfShift, shape);
+                    }
                 }
 
-                shape = new int[]{(int)(width*coef), (int)(height*coef), (int)(sizeZ*coef)};
-
-                imgArray =  Double3D.wrap(image, shape);
-                if (psfSplitted) {
-                    psfArray =  Double3D.wrap(psfTmp, shape);
-                } else {
-                    double[] psfShift = new double[shape[0]*shape[1]*shape[2]];
-                    CommonUtils.fftShift3D(psfTmp, psfShift , shape[0], shape[1], shape[2]);
-                    psfArray =  Double3D.wrap(psfShift, shape);
-                }
 
                 //BEWARE here we change the value to match the new padded image size
                 width = (int)(width*coef);
                 height = (int)(height*coef);
                 sizeZ = (int)(sizeZ*coef);
-                
+
                 tvDec.setWeight(weight);
                 tvDec.setData(imgArray);
                 tvDec.setPsf(psfArray);
@@ -324,10 +358,15 @@ public class MitivTotalVariation extends EzPlug implements EzStoppable, Sequence
     }
 
     private void setResult(){
+
         if (sequence == null || computeNew == true) {
             sequence = new Sequence();
             sequence.addListener(this);
-            addSequence(sequence);
+            if (isHeadLess()) {
+                output.setValue(sequence);
+            }else{
+                addSequence(sequence);
+            }
             computeNew = false;
         }
         sequence.beginUpdate();
@@ -397,6 +436,22 @@ public class MitivTotalVariation extends EzPlug implements EzStoppable, Sequence
         if (tvDec != null) {
             tvDec.stop();
         }
+    }
+
+    @Override
+    public void declareInput(VarList inputMap) {
+        inputMap.add(imageSequence.getVariable());
+        inputMap.add(psfSequence.getVariable());
+        inputMap.add(eZmu.getVariable());
+        inputMap.add(eZepsilon.getVariable());
+        inputMap.add(eZgrtol.getVariable());
+        inputMap.add(eZmaxIter.getVariable());
+        inputMap.add(eZcoef.getVariable());
+    }
+
+    @Override
+    public void declareOutput(VarList outputMap) {
+        outputMap.add(output.getVariable());
     }
 }
 
