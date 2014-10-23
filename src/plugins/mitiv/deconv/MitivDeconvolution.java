@@ -34,16 +34,28 @@ import javax.swing.JSlider;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import icy.gui.frame.progress.AnnounceFrame;
-import icy.sequence.Sequence;
-import icy.sequence.SequenceEvent;
-import icy.sequence.SequenceListener;
+import mitiv.array.ShapedArray;
 import mitiv.deconv.DeconvUtils;
 import mitiv.deconv.Deconvolution;
 import mitiv.utils.CommonUtils;
+import icy.gui.frame.progress.AnnounceFrame;
+import icy.image.IcyBufferedImage;
+import icy.sequence.Sequence;
+import icy.sequence.SequenceEvent;
+import icy.sequence.SequenceListener;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
-import plugins.adufour.ezplug.*;
+import plugins.adufour.ezplug.EzPlug;
+import plugins.adufour.ezplug.EzStoppable;
+import plugins.adufour.ezplug.EzVar;
+import plugins.adufour.ezplug.EzVarBoolean;
+import plugins.adufour.ezplug.EzVarDouble;
+import plugins.adufour.ezplug.EzVarInteger;
+import plugins.adufour.ezplug.EzVarListener;
+import plugins.adufour.ezplug.EzVarSequence;
+import plugins.adufour.ezplug.EzVarText;
+import plugins.mitiv.io.IcyBufferedImageUtils;
+
 /**
  * EzPlug interface to get the choices of the user
  * 
@@ -52,7 +64,7 @@ import plugins.adufour.ezplug.*;
  * @author Leger Jonathan
  *
  */
-public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceListener,Block
+public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceListener,Block, EzVarListener<String>
 {
 
     JSlider slider;
@@ -82,8 +94,8 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
     EzVarBoolean advancedOptions = new EzVarBoolean("Show advanced options", false);
 
     Sequence myseq;
+    
     JLabel label;
-
     int job;
     int correct;
     Deconvolution deconvolution;
@@ -146,42 +158,49 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
     }
 
     //FIXME return arraylist bufferedImage and use this for both 3D and 1D
-    private BufferedImage firstJob(int job){
+    private IcyBufferedImage firstJob(int job){
         thread = new ThreadCG(this);
         thread.start();
         boolean isSplitted = varBoolean.getValue();
+        ShapedArray tmp;
         switch (job) {
         //First value correspond to next job with alpha = 0, not all are equal to 1
-        case DeconvUtils.JOB_WIENER: 
-            return (deconvolution.firstDeconvolution(muMin, isSplitted)).get(0);
+        case DeconvUtils.JOB_WIENER:
+            tmp = deconvolution.firstDeconvolution(muMin, isSplitted);
+            break;
         case DeconvUtils.JOB_QUAD:
-            return (deconvolution.firstDeconvolutionQuad(muMin, isSplitted).get(0));
+            tmp = deconvolution.firstDeconvolutionQuad(muMin, isSplitted);
+            break;
         case DeconvUtils.JOB_CG:
-            return (deconvolution.firstDeconvolutionCG(muMin, isSplitted).get(0));
+            tmp = deconvolution.firstDeconvolutionCG(muMin, isSplitted);
+            break;
         default:
             throw new IllegalArgumentException("Invalid Job");
         }
+        return IcyBufferedImageUtils.arrayToImage(tmp).get(0);
     }
 
-    public BufferedImage nextJob(int slidervalue, int job){
+    public IcyBufferedImage nextJob(int slidervalue, int job){
         double mu = sliderToRegularizationWeight(slidervalue);
         if (!isHeadLess()) {
             updateLabel(mu);
         }
+        ShapedArray tmp;
         double mult = 1E9; //HACK While the data uniformization is not done...
         switch (job) {
         case DeconvUtils.JOB_WIENER:
-            return (deconvolution.nextDeconvolution(mu).get(0));
-
+            tmp =deconvolution.nextDeconvolution(mu);
+            break;
         case DeconvUtils.JOB_QUAD:
-            return (deconvolution.nextDeconvolutionQuad(mu*mult).get(0));
-
+            tmp = deconvolution.nextDeconvolutionQuad(mu*mult);
+            break;
         case DeconvUtils.JOB_CG:
-            return (deconvolution.nextDeconvolutionCG(mu*mult).get(0));
-
+            tmp = deconvolution.nextDeconvolutionCG(mu*mult);
+            break;
         default:
             throw new IllegalArgumentException("Invalid Job");
         }
+        return IcyBufferedImageUtils.arrayToImage(tmp).get(0);
     }
 
     private void firstJob3D(int job){
@@ -189,29 +208,25 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
         thread.compute3D();
         thread.start();
         boolean isSplitted = false;
-        ArrayList<BufferedImage>tmp;
+        ShapedArray tmp;
         switch (job) {
         //First value correspond to next job with alpha = 0, not all are equal to 1
         case DeconvUtils.JOB_WIENER: 
             tmp = deconvolution.firstDeconvolution(muMin,Deconvolution.PROCESSING_3D,isSplitted);
-            for (int i = 0; i < tmp.size(); i++) {
-                myseq.setImage(0, i, tmp.get(i));
-            }
             break;
         case DeconvUtils.JOB_QUAD:
             tmp = deconvolution.firstDeconvolutionQuad(muMin,Deconvolution.PROCESSING_3D,isSplitted);
-            for (int i = 0; i < tmp.size(); i++) {
-                myseq.setImage(0, i, tmp.get(i));
-            }
             break;
         case DeconvUtils.JOB_CG:
             tmp = deconvolution.firstDeconvolutionCG(muMin,Deconvolution.PROCESSING_3D,isSplitted);
-            for (int i = 0; i < tmp.size(); i++) {
-                myseq.setImage(0, i, tmp.get(i));
-            }
+
             break;
         default:
             throw new IllegalArgumentException("Invalid Job");
+        }
+        ArrayList<IcyBufferedImage> list = IcyBufferedImageUtils.arrayToImage(tmp);
+        for (int i = 0; i < list.size(); i++) {
+            myseq.setImage(0, i, list.get(i));
         }
     }
 
@@ -220,29 +235,24 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
         if (!isHeadLess()) {
             updateLabel(mu);
         }
-        double mult = 1E9; //HACK While the data uniformization is not done...
-        ArrayList<BufferedImage>tmp;
+        double mult = 1E10; //HACK While the data uniformization is not done...
+        ShapedArray tmp;
         switch (job) {
         case DeconvUtils.JOB_WIENER:
             tmp = deconvolution.nextDeconvolution(mu,Deconvolution.PROCESSING_3D);
-            for (int i = 0; i < tmp.size(); i++) {
-                myseq.setImage(0, i, tmp.get(i));
-            }
             break;
         case DeconvUtils.JOB_QUAD:
             tmp = deconvolution.nextDeconvolutionQuad(mu*mult,Deconvolution.PROCESSING_3D);
-            for (int i = 0; i < tmp.size(); i++) {
-                myseq.setImage(0, i, tmp.get(i));
-            }
             break;
         case DeconvUtils.JOB_CG:
             tmp = deconvolution.nextDeconvolutionCG(mu*mult,Deconvolution.PROCESSING_3D);
-            for (int i = 0; i < tmp.size(); i++) {
-                myseq.setImage(0, i, tmp.get(i));
-            }
             break;
         default:
             throw new IllegalArgumentException("Invalid Job");
+        }
+        ArrayList<IcyBufferedImage> list = IcyBufferedImageUtils.arrayToImage(tmp);
+        for (int i = 0; i < list.size(); i++) {
+            myseq.setImage(0, i, list.get(i));
         }
     }
     
@@ -253,12 +263,12 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
         slider.setEnabled(false);  
         label = new JLabel("                     ");
 
-
         addEzComponent(sequencePSF);
         addEzComponent(varBoolean);
         addEzComponent(sequenceImage);
         addEzComponent(options);
         addEzComponent(correction);
+        options.addVarChangeListener(this);
         addEzComponent(eZcoef);
         addComponent(slider);
         addComponent(label);
@@ -337,7 +347,9 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
                         slider.setValue(0);
                     }
                 } else {
-                    deconvolution = new Deconvolution(seqIm.getAllImage(), seqPsf.getAllImage(),correct);
+                    ShapedArray imgShapped = IcyBufferedImageUtils.imageToArray(seqIm.getAllImage());
+                    ShapedArray psfShapped = IcyBufferedImageUtils.imageToArray(seqPsf.getAllImage());
+                    deconvolution = new Deconvolution(imgShapped, psfShapped,correct);
                     deconvolution.setPaddingCoefficient(eZcoef.getValue());
                     myseq = new Sequence();
                     myseq.addListener(this); 
@@ -366,6 +378,7 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
         }
     }
 
+    //When the plugin is closed or forced to.
     @Override
     public void clean()
     {
@@ -393,6 +406,7 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
 
     }
 
+    //If the user close a sequence in Icy
     @Override
     public void sequenceClosed(Sequence sequence) {
         if (!isHeadLess()) {
@@ -400,10 +414,12 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
         }
     }
 
+    //Just a getter 
     public int getOutputValue(){
         return deconvolution.getOuputValue();
     }
 
+    //Inputs for the protocols / blocks
     @Override
     public void declareInput(VarList inputMap) {
         inputMap.add(sequencePSF.getVariable());
@@ -413,10 +429,22 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
         inputMap.add(valueBlock.getVariable());
     }
 
+    //Outputs for the protocols / blocks
     @Override
     public void declareOutput(VarList outputMap) {
         outputMap.add(output.getVariable());
 
+    }
+
+    //Listener to watch the options and enable padding only for CG
+    @Override
+    public void variableChanged(EzVar<String> source, String newValue) {
+        if (newValue == cg) {
+            eZcoef.setVisible(true);
+        }else {
+            eZcoef.setValue(1.0);
+            eZcoef.setVisible(false);
+        }
     }
 }
 

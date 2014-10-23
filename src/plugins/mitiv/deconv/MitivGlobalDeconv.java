@@ -31,11 +31,11 @@ import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionViewer;
-import mitiv.io.IcyBufferedImageUtils;
 import mitiv.linalg.WeightGenerator;
 import mitiv.utils.CommonUtils;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
+import plugins.mitiv.io.IcyBufferedImageUtils;
 
 public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener, EzStoppable {
     /***************************************************/
@@ -450,8 +450,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         double coef = zeroPadding.getValue();
         //3D Only
         DoubleArray imgArray, psfArray;
-        double[] image = CommonUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
-        double[] psfTmp = CommonUtils.icyImage3DToArray1D(listPSf, width, height, sizeZ, false);
+        double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
+        double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, width, height, sizeZ, false);
         double[] weight = createWeight(image);
         weight = CommonUtils.imagePad(weight, width, height, sizeZ, coef);
         image = CommonUtils.imagePad(image, width, height, sizeZ, coef);

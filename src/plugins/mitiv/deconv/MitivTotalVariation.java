@@ -51,6 +51,7 @@ import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
+import plugins.mitiv.io.IcyBufferedImageUtils;
 
 public class MitivTotalVariation extends EzPlug implements EzStoppable, SequenceListener, EzVarListener<String> {
 
@@ -223,8 +224,8 @@ public class MitivTotalVariation extends EzPlug implements EzStoppable, Sequence
                 ArrayList<IcyBufferedImage> listPSf= psfSequence.getValue().getAllImage();
                 //3D
                 DoubleArray imgArray, psfArray;
-                double[] image = CommonUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
-                double[] psfTmp = CommonUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
+                double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
+                double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
                 double[] weight = createWeight(image);
                 weight = CommonUtils.imagePad(weight, width, height, sizeZ, coef);
                 image = CommonUtils.imagePad(image, width, height, sizeZ, coef);
@@ -266,7 +267,7 @@ public class MitivTotalVariation extends EzPlug implements EzStoppable, Sequence
     }
 
     private ShapedArray weightMapToArray(EzVarSequence seq){
-        double[] tmp = CommonUtils.icyImage3DToArray1D(seq.getValue().getAllImage(), width, height, sizeZ, false);
+        double[] tmp = IcyBufferedImageUtils.icyImage3DToArray1D(seq.getValue().getAllImage(), width, height, sizeZ, false);
         return Double1D.wrap(tmp, tmp.length);
     }
 
