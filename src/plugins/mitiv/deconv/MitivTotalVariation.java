@@ -248,13 +248,14 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                     shape = new int[]{(int)(width*coef), (int)(height*coef)};
 
                     imgArray =  Double2D.wrap(image, shape);
-                    if (psfSplitted) {
+                    psfArray =  Double2D.wrap(psfTmp, shape);
+                    /*if (psfSplitted) {
                         psfArray =  Double2D.wrap(psfTmp, shape);
                     } else {
                         double[] psfShift = new double[shape[0]*shape[1]];
                         CommonUtils.psfPadding1D(psfShift, shape[0], shape[1], psfTmp, shape[0], shape[1], false);
                         psfArray =  Double2D.wrap(psfShift, shape);
-                    }
+                    }*/
                 } else { //3D
                     double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
                     double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
@@ -270,13 +271,14 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                     shape = new int[]{(int)(width*coef), (int)(height*coef), (int)(sizeZ*coef)};
 
                     imgArray =  Double3D.wrap(image, shape);
-                    if (psfSplitted) {
+                    psfArray =  Double3D.wrap(psfTmp, shape);
+                    /*if (psfSplitted) {
                         psfArray =  Double3D.wrap(psfTmp, shape);
                     } else {
                         double[] psfShift = new double[shape[0]*shape[1]*shape[2]];
                         CommonUtils.fftShift3D(psfTmp, psfShift , shape[0], shape[1], shape[2]);
                         psfArray =  Double3D.wrap(psfShift, shape);
-                    }
+                    }*/
                 }
 
 
@@ -285,7 +287,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 height = (int)(height*coef);
                 sizeZ = (int)(sizeZ*coef);
 
-                tvDec.setWeight(weight);
+                //tvDec.setWeight(weight);
                 tvDec.setData(imgArray);
                 tvDec.setPsf(psfArray);
 
