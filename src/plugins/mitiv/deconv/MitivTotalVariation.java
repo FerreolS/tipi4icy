@@ -86,8 +86,8 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private double coef = 1.0;
     private int[] shape;
 
-    private EzVarSequence psfSequence = new EzVarSequence("PSF");
-    private EzVarSequence imageSequence = new EzVarSequence("Image");
+    private EzVarSequence sequencePsf = new EzVarSequence("PSF");
+    private EzVarSequence sequenceImg = new EzVarSequence("Image");
     private EzVarSequence output = new EzVarSequence("Output"); //In headLess mode only
     private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted ?", psfSplitted);
     private EzVarDouble eZmu = new EzVarDouble("Mu", 0, Double.MAX_VALUE, 0.1);
@@ -95,7 +95,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private EzVarDouble eZgrtol = new EzVarDouble("grtol", 0, 1, 0.1);
     private EzVarDouble eZcoef = new EzVarDouble("Padding multiplication", 1.0, 10, 0.1);
     private EzVarInteger eZmaxIter = new EzVarInteger("Max Iterations", -1, Integer.MAX_VALUE, 1);
-    private EzVarBoolean eZrestart = new EzVarBoolean("Restart with previous result", true);
+    private EzVarBoolean eZrestart = new EzVarBoolean("Restart with previous result", false);
 
     private String weightOption1 = new String("None");
     private String weightOption2 = new String("Personnalized weightMap");
@@ -135,8 +135,18 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         deadPixel.setVisible(false);
         showPixMap.addVisibilityTriggerTo(deadPixel, true);
 
-        addEzComponent(psfSequence);
-        addEzComponent(imageSequence);
+        sequencePsf.setToolTipText(ToolTipText.sequencePSF);
+        sequenceImg.setToolTipText(ToolTipText.sequenceImage);
+        eZpsfSplitted.setToolTipText(ToolTipText.booleanPSFSplitted);
+        eZmu.setToolTipText(ToolTipText.doubleMu);
+        eZepsilon.setToolTipText(ToolTipText.doubleEpsilon);
+        eZgrtol.setToolTipText(ToolTipText.doubleGrtoll);
+        eZmaxIter.setToolTipText(ToolTipText.doubleMaxIter);
+        eZcoef.setToolTipText(ToolTipText.doublePadding);
+        eZrestart.setToolTipText(ToolTipText.booleanRestart);
+        
+        addEzComponent(sequencePsf);
+        addEzComponent(sequenceImg);
         addEzComponent(eZpsfSplitted);
         addEzComponent(eZmu);
         addEzComponent(eZepsilon);
@@ -176,15 +186,15 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         }
 
         //Test if we have the image and the psf ...
-        if(imageSequence.getValue() == null || psfSequence.getValue() == null){
+        if(sequenceImg.getValue() == null || sequencePsf.getValue() == null){
             //If there is a missing parameter we notify the user with the missing parameter as information
             String message = "You have forgotten to give ";
             String messageEnd = "";
-            if (imageSequence.getValue() == null) {
+            if (sequenceImg.getValue() == null) {
                 messageEnd = messageEnd.concat("the image ");
             }
-            if(psfSequence.getValue() == null) {
-                if (imageSequence.getValue() == null) {
+            if(sequencePsf.getValue() == null) {
+                if (sequenceImg.getValue() == null) {
                     messageEnd = messageEnd.concat("and ");
                 }
                 messageEnd = messageEnd.concat("a PSF");
@@ -192,8 +202,8 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
             message(message+messageEnd);
         }else{
             //And if the sizes are matching
-            img = imageSequence.getValue().getFirstNonNullImage();
-            psf = psfSequence.getValue().getFirstNonNullImage();
+            img = sequenceImg.getValue().getFirstNonNullImage();
+            psf = sequencePsf.getValue().getFirstNonNullImage();
             //if the user they the psf is splitted and the psf and image are not of the same size
             if (psfSplitted && (img.getWidth() != psf.getWidth() || img.getHeight() != psf.getHeight())) {
                 message("The image and the psf should be of same size");
@@ -227,10 +237,10 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 // Read the blurred image and the PSF.
                 width = img.getWidth();
                 height = img.getHeight();
-                sizeZ = imageSequence.getValue().getSizeZ();
+                sizeZ = sequenceImg.getValue().getSizeZ();
 
-                ArrayList<IcyBufferedImage> listImg = imageSequence.getValue().getAllImage();
-                ArrayList<IcyBufferedImage> listPSf= psfSequence.getValue().getAllImage();
+                ArrayList<IcyBufferedImage> listImg = sequenceImg.getValue().getAllImage();
+                ArrayList<IcyBufferedImage> listPSf= sequencePsf.getValue().getAllImage();
                 DoubleArray imgArray, psfArray;
                 double[] weight;
                 if (listImg.size() == 1) { //2D
@@ -442,8 +452,8 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
 
     @Override
     public void declareInput(VarList inputMap) {
-        inputMap.add(imageSequence.getVariable());
-        inputMap.add(psfSequence.getVariable());
+        inputMap.add(sequencePsf.getVariable());
+        inputMap.add(sequenceImg.getVariable());
         inputMap.add(eZmu.getVariable());
         inputMap.add(eZepsilon.getVariable());
         inputMap.add(eZgrtol.getVariable());
