@@ -73,14 +73,8 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
     String quad = "Quadratic";
     String cg = "CG";
 
-    String normal = "Normal";
-    String corrected = "Corrected";
-    String colormap = "Colormap";
-    String correctColormap = "Corrected+Colormap";
-
     //Mydata
     EzVarText options = new EzVarText("Regularization", new String[] { wiener,quad,cg}, 0, false);
-    EzVarText correction = new EzVarText("Output", new String[] { normal,corrected,colormap,correctColormap}, 0, false);
     EzVarBoolean  varBoolean = new EzVarBoolean("Is PSF splitted ?", false);
     EzVarSequence sequencePSF = new EzVarSequence("PSF");
     EzVarSequence sequenceImage = new EzVarSequence("Image");
@@ -124,25 +118,6 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
 
     public static double sliderToRegularizationWeight(int slidervalue) {
         return Math.exp(muAlpha + muBeta*slidervalue);
-    }
-
-    /*
-     * Yes I'm using == to compare 2 strings and yes this is what I want,
-     * and yes it's working because getValue() return a string object that I compare
-     * with himself
-     */
-    private int chooseCorrection(){
-        if (correction.getValue() == normal) {
-            return CommonUtils.SCALE;
-        } else if(correction.getValue() == corrected){
-            return CommonUtils.SCALE_CORRECTED;
-        } else if (correction.getValue() == colormap) {
-            return CommonUtils.SCALE_COLORMAP;
-        } else if (correction.getValue() == correctColormap){
-            return CommonUtils.SCALE_CORRECTED_COLORMAP;
-        } else {
-            throw new IllegalArgumentException();
-        }
     }
 
     private int chooseJob(){
@@ -263,11 +238,16 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
         slider.setEnabled(false);  
         label = new JLabel("                     ");
 
+        sequencePSF.setToolTipText(ToolTipText.sequencePSF);
+        sequenceImage.setToolTipText(ToolTipText.sequenceImage);
+        options.setToolTipText(ToolTipText.textMethod);
+        eZcoef.setToolTipText(ToolTipText.doublePadding);
+        slider.setToolTipText(ToolTipText.deconvolutionSlider);
+        
         addEzComponent(sequencePSF);
         addEzComponent(varBoolean);
         addEzComponent(sequenceImage);
         addEzComponent(options);
-        addEzComponent(correction);
         options.addVarChangeListener(this);
         addEzComponent(eZcoef);
         addComponent(slider);
@@ -287,7 +267,7 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
             myseq.setImage(0, 0, buffered); 
             output.setValue(myseq);
         } else {
-            myseq.setName(options.getValue()+" "+correction.getValue()+" "+value);
+            myseq.setName(options.getValue()+" "+value);
             myseq.setImage(0, 0, buffered); 
         }
 
@@ -296,7 +276,7 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
     @Override
     protected void execute()
     {
-        correct = chooseCorrection();
+        correct = CommonUtils.SCALE;
         job = chooseJob();
         if (myseq != null) {
             myseq.close();
@@ -425,7 +405,6 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
         inputMap.add(sequencePSF.getVariable());
         inputMap.add(sequenceImage.getVariable());
         inputMap.add(options.getVariable());
-        inputMap.add(correction.getVariable());
         inputMap.add(valueBlock.getVariable());
     }
 
