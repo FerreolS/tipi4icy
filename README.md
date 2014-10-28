@@ -4,6 +4,28 @@ tipi4icy
 tipi4icy is a collection of [Icy](http://icy.bioimageanalysis.org/) plugins based on
 [TiPi](https://github.com/emmt/TiPi), a Java *Toolkit for Inverse Problems and Imaging*.
 
+Eclipse
+=======
+
+This project can be used in Eclipse, just copy/clone it into Eclipse workspace, then from Eclipse: 
+
+```
+File -> import -> Existing project in workspace and choose TiPi folder.
+```
+
+Then Eclipse should automatically accept it as a known project.
+
+To add the needed libraries to TiPi Eclipse project, move all the jars into a folder. Then in eclipse:
+
+```
+Right clic on TiPi project in package explorer -> Properties -> Java Build Path -> Libraries -> Add External jar and select all Library jar
+```
+
+Icy in Eclipse
+==============
+
+There is a plugin to launch quickly and easily Icy from eclipse [here](http://icy.bioimageanalysis.org/index.php?display=startDevWithIcy).
+
 Plugins
 ========
 
