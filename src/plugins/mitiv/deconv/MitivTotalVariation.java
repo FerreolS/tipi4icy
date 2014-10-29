@@ -144,6 +144,9 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         eZmaxIter.setToolTipText(ToolTipText.doubleMaxIter);
         eZcoef.setToolTipText(ToolTipText.doublePadding);
         eZrestart.setToolTipText(ToolTipText.booleanRestart);
+        showPixMap.setToolTipText(ToolTipText.sequencePixel);
+        weightMap.setToolTipText(ToolTipText.sequenceWeigth);
+        varianceMap.setToolTipText(ToolTipText.sequenceVariance);
         
         addEzComponent(sequencePsf);
         addEzComponent(sequenceImg);

@@ -181,7 +181,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /**                  All variables                **/
     /***************************************************/
     private ArrayList<myComboBox> listChoiceList = new ArrayList<myComboBox>();
-    private myDouble dxy, dz, nxy, nx, no,lambda,ni;    //PSF
+    private myDouble dxy, dz, nxy, nx, na,lambda,ni;    //PSF
     private myDouble mu, epsilon, grtol, nbIteration, zeroPadding;          //Deconvolution
     private myDouble gain,noise;                          //VARIANCE
     private myDouble nbIterationZern, moduleZern, defocusZern, loopZern;          //BDec
@@ -270,8 +270,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel imageGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel imagePan = new JPanel(false);
         imagePan.setLayout(new BoxLayout(imagePan, BoxLayout.Y_AXIS));
-        imagePan.add((image = createChoiceList( "Sequence: ", seqList)));
-        imagePan.add((canalImage = createChoiceList("Canal:    ", canalImageOptions)));
+        imagePan.add((image = createChoiceList(     "<html><pre>Sequence: </pre></html>", seqList)));
+        imagePan.add((canalImage = createChoiceList("<html><pre>Canal:    </pre></html>", canalImageOptions)));
         image.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -303,14 +303,14 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel psfGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel psfPannel = new JPanel(false);
         psfPannel.setLayout(new BoxLayout(psfPannel, BoxLayout.Y_AXIS));
-        psfPannel.add((psf = createChoiceList("PSF:       ", seqList)));
-        psfPannel.add((dxy = createDouble(    "dxy:       ", 0.0)));
-        psfPannel.add((dz = createDouble(     "dz:        ", 1.0)));
-        psfPannel.add((nxy = createDouble(    "Nxy:       ", 2.0)));
-        psfPannel.add((nx = createDouble(     "Nx:        ", 3.0)));
-        psfPannel.add((no = createDouble(     "Nteta:     ", 4.0)));
-        psfPannel.add((lambda = createDouble( "lambda:    ", 5.0)));
-        psfPannel.add((ni = createDouble(     "ni:        ", 6.0)));
+        psfPannel.add((psf = createChoiceList("<html><pre>PSF:       </pre></html>", seqList)));
+        psfPannel.add((dxy = createDouble(    "<html><pre>dxy:       </pre></html>", 0.0)));
+        psfPannel.add((dz = createDouble(     "<html><pre>dz:        </pre></html>", 1.0)));
+        psfPannel.add((nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 2.0)));
+        psfPannel.add((nx = createDouble(     "<html><pre>Nx:        </pre></html>", 3.0)));
+        psfPannel.add((na = createDouble(     "<html><pre>NA:        </pre></html>", 4.0)));
+        psfPannel.add((lambda = createDouble( "<html><pre>lambda:    </pre></html>", 5.0)));
+        psfPannel.add((ni = createDouble(     "<html><pre>ni:        </pre></html>", 6.0)));
 
         psf.addActionListener(new ActionListener() {
             @Override
@@ -322,7 +322,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                     dz.setValue(     meta.dz);
                     nxy.setValue(    meta.nxy);
                     nx.setValue(     meta.nx);
-                    no.setValue(     meta.no);
+                    na.setValue(     meta.no);
                     lambda.setValue( meta.lambda);
                     ni.setValue(     meta.ni);
                 }
@@ -340,12 +340,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel varianceGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel varianceTab = new JPanel(false);
         varianceTab.setLayout(new BoxLayout(varianceTab, BoxLayout.Y_AXIS));
-        varianceTab.add((weights = createChoiceList(  "Variance MAP:     ", seqList)));
-        varianceTab.add(createLabel(                  "Variance Map:     "));
-        varianceTab.add((gain = createDouble(         "Gain:             ", 0.0)));
-        varianceTab.add((noise = createDouble(        "Readout Noise:    ", 0.0)));
-        varianceTab.add((deadPixGiven = new myBoolean("Dead Pixel Map ?  ", false)));
-        deadPixel = createChoiceList(                 "Dead pixel Map:   ", seqList);
+        varianceTab.add((weights = createChoiceList(  "<html><pre>Variance MAP:     </pre></html>", seqList)));
+        varianceTab.add(createLabel(                  "<html><pre>Variance Map:</pre></html>"));
+        varianceTab.add((gain = createDouble(         "<html><pre>Gain:             </pre></html>", 0.0)));
+        varianceTab.add((noise = createDouble(        "<html><pre>Readout Noise:    </pre></html>", 0.0)));
+        varianceTab.add((deadPixGiven = new myBoolean("<html><pre>Dead Pixel Map ?  </pre></html>", false)));
+        deadPixel = createChoiceList(                 "<html><pre>Dead pixel Map:   </pre></html>", seqList);
         deadPixGiven.addListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -365,13 +365,13 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel deconvGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel deconvTab = new JPanel(false);
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
-        deconvTab.add((deconvOptions = createChoiceList("Method:                  ", deconvStringOptions)));
-        deconvTab.add((mu = new myDouble(               "Mu:                      ", 1.0)));
-        deconvTab.add((epsilon = new myDouble(          "Epsilon:                 ", 1.0)));
-        deconvTab.add((grtol = new myDouble(            "Grtol:                   ", 1.0)));
-        deconvTab.add((zeroPadding = new myDouble(      "Padding multiplication:  ", 1.0)));
-        deconvTab.add((nbIteration = new myDouble(      "Number of iterations:    ", 50)));
-        deconvTab.add((restart = new myBoolean(         "Start from last result:  ", false)));
+        deconvTab.add((deconvOptions = createChoiceList("<html><pre>Method:                  </pre></html>", deconvStringOptions)));
+        deconvTab.add((mu = new myDouble(               "<html><pre>Mu:                      </pre></html>", 1.0)));
+        deconvTab.add((epsilon = new myDouble(          "<html><pre>Epsilon:                 </pre></html>", 1.0)));
+        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                   </pre></html>", 1.0)));
+        deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Padding multiplication:  </pre></html>", 1.0)));
+        deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:    </pre></html>", 50)));
+        deconvTab.add((restart = new myBoolean(         "<html><pre>Start from last result:  </pre></html>", false)));
         //Creation of DECONVOLUTION TAB
         deconvGlob.add(deconvTab, BorderLayout.NORTH);
         tabbedPane.addTab("Deconvolution", null, deconvGlob, "Methods and options of the deconvolution");
@@ -383,15 +383,48 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel bdecGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel bdecTab = new JPanel(false);
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
-        bdecTab.add((nbIterationZern = new myDouble("Zernike iterations:           ", 50)));
-        bdecTab.add((moduleZern      = new myDouble("Modulus:                      ", 50)));
-        bdecTab.add((defocusZern     = new myDouble("Defocus:                      ", 50)));
-        bdecTab.add((loopZern        = new myDouble("Loop:                         ", 50)));
+        bdecTab.add((nbIterationZern = new myDouble("<html><pre>Zernike iterations:    </pre></html>", 50)));
+        bdecTab.add((moduleZern      = new myDouble("<html><pre>Modulus:               </pre></html>", 50)));
+        bdecTab.add((defocusZern     = new myDouble("<html><pre>Defocus:               </pre></html>", 50)));
+        bdecTab.add((loopZern        = new myDouble("<html><pre>Loop:                  </pre></html>", 50)));
         //Creation of BDec TAB
         bdecGlob.add(bdecTab, BorderLayout.NORTH);
         tabbedPane.addTab("BDec", null, bdecGlob,    "All the options for the blind deconvolution");
 
-        // Addingimage, canalImage, psf, weights, deadPixel to auto refresh when sequence is added/removed
+        /****************************************************/
+        /**                      ToolTips                  **/
+        /****************************************************/
+        image.setToolTipText(ToolTipText.sequenceImage);
+        psf.setToolTipText(ToolTipText.sequencePSF);
+        weights.setToolTipText(ToolTipText.sequenceWeigth);
+        deadPixel.setToolTipText(ToolTipText.sequencePixel);
+        
+        canalImage.setToolTipText(ToolTipText.textCanal);
+        deconvOptions.setToolTipText(ToolTipText.textMethod);
+        
+        dxy.setToolTipText(ToolTipText.doubleZernikeDxy);
+        dz.setToolTipText(ToolTipText.doubleZernikeDz);
+        nxy.setToolTipText(ToolTipText.doubleZernikeNxy);
+        nx.setToolTipText(ToolTipText.doubleZernikeNx);
+        na.setToolTipText(ToolTipText.doubleZernikeNa);
+        lambda.setToolTipText(ToolTipText.doubleZernikeLambda);
+        ni.setToolTipText(ToolTipText.doubleZernikeNi);
+        
+        gain.setToolTipText(ToolTipText.doubleGain);
+        noise.setToolTipText(ToolTipText.doubleNoise);
+        mu.setToolTipText(ToolTipText.doubleMu);
+        epsilon.setToolTipText(ToolTipText.doubleEpsilon);
+        grtol.setToolTipText(ToolTipText.doubleGrtoll);
+        nbIteration.setToolTipText(ToolTipText.doubleMaxIter);
+        zeroPadding.setToolTipText(ToolTipText.doublePadding);
+        
+        nbIterationZern.setToolTipText(ToolTipText.doubleZernikeIteration);
+        moduleZern.setToolTipText(ToolTipText.doubleZernikeModulus);
+        defocusZern.setToolTipText(ToolTipText.doubleZernikeDefocus);
+        loopZern.setToolTipText(ToolTipText.doubleZernikeLoop);
+        
+        restart.setToolTipText(ToolTipText.booleanRestart);
+        // Adding image, canalImage, psf, weights, deadPixel to auto refresh when sequence is added/removed
         listChoiceList.add(image);
         listChoiceList.add(psf);
         listChoiceList.add(weights);
@@ -411,7 +444,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         System.out.println("dz: "+dz.getValue());
         System.out.println("nxy: "+nxy.getValue());
         System.out.println("nx: "+nx.getValue());
-        System.out.println("no: "+no.getValue());
+        System.out.println("no: "+na.getValue());
         System.out.println("l: "+lambda.getValue());
         System.out.println("ni: "+ni.getValue());
         System.out.println("--------------Variance------------------");
@@ -525,7 +558,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             weightGen.setWeightMap(Double1D.wrap(weight, weight.length));
         }
         weightGen.setPixelMap(deadPixMap);
-        return weightGen.getWeightMap().toDouble().flatten();//FIXME WRONG but Good for now
+        return weightGen.getWeightMap().toDouble().flatten();   //FIXME WRONG but Good for now
     }
 
     //Get the results from a reconstruction and plot the intermediate result

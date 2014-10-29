@@ -243,6 +243,7 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
         options.setToolTipText(ToolTipText.textMethod);
         eZcoef.setToolTipText(ToolTipText.doublePadding);
         slider.setToolTipText(ToolTipText.deconvolutionSlider);
+        varBoolean.setToolTipText(ToolTipText.booleanPSFSplitted);
         
         addEzComponent(sequencePSF);
         addEzComponent(varBoolean);
