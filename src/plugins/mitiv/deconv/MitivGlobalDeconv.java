@@ -14,6 +14,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -190,10 +191,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private String[] seqList;
     private final String[] deconvStringOptions = new String[]{"Total Variation","Tichonov"}; 
     private String[] canalImageOptions = new String[]{"None"}; 
+    
+    private JButton deconvStart, psfShow;
 
     //Global variables for the algorithms
     TotalVariationDeconvolution tvDec;
-    
+
     //Global variable for the deconvolution
     Sequence sequence; //The reference to the sequence we use to plot 
     int width, height, sizeZ;
@@ -311,7 +314,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         psfPannel.add((na = createDouble(     "<html><pre>NA:        </pre></html>", 4.0)));
         psfPannel.add((lambda = createDouble( "<html><pre>lambda:    </pre></html>", 5.0)));
         psfPannel.add((ni = createDouble(     "<html><pre>ni:        </pre></html>", 6.0)));
-
+        psfPannel.add((psfShow = new JButton("Show PSF")));
+        
         psf.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -328,7 +332,13 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 }
             }
         });
-
+        psfShow.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Here compute the PSF
+                System.out.println("J'ai calculé la psf");
+            }
+        });
         //Creation of IMAGE TAB
         psfGlob.add(psfPannel, BorderLayout.NORTH);
         tabbedPane.addTab("PSF", null, psfGlob, "Choice of the PSF, visuakization of theoritical PSF");
@@ -372,6 +382,14 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Padding multiplication:  </pre></html>", 1.0)));
         deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:    </pre></html>", 50)));
         deconvTab.add((restart = new myBoolean(         "<html><pre>Start from last result:  </pre></html>", false)));
+        deconvTab.add((deconvStart = new JButton("Start Deconvolution")));
+        deconvStart.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                //Launch Computation here
+                System.out.println("Je bosse");
+            }
+        });
         //Creation of DECONVOLUTION TAB
         deconvGlob.add(deconvTab, BorderLayout.NORTH);
         tabbedPane.addTab("Deconvolution", null, deconvGlob, "Methods and options of the deconvolution");
@@ -398,10 +416,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         psf.setToolTipText(ToolTipText.sequencePSF);
         weights.setToolTipText(ToolTipText.sequenceWeigth);
         deadPixel.setToolTipText(ToolTipText.sequencePixel);
-        
+
         canalImage.setToolTipText(ToolTipText.textCanal);
         deconvOptions.setToolTipText(ToolTipText.textMethod);
-        
+
         dxy.setToolTipText(ToolTipText.doubleZernikeDxy);
         dz.setToolTipText(ToolTipText.doubleZernikeDz);
         nxy.setToolTipText(ToolTipText.doubleZernikeNxy);
@@ -409,7 +427,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         na.setToolTipText(ToolTipText.doubleZernikeNa);
         lambda.setToolTipText(ToolTipText.doubleZernikeLambda);
         ni.setToolTipText(ToolTipText.doubleZernikeNi);
-        
+
         gain.setToolTipText(ToolTipText.doubleGain);
         noise.setToolTipText(ToolTipText.doubleNoise);
         mu.setToolTipText(ToolTipText.doubleMu);
@@ -417,12 +435,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         grtol.setToolTipText(ToolTipText.doubleGrtoll);
         nbIteration.setToolTipText(ToolTipText.doubleMaxIter);
         zeroPadding.setToolTipText(ToolTipText.doublePadding);
-        
+
         nbIterationZern.setToolTipText(ToolTipText.doubleZernikeIteration);
         moduleZern.setToolTipText(ToolTipText.doubleZernikeModulus);
         defocusZern.setToolTipText(ToolTipText.doubleZernikeDefocus);
         loopZern.setToolTipText(ToolTipText.doubleZernikeLoop);
-        
+
         restart.setToolTipText(ToolTipText.booleanRestart);
         // Adding image, canalImage, psf, weights, deadPixel to auto refresh when sequence is added/removed
         listChoiceList.add(image);
@@ -432,7 +450,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         //Add the tabbed pane to this panel.
         addComponent(tabbedPane);
     }
-    
+
     @Override
     protected void execute() {
         System.out.println("-------------IMAGE-------------------");
@@ -465,7 +483,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         System.out.println("defoc: "+defocusZern.getValue());
         System.out.println("loop: "+loopZern.getValue());
         System.out.println("");
-        
+
         // Preparing parameters and testing input
         Sequence imgSeq = getSequence(image);
         Sequence psfSeq = getSequence(psf);
@@ -521,7 +539,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             tvDec.deconvolve();
             //Showing the results
             setResult(tvDec);
-            
+
         } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
             System.out.println("Ticho ON");
         } else {
@@ -595,7 +613,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         data.dxy = metDat.getPixelsSizeC(0).getValue().doubleValue();
         return data;
     }
-    
+
     private void setMetaData(Sequence seq){
         OMEXMLMetadataImpl metDat = seq.getMetadata();
         //TODO Add dxy, dz, nxy, nx, no,lambda,ni
@@ -623,7 +641,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         if (tvDec != null) {
             tvDec.stop();
         }
-        
+
     }
 
 }

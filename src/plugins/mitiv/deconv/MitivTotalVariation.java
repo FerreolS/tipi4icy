@@ -202,8 +202,14 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         if (epsilon <= 0) {
             message("Threshold level EPSILON must be strictly positive");
         }
-        if (grtol == 0 || grtol == 1) {
-            message("grtol canno't be 0 or 1");
+        if (grtol <= 0 || grtol >= 1) {
+            message("grtol canno't be lower than 0 or greater than 1");
+        }
+        if (coef < 1 || coef > 3) {
+            message("The Padding can not be lower than 1 or have a value greater than 3");
+        }
+        if (maxIter < -1)  {
+            maxIter = -1;
         }
 
         //Test if we have the image and the psf ...
