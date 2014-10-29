@@ -53,13 +53,13 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /***************************************************/
     public class myMetaData {
         //Just a public object with all psf values inside
-        public double dxy     = 1;
-        public double dz      = 2;
-        public double nxy     = 3;
-        public double nx      = 4;
-        public double no      = 5;
-        public double lambda  = 6;
-        public double ni      = 7;
+        public double dxy     = 64.5e-9;
+        public double dz      = 160e-9;
+        public double nxy     = 256;
+        public double nz      = 128;
+        public double na      = 1.4;
+        public double lambda  = 542e-9;
+        public double ni      = 1.518;
     }
 
     /***************************************************/
@@ -181,10 +181,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /**                  All variables                **/
     /***************************************************/
     private ArrayList<myComboBox> listChoiceList = new ArrayList<myComboBox>();
-    private myDouble dxy, dz, nxy, nx, na,lambda,ni;    //PSF
+    private myDouble dxy, dz, nxy, nz, na, lambda, ni;    //PSF
     private myDouble mu, epsilon, grtol, nbIteration, zeroPadding;          //Deconvolution
     private myDouble gain,noise;                          //VARIANCE
-    private myDouble nbIterationZern, moduleZern, defocusZern, loopZern;          //BDec
+    private myDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration;          //BDec
     private myComboBox image, canalImage, psf, weights, deadPixel, deconvOptions;
     private myBoolean deadPixGiven, restart;
     private String[] seqList;
@@ -304,13 +304,16 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel psfPannel = new JPanel(false);
         psfPannel.setLayout(new BoxLayout(psfPannel, BoxLayout.Y_AXIS));
         psfPannel.add((psf = createChoiceList("<html><pre>PSF:       </pre></html>", seqList)));
-        psfPannel.add((dxy = createDouble(    "<html><pre>dxy:       </pre></html>", 0.0)));
-        psfPannel.add((dz = createDouble(     "<html><pre>dz:        </pre></html>", 1.0)));
-        psfPannel.add((nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 2.0)));
-        psfPannel.add((nx = createDouble(     "<html><pre>Nx:        </pre></html>", 3.0)));
-        psfPannel.add((na = createDouble(     "<html><pre>NA:        </pre></html>", 4.0)));
-        psfPannel.add((lambda = createDouble( "<html><pre>lambda:    </pre></html>", 5.0)));
-        psfPannel.add((ni = createDouble(     "<html><pre>ni:        </pre></html>", 6.0)));
+        psfPannel.add((na = createDouble(     "<html><pre>NA:        </pre></html>", 1.4)));
+        psfPannel.add((ni = createDouble(     "<html><pre>ni:        </pre></html>", 1.518)));
+        psfPannel.add((lambda = createDouble( "<html><pre>\u03BB:       </pre></html>", 542e-9)));
+        psfPannel.add((nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 256)));
+        psfPannel.add((nz = createDouble(     "<html><pre>Nz:        </pre></html>", 128)));
+        psfPannel.add((dxy = createDouble(    "<html><pre>dxy:       </pre></html>", 64.5e-9)));
+        psfPannel.add((dz = createDouble(     "<html><pre>dz:        </pre></html>", 160e-9)));
+
+
+
 
         psf.addActionListener(new ActionListener() {
             @Override
@@ -321,8 +324,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                     dxy.setValue(    meta.dxy);
                     dz.setValue(     meta.dz);
                     nxy.setValue(    meta.nxy);
-                    nx.setValue(     meta.nx);
-                    na.setValue(     meta.no);
+                    nz.setValue(     meta.nz);
+                    na.setValue(     meta.na);
                     lambda.setValue( meta.lambda);
                     ni.setValue(     meta.ni);
                 }
@@ -383,10 +386,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel bdecGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel bdecTab = new JPanel(false);
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
-        bdecTab.add((nbIterationZern = new myDouble("<html><pre>Zernike iterations:    </pre></html>", 50)));
-        bdecTab.add((moduleZern      = new myDouble("<html><pre>Modulus:               </pre></html>", 50)));
-        bdecTab.add((defocusZern     = new myDouble("<html><pre>Defocus:               </pre></html>", 50)));
-        bdecTab.add((loopZern        = new myDouble("<html><pre>Loop:                  </pre></html>", 50)));
+        bdecTab.add((grtolDefocus     = new myDouble("<html><pre>Grtol defocus:           </pre></html>", 0.1)));
+        bdecTab.add((grtolPhase = new myDouble("<html><pre>Grtol phase:    </pre></html>", 0.1)));
+        bdecTab.add((grtolModulus      = new myDouble("<html><pre>Grtol modulus:               </pre></html>", 0.1)));
+        bdecTab.add((bDecTotalIteration        = new myDouble("<html><pre>Number of total iterations:        </pre></html>", 3)));
         //Creation of BDec TAB
         bdecGlob.add(bdecTab, BorderLayout.NORTH);
         tabbedPane.addTab("BDec", null, bdecGlob,    "All the options for the blind deconvolution");
@@ -402,13 +405,13 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         canalImage.setToolTipText(ToolTipText.textCanal);
         deconvOptions.setToolTipText(ToolTipText.textMethod);
         
-        dxy.setToolTipText(ToolTipText.doubleZernikeDxy);
-        dz.setToolTipText(ToolTipText.doubleZernikeDz);
-        nxy.setToolTipText(ToolTipText.doubleZernikeNxy);
-        nx.setToolTipText(ToolTipText.doubleZernikeNx);
-        na.setToolTipText(ToolTipText.doubleZernikeNa);
-        lambda.setToolTipText(ToolTipText.doubleZernikeLambda);
-        ni.setToolTipText(ToolTipText.doubleZernikeNi);
+        dxy.setToolTipText(ToolTipText.doubleDxy);
+        dz.setToolTipText(ToolTipText.doubleDz);
+        nxy.setToolTipText(ToolTipText.doubleNxy);
+        nz.setToolTipText(ToolTipText.doubleNz);
+        na.setToolTipText(ToolTipText.doubleNa);
+        lambda.setToolTipText(ToolTipText.doubleLambda);
+        ni.setToolTipText(ToolTipText.doubleNi);
         
         gain.setToolTipText(ToolTipText.doubleGain);
         noise.setToolTipText(ToolTipText.doubleNoise);
@@ -418,10 +421,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         nbIteration.setToolTipText(ToolTipText.doubleMaxIter);
         zeroPadding.setToolTipText(ToolTipText.doublePadding);
         
-        nbIterationZern.setToolTipText(ToolTipText.doubleZernikeIteration);
-        moduleZern.setToolTipText(ToolTipText.doubleZernikeModulus);
-        defocusZern.setToolTipText(ToolTipText.doubleZernikeDefocus);
-        loopZern.setToolTipText(ToolTipText.doubleZernikeLoop);
+        grtolPhase.setToolTipText(ToolTipText.doubleGrtolPhase);
+        grtolModulus.setToolTipText(ToolTipText.doubleGrtolModulus);
+        grtolDefocus.setToolTipText(ToolTipText.doubleGrtolDefocus);
+        bDecTotalIteration.setToolTipText(ToolTipText.doubleBDecTotalIteration);
         
         restart.setToolTipText(ToolTipText.booleanRestart);
         // Adding image, canalImage, psf, weights, deadPixel to auto refresh when sequence is added/removed
@@ -443,9 +446,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         System.out.println("dxy: "+dxy.getValue());
         System.out.println("dz: "+dz.getValue());
         System.out.println("nxy: "+nxy.getValue());
-        System.out.println("nx: "+nx.getValue());
-        System.out.println("no: "+na.getValue());
-        System.out.println("l: "+lambda.getValue());
+        System.out.println("nz: "+nz.getValue());
+        System.out.println("NA: "+na.getValue());
+        System.out.println("\u03BB: "+lambda.getValue());
         System.out.println("ni: "+ni.getValue());
         System.out.println("--------------Variance------------------");
         System.out.println("Weights: "+weights.getValue());
@@ -460,10 +463,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         System.out.println("--------------BDEC------------------");
         System.out.println("nbIter: "+nbIteration.getValue());
         System.out.println("zeroPad: "+zeroPadding.getValue());
-        System.out.println("nbIterZern: "+nbIterationZern.getValue());
-        System.out.println("module: "+moduleZern.getValue());
-        System.out.println("defoc: "+defocusZern.getValue());
-        System.out.println("loop: "+loopZern.getValue());
+        System.out.println("nbIterZern: "+grtolPhase.getValue());
+        System.out.println("module: "+grtolModulus.getValue());
+        System.out.println("defoc: "+grtolDefocus.getValue());
+        System.out.println("Number of total iterations: "+bDecTotalIteration.getValue());
         System.out.println("");
         
         // Preparing parameters and testing input
