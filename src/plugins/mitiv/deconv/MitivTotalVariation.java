@@ -57,15 +57,20 @@ import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 
 public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, SequenceListener, EzVarListener<String> {
-
+    
+    /****************************************************/
+    /**                 VIEWER UPDATE                  **/
+    /****************************************************/
     public class tvViewer implements ReconstructionViewer{
-
         @Override
         public void display(ReconstructionJob job) {
             setResult();
         }
     }
-
+    /****************************************************/
+    /**                 VARIABLES                      **/
+    /****************************************************/
+    
     TotalVariationDeconvolution tvDec;
 
     private Sequence sequence;
@@ -114,13 +119,20 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     IcyBufferedImage img;
     IcyBufferedImage psf;
 
+    /****************************************************/
+    /**                 MESSAGE ICY                    **/
+    /****************************************************/
     private void message(String info){
         new AnnounceFrame(info);
         goodInput = false;
     }
 
+    /****************************************************/
+    /**                 INITIALIZE ICY                 **/
+    /****************************************************/
     @Override
     protected void initialize() {
+        //Settings all initials values
         eZmu.setValue(mu);
         eZepsilon.setValue(epsilon);
         eZgrtol.setValue(grtol);
@@ -128,13 +140,13 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         eZcoef.setValue(coef);
         options.addVarChangeListener(this);
 
+        //Setting visibility to weights parameters
         alpha.setVisible(false);
-        alpha.setToolTipText("The Gain");
         beta.setVisible(false);
-        beta.setToolTipText("The Rms");
         deadPixel.setVisible(false);
         showPixMap.addVisibilityTriggerTo(deadPixel, true);
 
+        //Setting all tooltips
         sequencePsf.setToolTipText(ToolTipText.sequencePSF);
         sequenceImg.setToolTipText(ToolTipText.sequenceImage);
         eZpsfSplitted.setToolTipText(ToolTipText.booleanPSFSplitted);
@@ -143,11 +155,14 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         eZgrtol.setToolTipText(ToolTipText.doubleGrtoll);
         eZmaxIter.setToolTipText(ToolTipText.doubleMaxIter);
         eZcoef.setToolTipText(ToolTipText.doublePadding);
+        alpha.setToolTipText(ToolTipText.doubleGain);
+        beta.setToolTipText(ToolTipText.doubleNoise);
         eZrestart.setToolTipText(ToolTipText.booleanRestart);
         showPixMap.setToolTipText(ToolTipText.sequencePixel);
         weightMap.setToolTipText(ToolTipText.sequenceWeigth);
         varianceMap.setToolTipText(ToolTipText.sequenceVariance);
         
+        //Adding all components
         addEzComponent(sequencePsf);
         addEzComponent(sequenceImg);
         addEzComponent(eZpsfSplitted);
@@ -161,6 +176,9 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         addEzComponent(groupWeighting);
     }
 
+    /****************************************************/
+    /**                  RUN PLUGIN                    **/
+    /****************************************************/
     @Override
     protected void execute() {
         //Getting all values
@@ -216,8 +234,10 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 message("The psf canno't be larger than the image");
             }
         }
+        //Everything seems good we are ready to launch
         if (goodInput) {
             if (reuse && tvDec != null) {
+                //If we restart, we reuse the same data and PSF
                 tvDec.setRegularizationWeight(mu);
                 tvDec.setRegularizationThreshold(epsilon);
                 tvDec.setRelativeTolerance(grtol);
@@ -237,7 +257,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 tvDec.setMaximumIterations(maxIter);
                 tvDec.setViewer(new tvViewer());
 
-                // Read the blurred image and the PSF.
+                // Read the image and the PSF.
                 width = img.getWidth();
                 height = img.getHeight();
                 sizeZ = sequenceImg.getValue().getSizeZ();
@@ -294,7 +314,6 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                     }*/
                 }
 
-
                 //BEWARE here we change the value to match the new padded image size
                 width = (int)(width*coef);
                 height = (int)(height*coef);
@@ -315,6 +334,10 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         }
     }
 
+    /****************************************************/
+    /**                  UTILS FUNCTIONS               **/
+    /****************************************************/
+    //Small utils function that will get the sequence and convert it to ShapedArray
     private ShapedArray weightMapToArray(EzVarSequence seq){
         double[] tmp = IcyBufferedImageUtils.icyImage3DToArray1D(seq.getValue().getAllImage(), width, height, sizeZ, false);
         return Double1D.wrap(tmp, tmp.length);
@@ -358,6 +381,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         return weightGen.getWeightMap().toDouble().flatten();//FIXME WRONG but Good for now
     }
 
+    //Debug function Will have to be deleted in the future 
     @SuppressWarnings("unused")
     private void addImage(double[] in, String name, int width, int height, int sizeZ){
         Sequence tmpSeq = new Sequence();
@@ -372,8 +396,8 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         addSequence(tmpSeq);
     }
 
+    //The function called by the viewer, here we take care of printing the result in headless mode (protocol) or not
     private void setResult(){
-
         if (sequence == null || computeNew == true) {
             sequence = new Sequence();
             sequence.addListener(this);
@@ -397,6 +421,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         sequence.endUpdate();
     }
 
+    //When the plugin is closed we try to close/stop everything
     @Override
     public void clean() {
         if (sequence != null) {
@@ -446,6 +471,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         }
     }
 
+    //If the user call the stop button
     @Override
     public void stopExecution() {
         if (tvDec != null) {
@@ -453,6 +479,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         }
     }
 
+    //The input variable for the protocol
     @Override
     public void declareInput(VarList inputMap) {
         inputMap.add(sequencePsf.getVariable());
@@ -464,6 +491,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         inputMap.add(eZcoef.getVariable());
     }
 
+    //The output variable for the protocol
     @Override
     public void declareOutput(VarList outputMap) {
         outputMap.add(output.getVariable());
