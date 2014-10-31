@@ -41,18 +41,18 @@ public class ToolTipText {
     static final String doublePadding = "Add zero around the image (2D and 3D)";
     static final String doubleGain = "The gain in e-/level";
     static final String doubleNoise = "The readout noise i.e the RMS in e-/pixel";
-    static final String doubleZernikeLoop = "The maximum number of loop the algorithm is allowed to do, the higher the potentially longer";
-    static final String doubleZernikeIteration = "The maximum of iterations the Zernike car do to compute the output";
-    static final String doubleZernikeModulus = "The modulus of the Zernike";
-    static final String doubleZernikeDefocus = "The defocus of the Zernike";
+    static final String doubleBDecTotalIteration = "The maximum number of loop the algorithm is allowed to do, the higher the potentially longer";
+    static final String doubleGrtolPhase = "Relative gradient tolerance for the convergence of the phase coeficients";
+    static final String doubleGrtolModulus = "Relative gradient tolerance for the convergence of the modulus coeficients";
+    static final String doubleGrtolDefocus = "Relative gradient tolerance for the convergence of the defocus coeficients";
     
-    static final String doubleZernikeDxy = "The defocus of the Zernike";    //TODO Ludo + add units in the description AND  in GlobalDeconv
-    static final String doubleZernikeDz = "The defocus of the Zernike";     //TODO Ludo
-    static final String doubleZernikeNxy = "The defocus of the Zernike";    //TODO Ludo
-    static final String doubleZernikeNx = "The defocus of the Zernike";     //TODO Ludo
-    static final String doubleZernikeNa = "The defocus of the Zernike";     //TODO Ludo
-    static final String doubleZernikeLambda = "The defocus of the Zernike"; //TODO Ludo
-    static final String doubleZernikeNi = "The defocus of the Zernike";     //TODO Ludo
+    static final String doubleDxy = "Lateral pixel size (nm)";    //TODO Ludo + add units in the description AND  in GlobalDeconv
+    static final String doubleDz = "Axial pixel size (nm)";
+    static final String doubleNxy = "Number of pixels along XY-axis";
+    static final String doubleNz = "Number of pixels along Z-axis";
+    static final String doubleNa = "Numerical Aperture";
+    static final String doubleLambda = "Wavelength (nm)";
+    static final String doubleNi = "Refractive index of the immersion medium";
     
     //static final String booleanPSFSplitted = "If the PSF is not centered check this box";
     static final String booleanPSFSplitted = "<html><pre>"

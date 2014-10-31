@@ -4,6 +4,7 @@ import icy.gui.main.GlobalSequenceListener;
 import icy.image.IcyBufferedImage;
 import icy.main.Icy;
 import icy.sequence.Sequence;
+import icy.type.collection.array.Array1DUtil;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -11,9 +12,12 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -29,10 +33,20 @@ import mitiv.array.Double1D;
 import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
+import mitiv.exception.DataFormatException;
+import mitiv.exception.RecoverableFormatException;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionViewer;
+import mitiv.io.MdaFormat;
 import mitiv.linalg.WeightGenerator;
+import mitiv.linalg.shaped.DoubleShapedVector;
+import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import mitiv.microscopy.MicroscopyModelPSF1D;
+import mitiv.microscopy.PSF_Estimation;
+import mitiv.microscopy.pupilEstimation;
 import mitiv.utils.CommonUtils;
+import mitiv.utils.MathUtils;
+import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.mitiv.io.IcyBufferedImageUtils;
@@ -181,7 +195,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /**                  All variables                **/
     /***************************************************/
     private ArrayList<myComboBox> listChoiceList = new ArrayList<myComboBox>();
-    private myDouble dxy, dz, nxy, nz, na, lambda, ni;    //PSF
+    private myDouble dxy, dz, nxy, nz, na, lambda, ni, nbAlphaCoef, nbBetaCoef;    //PSF
+    private MicroscopyModelPSF1D pupil;
+    private int psfInitFlag = 0;
     private myDouble mu, epsilon, grtol, nbIteration, zeroPadding;          //Deconvolution
     private myDouble gain,noise;                          //VARIANCE
     private myDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration;          //BDec
@@ -191,9 +207,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private final String[] deconvStringOptions = new String[]{"Total Variation","Tichonov"}; 
     private String[] canalImageOptions = new String[]{"None"}; 
 
+    private JButton deconvStart, psfShow, showModulus, showPhase;
+
     //Global variables for the algorithms
     TotalVariationDeconvolution tvDec;
-    
+    PSF_Estimation PSFEstimation;
     //Global variable for the deconvolution
     Sequence sequence; //The reference to the sequence we use to plot 
     int width, height, sizeZ;
@@ -303,17 +321,19 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel psfGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel psfPannel = new JPanel(false);
         psfPannel.setLayout(new BoxLayout(psfPannel, BoxLayout.Y_AXIS));
-        psfPannel.add((psf = createChoiceList("<html><pre>PSF:       </pre></html>", seqList)));
+        psfPannel.add((psf = createChoiceList("<html><pre>Load PSF:       </pre></html>", seqList)));
         psfPannel.add((na = createDouble(     "<html><pre>NA:        </pre></html>", 1.4)));
         psfPannel.add((ni = createDouble(     "<html><pre>ni:        </pre></html>", 1.518)));
-        psfPannel.add((lambda = createDouble( "<html><pre>\u03BB:       </pre></html>", 542e-9)));
+        psfPannel.add((lambda = createDouble( "<html><pre>\u03BB:         </pre></html>", 542E-9)));
         psfPannel.add((nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 256)));
         psfPannel.add((nz = createDouble(     "<html><pre>Nz:        </pre></html>", 128)));
-        psfPannel.add((dxy = createDouble(    "<html><pre>dxy:       </pre></html>", 64.5e-9)));
-        psfPannel.add((dz = createDouble(     "<html><pre>dz:        </pre></html>", 160e-9)));
-
-
-
+        psfPannel.add((dxy = createDouble(    "<html><pre>dxy:       </pre></html>", 64.5E-9)));
+        psfPannel.add((dz = createDouble(     "<html><pre>dz:        </pre></html>", 160E-9)));
+        psfPannel.add((nbAlphaCoef = createDouble(     "<html><pre>N\u03B2:        </pre></html>", 76)));
+        psfPannel.add((nbBetaCoef = createDouble(     "<html><pre>N\u03B1:        </pre></html>", 22)));
+        psfPannel.add((psfShow = new JButton("Show PSF")));
+        psfPannel.add((showPhase = new JButton("Show phase of the pupil")));
+        psfPannel.add((showModulus = new JButton("Show modulus of the pupil")));
 
         psf.addActionListener(new ActionListener() {
             @Override
@@ -332,6 +352,32 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             }
         });
 
+        psfShow.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Show the initial PSF
+                PSF0Clicked();
+                System.out.println("First PSF compute");
+            }
+        });
+
+        showPhase.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                phaseClicked();
+                System.out.println("Show phase");
+            }
+        });
+
+        showModulus.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                modulusClicked();
+                System.out.println("Show modulus");
+            }
+        });
+
+
         //Creation of IMAGE TAB
         psfGlob.add(psfPannel, BorderLayout.NORTH);
         tabbedPane.addTab("PSF", null, psfGlob, "Choice of the PSF, visuakization of theoritical PSF");
@@ -344,7 +390,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel varianceTab = new JPanel(false);
         varianceTab.setLayout(new BoxLayout(varianceTab, BoxLayout.Y_AXIS));
         varianceTab.add((weights = createChoiceList(  "<html><pre>Variance MAP:     </pre></html>", seqList)));
-        varianceTab.add(createLabel(                  "<html><pre>Variance Map:</pre></html>"));
+        varianceTab.add(createLabel(                  "Variance Map:"));
         varianceTab.add((gain = createDouble(         "<html><pre>Gain:             </pre></html>", 0.0)));
         varianceTab.add((noise = createDouble(        "<html><pre>Readout Noise:    </pre></html>", 0.0)));
         varianceTab.add((deadPixGiven = new myBoolean("<html><pre>Dead Pixel Map ?  </pre></html>", false)));
@@ -369,12 +415,21 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel deconvTab = new JPanel(false);
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
         deconvTab.add((deconvOptions = createChoiceList("<html><pre>Method:                  </pre></html>", deconvStringOptions)));
-        deconvTab.add((mu = new myDouble(               "<html><pre>Mu:                      </pre></html>", 1.0)));
-        deconvTab.add((epsilon = new myDouble(          "<html><pre>Epsilon:                 </pre></html>", 1.0)));
-        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                   </pre></html>", 1.0)));
+        deconvTab.add((mu = new myDouble(               "<html><pre>Mu:                      </pre></html>", 5E-4)));
+        deconvTab.add((epsilon = new myDouble(          "<html><pre>Epsilon:                 </pre></html>", 1E-2)));
+        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                   </pre></html>", 1E-2)));
         deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Padding multiplication:  </pre></html>", 1.0)));
         deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:    </pre></html>", 50)));
         deconvTab.add((restart = new myBoolean(         "<html><pre>Start from last result:  </pre></html>", false)));
+        deconvTab.add((deconvStart = new JButton("Start Deconvolution")));
+        deconvStart.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                //Launch Computation here
+                System.out.println("Deconvolution");
+                deconvCliked();
+            }
+        });
         //Creation of DECONVOLUTION TAB
         deconvGlob.add(deconvTab, BorderLayout.NORTH);
         tabbedPane.addTab("Deconvolution", null, deconvGlob, "Methods and options of the deconvolution");
@@ -386,10 +441,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel bdecGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel bdecTab = new JPanel(false);
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
-        bdecTab.add((grtolDefocus     = new myDouble("<html><pre>Grtol defocus:           </pre></html>", 0.1)));
-        bdecTab.add((grtolPhase = new myDouble("<html><pre>Grtol phase:    </pre></html>", 0.1)));
-        bdecTab.add((grtolModulus      = new myDouble("<html><pre>Grtol modulus:               </pre></html>", 0.1)));
-        bdecTab.add((bDecTotalIteration        = new myDouble("<html><pre>Number of total iterations:        </pre></html>", 3)));
+        bdecTab.add((grtolDefocus = new myDouble("<html><pre>Grtol defocus:           </pre></html>", 0.1)));
+        bdecTab.add((grtolPhase = new myDouble("<html><pre>Grtol phase:           </pre></html>", 0.1)));
+        bdecTab.add((grtolModulus = new myDouble("<html><pre>Grtol modulus:               </pre></html>", 0.1)));
+        bdecTab.add((bDecTotalIteration = new myDouble("<html><pre>Number of total iterations:        </pre></html>", 2)));
         //Creation of BDec TAB
         bdecGlob.add(bdecTab, BorderLayout.NORTH);
         tabbedPane.addTab("BDec", null, bdecGlob,    "All the options for the blind deconvolution");
@@ -401,10 +456,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         psf.setToolTipText(ToolTipText.sequencePSF);
         weights.setToolTipText(ToolTipText.sequenceWeigth);
         deadPixel.setToolTipText(ToolTipText.sequencePixel);
-        
+
         canalImage.setToolTipText(ToolTipText.textCanal);
         deconvOptions.setToolTipText(ToolTipText.textMethod);
-        
+
         dxy.setToolTipText(ToolTipText.doubleDxy);
         dz.setToolTipText(ToolTipText.doubleDz);
         nxy.setToolTipText(ToolTipText.doubleNxy);
@@ -412,7 +467,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         na.setToolTipText(ToolTipText.doubleNa);
         lambda.setToolTipText(ToolTipText.doubleLambda);
         ni.setToolTipText(ToolTipText.doubleNi);
-        
         gain.setToolTipText(ToolTipText.doubleGain);
         noise.setToolTipText(ToolTipText.doubleNoise);
         mu.setToolTipText(ToolTipText.doubleMu);
@@ -420,12 +474,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         grtol.setToolTipText(ToolTipText.doubleGrtoll);
         nbIteration.setToolTipText(ToolTipText.doubleMaxIter);
         zeroPadding.setToolTipText(ToolTipText.doublePadding);
-        
+
         grtolPhase.setToolTipText(ToolTipText.doubleGrtolPhase);
         grtolModulus.setToolTipText(ToolTipText.doubleGrtolModulus);
         grtolDefocus.setToolTipText(ToolTipText.doubleGrtolDefocus);
         bDecTotalIteration.setToolTipText(ToolTipText.doubleBDecTotalIteration);
-        
+
         restart.setToolTipText(ToolTipText.booleanRestart);
         // Adding image, canalImage, psf, weights, deadPixel to auto refresh when sequence is added/removed
         listChoiceList.add(image);
@@ -435,7 +489,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         //Add the tabbed pane to this panel.
         addComponent(tabbedPane);
     }
-    
+
     @Override
     protected void execute() {
         System.out.println("-------------IMAGE-------------------");
@@ -468,67 +522,140 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         System.out.println("defoc: "+grtolDefocus.getValue());
         System.out.println("Number of total iterations: "+bDecTotalIteration.getValue());
         System.out.println("");
-        
+
         // Preparing parameters and testing input
         Sequence imgSeq = getSequence(image);
         Sequence psfSeq = getSequence(psf);
-        if (imgSeq == null || psfSeq == null) {
-            throwError("A PSF/Image should be given");
+        if (imgSeq == null)
+        {
+            throwError("A sequence of images should be given");
         }
         ArrayList<IcyBufferedImage> listImg = imgSeq.getAllImage();
-        ArrayList<IcyBufferedImage> listPSf = psfSeq.getAllImage();
 
         BufferedImage img = imgSeq.getFirstNonNullImage();
         // Set the informations about the input
         width = img.getWidth();
         height = img.getHeight();
         sizeZ = imgSeq.getSizeZ();
-        double coef = zeroPadding.getValue();
-        //3D Only
         DoubleArray imgArray, psfArray;
+        double coef = zeroPadding.getValue();
+        int[] shape = new int[]{(int)(width*coef), (int)(height*coef), (int)(sizeZ*coef)};
+        // If no PSF is loaded -> creation of a PSF
+        if ( psfSeq == null)
+        {
+            if(psfInitFlag == 0)
+            {
+                psf0Init();
+                pupil.computePSF();
+                psfInitFlag = 1;
+            }
+            psfArray =  Double3D.wrap(MathUtils.uint16(MathUtils.fftShift3D(pupil.getPSF(),shape[0], shape[1], shape[2])) , shape);
+        }
+        else
+        {
+            ArrayList<IcyBufferedImage> listPSf = psfSeq.getAllImage();
+            double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, width, height, sizeZ, false);
+            psfTmp = CommonUtils.imagePad(psfTmp, width, height, sizeZ, coef);
+            double[] psfShift = new double[shape[0]*shape[1]*shape[2]];
+            CommonUtils.fftShift3D(psfTmp, psfShift , shape[0], shape[1], shape[2]);
+            psfArray =  Double3D.wrap(psfShift, shape);
+        }
+        /*
+        double[] image = new double[width*height*sizeZ];
+        for(int k = 0; k < sizeZ; k++)
+        {
+            Array1DUtil.arrayToDoubleArray(imgSeq.getDataXY(0, k, 0), 0, image,
+                    k*width*height, width*height, imgSeq.isSignedDataType());
+        }
+         */
         double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
-        double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, width, height, sizeZ, false);
         double[] weight = createWeight(image);
+
         weight = CommonUtils.imagePad(weight, width, height, sizeZ, coef);
         image = CommonUtils.imagePad(image, width, height, sizeZ, coef);
-        psfTmp = CommonUtils.imagePad(psfTmp, width, height, sizeZ, coef);
-        int[] shape = new int[]{(int)(width*coef), (int)(height*coef), (int)(sizeZ*coef)};
-
         imgArray =  Double3D.wrap(image, shape);
-        double[] psfShift = new double[shape[0]*shape[1]*shape[2]];
-        CommonUtils.fftShift3D(psfTmp, psfShift , shape[0], shape[1], shape[2]);
-        psfArray =  Double3D.wrap(psfShift, shape);
 
         //BEWARE here we change the value to match the new padded image size
         width = (int)(width*coef);
         height = (int)(height*coef);
         sizeZ = (int)(sizeZ*coef);
 
-        // Launching the method
-        if (deconvOptions.getValue() == deconvStringOptions[0]) { //Total variation
-            if (tvDec != null &&  restart.getValue()) {
-                tvDec.setResult(tvDec.getResult());
+        /*---------------------------------------*/
+        /*            OPTIMISATION               */
+        /*---------------------------------------*/
+
+        double[] alpha = new double[(int)nbAlphaCoef.getValue()];
+        double[] beta = new double[(int)nbBetaCoef.getValue()];
+        beta[0] = 1;
+        double[] defocus = {ni.getValue()/lambda.getValue(), 0., 0.};
+        DoubleShapedVectorSpace defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
+        DoubleShapedVector defocusVector = defocuSpace.wrap(defocus);
+        DoubleShapedVectorSpace alphaSpace = new DoubleShapedVectorSpace(new int[]{alpha.length});
+        DoubleShapedVector alphaVector = alphaSpace.create();
+        DoubleShapedVectorSpace betaSpace = new DoubleShapedVectorSpace(new int[]{beta.length});
+        DoubleShapedVector betaVector = betaSpace.wrap(beta);
+        for(int i = 0; i < bDecTotalIteration.getValue(); i++)
+        {
+
+            /* OBJET ESTIMATION (by the current PSF) */
+            if (deconvOptions.getValue() == deconvStringOptions[0]) { //Total variation
+                if (tvDec != null &&  restart.getValue()) {
+                    tvDec.setResult(tvDec.getResult());
+                } else {
+                    tvDec = new TotalVariationDeconvolution();
+                    tvDec.setResult(null);
+                    tvDec.setAbsoluteTolerance(0.0);
+                    tvDec.setWeight(weight);
+                    tvDec.setData(imgArray);
+                    tvDec.setPsf(psfArray);
+                    tvDec.setViewer(new tvViewer());
+                }
+                tvDec.setRegularizationWeight(mu.getValue()); //TODO : faire comme PSFEstimationInit
+                tvDec.setRegularizationThreshold(epsilon.getValue());
+                tvDec.setRelativeTolerance(grtol.getValue());
+                tvDec.setMaximumIterations((int)nbIteration.getValue());
+                tvDec.deconvolve();
+                setResult(tvDec);
+
+            } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
+                System.out.println("Ticho ON");
             } else {
-                tvDec = new TotalVariationDeconvolution();
-                tvDec.setAbsoluteTolerance(0.0);
-                tvDec.setWeight(weight);
-                tvDec.setData(imgArray);
-                tvDec.setPsf(psfArray);
-                tvDec.setViewer(new tvViewer());
+                throw new IllegalArgumentException("Unknow deconvolution option");
             }
-            tvDec.setRegularizationWeight(mu.getValue());
-            tvDec.setRegularizationThreshold(epsilon.getValue());
-            tvDec.setRelativeTolerance(grtol.getValue());
-            tvDec.setMaximumIterations((int)nbIteration.getValue());
-            //Computation HERE
-            tvDec.deconvolve();
-            //Showing the results
-            setResult(tvDec);
-            
-        } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
-            System.out.println("Ticho ON");
-        } else {
-            throw new IllegalArgumentException("Unknow deconvolution option");
+
+            /* PSF ESTIMATION (by the current objet) */
+            PSFEstimation = new PSF_Estimation();
+            PSFEstimationInit(); //TODO : peut-être foutre les autres plus bas dedans
+            PSFEstimation.setWeight(weight); //TODO : peut-être le mettre avant la boucle, inutile de réinitialiser les poids et data
+
+            PSFEstimation.setData(imgArray);
+            PSFEstimation.setPupil(pupil);
+            PSFEstimation.setPsf(tvDec.getData());
+
+            /* Defocus estimation */
+            System.out.println("------------------");
+            System.out.println("Defocus estimation");
+            System.out.println("------------------");
+            PSFEstimation.setRelativeTolerance(0.1); //TODO : grtolDefocus..
+            PSFEstimation.fitPSF(defocusVector, 1);
+
+            /* Phase estimation */
+            System.out.println("------------------");
+            System.out.println("Phase estimation");
+            System.out.println("------------------");
+            PSFEstimation.setResult(null);
+            PSFEstimation.setRelativeTolerance(0.1);
+            PSFEstimation.fitPSF(alphaVector, 2);
+
+            /* Modulus estimation */
+            System.out.println("------------------");
+            System.out.println("Modulus estimation");
+            System.out.println("------------------");
+            PSFEstimation.setResult(null);
+            PSFEstimation.setRelativeTolerance(0.1);
+            PSFEstimation.fitPSF(betaVector, 3);
+            MathUtils.normalise(betaVector.getData());
+            showResult();
         }
     }
 
@@ -584,6 +711,164 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         sequence.endUpdate();
     }
 
+    private void showResult()
+    {
+        Sequence psf3DSequence = new Sequence();
+        double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue());
+        psf3DSequence.setName("PSF Estimated - " + 0);
+        for (int k = 0; k < (int)nz.getValue(); k++)
+        {
+            psf3DSequence.setImage(0, k, new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(),
+                    MathUtils.getArray(PSF_shift, (int)nxy.getValue(), (int)nxy.getValue(), k)));
+        }
+        addSequence(psf3DSequence);
+    }
+
+    private void psf0Init()
+    {
+
+        double ns = 0;
+        double zdepth = 0;
+        int use_depth_scaling = 0;
+        pupil = new MicroscopyModelPSF1D(na.getValue(), lambda.getValue(), ni.getValue(), ns, zdepth, dxy.getValue(),
+                dz.getValue(), (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue(), use_depth_scaling);
+    }
+
+    private void PSF0Clicked()
+    {
+        /* PSF0 initialisation */
+        if(psfInitFlag == 0)
+        {
+            psf0Init();
+            pupil.computePSF();
+            psfInitFlag = 1;
+        }
+
+        /* PSF0 Sequence */
+        Sequence PSF0Sequence = new Sequence();
+        PSF0Sequence.setName("Initial PSF");
+        double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue());
+        for (int k = 0; k < (int)nz.getValue(); k++)
+        {
+            PSF0Sequence.setImage(0, k, new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(),
+                    MathUtils.getArray(PSF_shift, (int)nxy.getValue(), (int)nxy.getValue(), k)));
+        }
+        addSequence(PSF0Sequence);
+        psfInitFlag = 1;
+    }
+
+    private void phaseClicked()
+    {
+        /* PSF0 initialisation */
+        if(psfInitFlag == 0)
+        {
+            psf0Init();
+            pupil.computePSF();
+            psfInitFlag = 1;
+        }
+        /* Phase Sequence */
+        Sequence phaseSequence = new Sequence();
+        phaseSequence.setName("Phase of the pupil");
+        double[] phase_shift = MathUtils.fftShift1D(pupil.getPhi(), (int)nxy.getValue(), (int)nxy.getValue());
+        phaseSequence.addImage(new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(), phase_shift));
+        addSequence(phaseSequence);
+    }
+
+    private void modulusClicked()
+    {
+        /* PSF0 initialisation */
+        if(psfInitFlag == 0)
+        {
+            psf0Init();
+            pupil.computePSF();
+            psfInitFlag = 1;
+        }
+        /* Modulus Sequence */
+        Sequence modulusSequence = new Sequence();
+        modulusSequence.setName("Modulus of the pupil");
+        double[] modulus_shift = MathUtils.fftShift1D(pupil.getRho(), (int)nxy.getValue(), (int)nxy.getValue());
+        modulusSequence.addImage(new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(), modulus_shift));
+        addSequence(modulusSequence);
+    }
+
+    private void deconvCliked()
+    {
+        Sequence imgSeq = getSequence(image);
+        Sequence psfSeq = getSequence(psf);
+        DoubleArray psfArray;
+        width = imgSeq.getSizeX();
+        height = imgSeq.getSizeY();
+        sizeZ = imgSeq.getSizeZ();
+        int[] shape = {width, height, sizeZ};
+        double[] data = new double[width*height*sizeZ];
+        for(int k = 0; k < sizeZ; k++)
+        {
+            Array1DUtil.arrayToDoubleArray(imgSeq.getDataXY(0, k, 0), 0, data,
+                    k*width*height, width*height, imgSeq.isSignedDataType());
+        }
+
+        double[] PSF = new double[width*height*sizeZ];
+        if ( psfSeq == null)
+        {
+            if(psfInitFlag == 0)
+            {
+                psf0Init();
+                pupil.computePSF();
+                psfInitFlag = 1;
+            }
+            psfArray =  Double3D.wrap(MathUtils.uint16(
+                    MathUtils.fftShift3D(pupil.getPSF(),shape[0], shape[1], shape[2])) , shape);
+        }
+        else
+        {
+            for(int k = 0; k < sizeZ; k++)
+            {
+                Array1DUtil.arrayToDoubleArray(psfSeq.getDataXY(0, k, 0), 0, PSF,
+                        k*width*height, width*height, psfSeq.isSignedDataType());
+            }
+            psfArray = Double3D.wrap(MathUtils.uint16(PSF), shape);
+        }
+
+        DoubleArray dataArray = Double3D.wrap(data, shape);
+        double[] weight = createWeight(data);
+
+        if (deconvOptions.getValue() == deconvStringOptions[0])
+        {
+            if (tvDec != null &&  restart.getValue())
+            {
+                tvDec.setResult(tvDec.getResult());
+            } else
+            {
+                tvDec = new TotalVariationDeconvolution();
+                tvDec.setAbsoluteTolerance(0.0);
+                tvDec.setWeight(weight);
+                tvDec.setData(dataArray);
+                tvDec.setPsf(psfArray);
+                tvDec.setViewer(new tvViewer());
+            }
+            tvDec.setRegularizationWeight(mu.getValue());
+            tvDec.setRegularizationThreshold(epsilon.getValue());
+            tvDec.setRelativeTolerance(grtol.getValue());
+            tvDec.setMaximumIterations((int)nbIteration.getValue());
+            tvDec.deconvolve();
+            setResult(tvDec);
+
+        } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
+            System.out.println("Ticho ON");
+        } else {
+            throw new IllegalArgumentException("Unknow deconvolution option");
+        }
+    }
+
+    private void PSFEstimationInit()
+    {
+        PSFEstimation.setRegularizationWeight(0.1);
+        PSFEstimation.setRegularizationThreshold(0.01);
+        //pupilEstim.setRelativeTolerance(1.);
+        PSFEstimation.setAbsoluteTolerance(0.);
+        PSFEstimation.setMaximumIterations(10);
+    }
+
     private myMetaData getMetaData(Sequence seq){
         OMEXMLMetadata metDat = seq.getMetadata();
         myMetaData data = new myMetaData();
@@ -595,14 +880,14 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         //NA Numerical Aperture
         //lambda getChannelEmissionWavelength
         //ni getObjectiveImmersion
-        data.dxy = metDat.getPixelsSizeC(0).getValue().doubleValue();
+        //data.dxy = metDat.getPixelsSizeC(0).getValue().doubleValue();
         return data;
     }
-    
+
     private void setMetaData(Sequence seq){
         OMEXMLMetadataImpl metDat = seq.getMetadata();
         //TODO Add dxy, dz, nxy, nx, no,lambda,ni
-        metDat.setPixelsSizeC(new PositiveInteger((int)dxy.getValue()),0);
+        //metDat.setPixelsSizeC(new PositiveInteger((int)dxy.getValue()),0);
         seq.setMetaData(metDat);
     }
 
@@ -626,7 +911,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         if (tvDec != null) {
             tvDec.stop();
         }
-        
+
     }
 
 }

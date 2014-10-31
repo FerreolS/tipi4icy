@@ -297,7 +297,7 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
             }
             new AnnounceFrame(message+messageEnd);
         }else{
-            //try {
+            try {
                 Sequence seqIm = sequenceImage.getValue();
                 Sequence seqPsf = sequencePSF.getValue();
                 if (seqIm.getSizeZ() == 1 && seqPsf.getSizeZ() == 1) {
@@ -353,9 +353,9 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceLi
                         });
                     }
                 }
-            //} catch (Exception e) {
-            //    new AnnounceFrame("Oops, Error: "+e.getMessage());
-            //}
+            } catch (Exception e) {
+                new AnnounceFrame("Oops, Error: "+ e.getMessage());
+            }
         }
     }
 
