@@ -36,7 +36,6 @@ import mitiv.base.Shape;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.WeightGenerator;
-import mitiv.utils.CommonUtils;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
@@ -277,42 +276,16 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                     double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
                     double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
                     weight = createWeight(image);
-                    /*weight = CommonUtils.imagePad(weight, width, height, sizeZ, coef, 1);
-                    image = CommonUtils.imagePad(image, width, height, sizeZ, coef, 1);
-                    if (psf.getWidth() == width && psf.getHeight() == height) {
-                        psfTmp = CommonUtils.imagePad(psfTmp, width, height, sizeZ, coef, 1);
-                    } else {
-                        psfTmp = CommonUtils.imagePad(psfTmp, psf.getWidth(), psf.getHeight(), sizeZ, ((double)width/psf.getWidth())*coef ,coef);
-                    }*/
-
                     shape = Shape.make((int)(width*coef), (int)(height*coef));
-
                     imgArray =  Double2D.wrap(image, width, height);
                     psfArray =  Double2D.wrap(psfTmp, psf.getWidth(), psf.getHeight());
-                    /*if (psfSplitted) {
-                        psfArray =  Double2D.wrap(psfTmp, shape);
-                    } else {
-                        double[] psfShift = new double[shape[0]*shape[1]];
-                        CommonUtils.psfPadding1D(psfShift, shape[0], shape[1], psfTmp, shape[0], shape[1], false);
-                        psfArray =  Double2D.wrap(psfShift, shape);
-                    }*/
                 } else { //3D
                     double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
                     double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
                     weight = createWeight(image);
-                    //weight = CommonUtils.imagePad(weight, width, height, sizeZ, coef);
-                    //image = CommonUtils.imagePad(image, width, height, sizeZ, coef);
-                    //if (psf.getWidth() == width && psf.getHeight() == height) {
-                    //    psfTmp = CommonUtils.imagePad(psfTmp, width, height, sizeZ, coef);
-                    //} else {
-                    //   psfTmp = CommonUtils.imagePad(psfTmp, psf.getWidth(), psf.getHeight(), sizeZ, ((double)width/psf.getWidth())*coef ,coef);
-                    //}
-
                     shape = Shape.make((int)(width*coef), (int)(height*coef), (int)(sizeZ*coef));
-
                     imgArray =  Double3D.wrap(image, width, height, sizeZ);
                     psfArray =  Double3D.wrap(psfTmp, psf.getWidth(), psf.getHeight(), sizeZ);
-
                 }
 
                 //BEWARE here we change the value to match the new padded image size
@@ -326,7 +299,11 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 tvDec.setPsf(psfArray);
 
                 //Computation HERE
+                try{
                 tvDec.deconvolve(shape);
+                }catch(Exception e){
+                    System.err.println(e);
+                }
                 //Getting the results
                 setResult();
                 computeNew = true;
