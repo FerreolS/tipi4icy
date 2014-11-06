@@ -4,7 +4,6 @@ import icy.gui.main.GlobalSequenceListener;
 import icy.image.IcyBufferedImage;
 import icy.main.Icy;
 import icy.sequence.Sequence;
-import icy.type.collection.array.Array1DUtil;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -12,8 +11,6 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.swing.BoxLayout;
@@ -25,30 +22,23 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 
-import org.jfree.base.log.PadMessage;
-
-import ome.xml.model.primitives.PositiveInteger;
 import commands.TotalVariationDeconvolution;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.Double1D;
+import mitiv.array.Double2D;
 import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
-import mitiv.exception.DataFormatException;
-import mitiv.exception.RecoverableFormatException;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionViewer;
-import mitiv.io.MdaFormat;
 import mitiv.linalg.WeightGenerator;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.microscopy.MicroscopyModelPSF1D;
 import mitiv.microscopy.PSF_Estimation;
-import mitiv.utils.CommonUtils;
 import mitiv.utils.MathUtils;
-import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.mitiv.io.IcyBufferedImageUtils;
@@ -214,6 +204,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob; 
 
     private JTabbedPane tabbedPane;
+
+    private Shape shape;
     //Global variables for the algorithms
     TotalVariationDeconvolution tvDec;
     PSF_Estimation PSFEstimation;
@@ -302,15 +294,26 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 if (seq == null) {
                     canalImageOptions = new String[]{"None"};
                 } else {
+                    //Update channel availables in the image
                     int nbChan = seq.getSizeC();
                     canalImageOptions = new String[nbChan];
                     for (int i = 0; i < nbChan; i++) {
                         canalImageOptions[i] = seq.getChannelName(i);
                     }
                     canalImage.updateData(canalImageOptions);
+                    //Update PSF metadata
+                    myMetaData meta = getMetaData(seq);
+                    dxy.setValue(    meta.dxy);
+                    dz.setValue(     meta.dz);
+                    nxy.setValue(    meta.nxy);
+                    nz.setValue(     meta.nz);
+                    na.setValue(     meta.na);
+                    lambda.setValue( meta.lambda);
+                    ni.setValue(     meta.ni);
                 }
             }
         });
+
         //Little hack to have a minimal size at startup
         JLabel sizeTab = new JLabel("                                                                    ");
         imagePan.add(sizeTab);
@@ -339,23 +342,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         psfPannel.add((psfShow = new JButton("Show PSF")));
         psfPannel.add((showPhase = new JButton("Show phase of the pupil")));
         psfPannel.add((showModulus = new JButton("Show modulus of the pupil")));
-
-        psf.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                Sequence seq = getSequence(psf);
-                if (seq != null) {
-                    myMetaData meta = getMetaData(seq);
-                    dxy.setValue(    meta.dxy);
-                    dz.setValue(     meta.dz);
-                    nxy.setValue(    meta.nxy);
-                    nz.setValue(     meta.nz);
-                    na.setValue(     meta.na);
-                    lambda.setValue( meta.lambda);
-                    ni.setValue(     meta.ni);
-                }
-            }
-        });
 
         psfShow.addActionListener(new ActionListener() {
             @Override
@@ -521,9 +507,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         System.out.println("Number of total iterations: "+bDecTotalIteration.getValue());
         System.out.println("");
 
-
-
-
         // Preparing parameters and testing input
         Sequence imgSeq = getSequence(image);
         Sequence psfSeq = getSequence(psf);
@@ -538,6 +521,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         width = img.getWidth();
         height = img.getHeight();
         sizeZ = imgSeq.getSizeZ();
+        if (sizeZ == 1) { //2D
+            shape = Shape.make(width, height);
+        } else {    //3D
+            shape = Shape.make(width, height, sizeZ);
+        }
         DoubleArray imgArray, psfArray;
         double coef = zeroPadding.getValue();
         boolean runBdec = true; 
@@ -547,26 +535,38 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         // If no PSF is loaded -> creation of a PSF
         if ( psfSeq == null) {
             if (runBdec) {
-                if(psfInitFlag == 0)
-                {
+                if(psfInitFlag == 0) {
                     psf0Init();
                     pupil.computePSF();
                     psfInitFlag = 1;
                 }
-                psfArray =  Double3D.wrap(MathUtils.uint16(MathUtils.fftShift3D(pupil.getPSF(), width, height, sizeZ)) , width, height, sizeZ);
+                if (shape.rank() == 2) {
+                    psfArray =  Double2D.wrap(MathUtils.uint16(MathUtils.fftShift1D(pupil.getPSF(), width, height)) , shape);
+                } else {
+                    psfArray =  Double3D.wrap(MathUtils.uint16(MathUtils.fftShift3D(pupil.getPSF(), width, height, sizeZ)) , shape);
+                }
+
             } else {
                 throw new IllegalArgumentException("You should give a PSF or run from BDEC tab");
             }
         } else {
             ArrayList<IcyBufferedImage> listPSf = psfSeq.getAllImage();
-            double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, width, height, sizeZ, false);
-            psfArray =  Double3D.wrap(psfTmp, width, height, sizeZ);
+            if (shape.rank() == 2) {
+                double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psfSeq.getWidth(), psfSeq.getHeight(), sizeZ, false);
+                psfArray =  Double2D.wrap(psfTmp, Shape.make(psfSeq.getWidth(), psfSeq.getHeight()));
+            } else {
+                double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, width, height, sizeZ, false);
+                psfArray =  Double3D.wrap(psfTmp, Shape.make(psfSeq.getWidth(), psfSeq.getHeight(), psfSeq.getSizeZ()));
+            }
         }
 
         double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
         double[] weight = createWeight(image);
-        imgArray =  Double3D.wrap(image, width, height, sizeZ);
-
+        if (shape.rank() == 2) {
+            imgArray =  Double2D.wrap(image, shape);
+        } else {
+            imgArray =  Double3D.wrap(image, shape);
+        }
         //BEWARE here we change the value to match the new padded image size
         width = (int)(width*coef);
         height = (int)(height*coef);
@@ -605,7 +605,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                     tvDec.setRegularizationThreshold(epsilon.getValue());
                     tvDec.setRelativeTolerance(grtol.getValue());
                     tvDec.setMaximumIterations((int)nbIteration.getValue());
-                    tvDec.deconvolve(Shape.make(width, height, sizeZ));
+                    tvDec.deconvolve(shape);
                     setResult(tvDec);
                 } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
                     System.out.println("Ticho ON");
@@ -664,7 +664,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 tvDec.setRegularizationThreshold(epsilon.getValue());
                 tvDec.setRelativeTolerance(grtol.getValue());
                 tvDec.setMaximumIterations((int)nbIteration.getValue());
-                tvDec.deconvolve(Shape.make(width, height, sizeZ));
+                tvDec.deconvolve(shape);
                 setResult(tvDec);
             } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
                 System.out.println("Ticho ON");
@@ -672,6 +672,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 throw new IllegalArgumentException("Unknow deconvolution option");
             }
         }
+        setMetaData(imgSeq, sequence);
         sequence = null; //In any cases the next image will be in a new sequence
     }
 
@@ -720,7 +721,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             }
             sequence.setImage(0,j, new IcyBufferedImage(width, height, temp));
         }
-        setMetaData(sequence);
         sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
         sequence.endUpdate();
     }
@@ -815,25 +815,26 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     }
 
     private myMetaData getMetaData(Sequence seq){
-        //OMEXMLMetadata metDat = seq.getMetadata();
+        OMEXMLMetadata metDat = seq.getMetadata();
         myMetaData data = new myMetaData();
-        //TODO Add dxy, dz, nxy, nx, no,lambda,ni
-        //dxy lateral pixel size
-        //dz pixel size axial
-        //nxy nb Pixel W et H
-        //nx nb Pixels
-        //NA Numerical Aperture
-        //lambda getChannelEmissionWavelength
-        //ni getObjectiveImmersion
-        //data.dxy = metDat.getPixelsSizeC(0).getValue().doubleValue();
+        if (metDat.getInstrumentCount() > 0) {
+            System.out.println("Count: "+metDat.getObjectiveCount(0)+" Obj immersion "+metDat.getObjectiveImmersion(0, 0).getValue());
+            data.dxy     = metDat.getPixelsSizeX(0).getValue().doubleValue();
+            data.dz      = metDat.getPixelsSizeZ(0).getValue().doubleValue();
+            data.nxy     = seq.getSizeX(); //We suppose X and Y equal
+            data.nz      = seq.getSizeZ();
+            data.na      = metDat.getObjectiveLensNA(0, 0);
+            data.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue();
+            //data.ni      = metDat.getObjectiveImmersion(0, 0).getValue().doubleValue(); //STRANGE why a string
+        } else {
+            System.out.println("INFO: Metadata: No instrument so no metadata.");
+        }
         return data;
     }
 
-    private void setMetaData(Sequence seq){
-        OMEXMLMetadataImpl metDat = seq.getMetadata();
-        //TODO Add dxy, dz, nxy, nx, no,lambda,ni
-        //metDat.setPixelsSizeC(new PositiveInteger((int)dxy.getValue()),0);
-        seq.setMetaData(metDat);
+    private void setMetaData(Sequence seqOld, Sequence seqNew) {
+        OMEXMLMetadataImpl metDat = seqOld.getMetadata();
+        seqNew.setMetaData(metDat);
     }
 
     private void update(){
