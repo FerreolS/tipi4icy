@@ -38,6 +38,7 @@ import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.microscopy.MicroscopyModelPSF1D;
 import mitiv.microscopy.PSF_Estimation;
+import mitiv.utils.FFTUtils;
 import mitiv.utils.MathUtils;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
@@ -568,10 +569,14 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             imgArray =  Double3D.wrap(image, shape);
         }
         //BEWARE here we change the value to match the new padded image size
-        width = (int)(width*coef);
-        height = (int)(height*coef);
-        sizeZ = (int)(sizeZ*coef);
-
+        width = FFTUtils.bestDimension((int)(width*coef));
+        height = FFTUtils.bestDimension((int)(height*coef));
+        sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
+        if (shape.rank() == 2) {
+            shape = Shape.make(width, height);
+        } else {
+            shape = Shape.make(width, height, sizeZ);
+        }
         /*---------------------------------------*/
         /*            OPTIMISATION               */
         /*---------------------------------------*/
@@ -605,7 +610,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                     tvDec.setRegularizationThreshold(epsilon.getValue());
                     tvDec.setRelativeTolerance(grtol.getValue());
                     tvDec.setMaximumIterations((int)nbIteration.getValue());
-                    tvDec.deconvolve(shape);
                     setResult(tvDec);
                 } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
                     System.out.println("Ticho ON");

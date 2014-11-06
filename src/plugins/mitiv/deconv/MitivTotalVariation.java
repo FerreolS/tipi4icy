@@ -36,6 +36,7 @@ import mitiv.base.Shape;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.WeightGenerator;
+import mitiv.utils.FFTUtils;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
@@ -276,23 +277,26 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                     double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
                     double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
                     weight = createWeight(image);
-                    shape = Shape.make((int)(width*coef), (int)(height*coef));
+                    shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)), FFTUtils.bestDimension((int)(height*coef)));
                     imgArray =  Double2D.wrap(image, width, height);
                     psfArray =  Double2D.wrap(psfTmp, psf.getWidth(), psf.getHeight());
                 } else { //3D
                     double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
                     double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
                     weight = createWeight(image);
-                    shape = Shape.make((int)(width*coef), (int)(height*coef), (int)(sizeZ*coef));
+                    
+                    shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)),
+                            FFTUtils.bestDimension((int)(height*coef)),
+                            FFTUtils.bestDimension((int)(sizeZ*coef)));
                     imgArray =  Double3D.wrap(image, width, height, sizeZ);
                     psfArray =  Double3D.wrap(psfTmp, psf.getWidth(), psf.getHeight(), sizeZ);
                 }
 
                 //BEWARE here we change the value to match the new padded image size
                 //addImage(weight, "weights", width, height, sizeZ); //Uncomment this to see weights
-                width = (int)(width*coef);
-                height = (int)(height*coef);
-                sizeZ = (int)(sizeZ*coef);
+                width = FFTUtils.bestDimension((int)(width*coef));
+                height = FFTUtils.bestDimension((int)(height*coef));
+                sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
 
                 tvDec.setWeight(weight);
                 tvDec.setData(imgArray);
@@ -307,7 +311,6 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 //Getting the results
                 setResult();
                 computeNew = true;
-
             }
             tvDec.setResult(tvDec.getResult());
         }
