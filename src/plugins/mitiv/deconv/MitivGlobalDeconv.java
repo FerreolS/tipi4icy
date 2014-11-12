@@ -60,12 +60,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /***************************************************/
     public class myMetaData {
         //Just a public object with all psf values inside
-        public double dxy     = 64.5e-9;
-        public double dz      = 160e-9;
+        public double dxy     = 64.5;
+        public double dz      = 160;
         public double nxy     = 256;
         public double nz      = 128;
         public double na      = 1.4;
-        public double lambda  = 542e-9;
+        public double lambda  = 542;
         public double ni      = 1.518;
     }
 
@@ -127,8 +127,14 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         private static final long serialVersionUID = 1L;
         private JLabel filler;
         private JTextField field;
-
+        private double mult;
         public myDouble(String name, double input) {
+            this(name, input, 1.0);
+        }
+        
+        //Here we give the the multiplication factor, the result will be multiply by this factor
+        public myDouble(String name, double input, double valueMult) {
+            mult = valueMult;
             filler = new JLabel(name);
             field = new JTextField();
             field.setText(String.valueOf(input));
@@ -148,9 +154,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             add(filler);
             add(field);
         }
+        
+
 
         public double getValue(){
-            return Double.valueOf(field.getText());
+            return mult*Double.valueOf(field.getText());
         }
 
         public void setValue(double value){
@@ -232,6 +240,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     //Mini factory for double panel => EzVarDouble
     private myDouble createDouble(String name, double input){
         return new myDouble(name, input);
+    }
+    
+    private myDouble createDouble(String name, double input, double mult){
+        return new myDouble(name, input, mult);
     }
 
     //Mini Jlabel factory
@@ -333,11 +345,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         psfPannel.add((psf = createChoiceList("<html><pre>Load PSF:       </pre></html>", seqList)));
         psfPannel.add((na = createDouble(     "<html><pre>NA:        </pre></html>", 1.4)));
         psfPannel.add((ni = createDouble(     "<html><pre>ni:        </pre></html>", 1.518)));
-        psfPannel.add((lambda = createDouble( "<html><pre>\u03BB:         </pre></html>", 542E-9)));
+        psfPannel.add((lambda = createDouble( "<html><pre>\u03BB(nm):     </pre></html>", 542, 1E-9)));     //Here we give the the multiplication factor, the result will be multiply by this factor
         psfPannel.add((nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 256)));
         psfPannel.add((nz = createDouble(     "<html><pre>Nz:        </pre></html>", 128)));
-        psfPannel.add((dxy = createDouble(    "<html><pre>dxy:       </pre></html>", 64.5E-9)));
-        psfPannel.add((dz = createDouble(     "<html><pre>dz:        </pre></html>", 160E-9)));
+        psfPannel.add((dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 64.5, 1E-9)));
+        psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160, 1E-9)));
         psfPannel.add((nbAlphaCoef = createDouble(     "<html><pre>N\u03B2:        </pre></html>", 76)));
         psfPannel.add((nbBetaCoef = createDouble(     "<html><pre>N\u03B1:        </pre></html>", 22)));
         psfPannel.add((psfShow = new JButton("Show PSF")));
@@ -584,6 +596,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             double[] alpha = new double[(int)nbAlphaCoef.getValue()];
             double[] beta = new double[(int)nbBetaCoef.getValue()];
             beta[0] = 1;
+            System.out.println();
             double[] defocus = {ni.getValue()/lambda.getValue(), 0., 0.};
             DoubleShapedVectorSpace defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
             DoubleShapedVector defocusVector = defocuSpace.wrap(defocus);
@@ -823,12 +836,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         myMetaData data = new myMetaData();
         if (metDat.getInstrumentCount() > 0) {
             System.out.println("Count: "+metDat.getObjectiveCount(0)+" Obj immersion "+metDat.getObjectiveImmersion(0, 0).getValue());
-            data.dxy     = metDat.getPixelsSizeX(0).getValue().doubleValue();
-            data.dz      = metDat.getPixelsSizeZ(0).getValue().doubleValue();
+            data.dxy     = metDat.getPixelsSizeX(0).getValue().doubleValue()*1E9;   //FIXME In doubt I suppose it will give the size in meters
+            data.dz      = metDat.getPixelsSizeZ(0).getValue().doubleValue()*1E9;   //FIXME In doubt I suppose it will give the size in meters
             data.nxy     = seq.getSizeX(); //We suppose X and Y equal
             data.nz      = seq.getSizeZ();
             data.na      = metDat.getObjectiveLensNA(0, 0);
-            data.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue();
+            data.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E9;  //FIXME In doubt I suppose it will give the size in meters
             //data.ni      = metDat.getObjectiveImmersion(0, 0).getValue().doubleValue(); //STRANGE why a string
         } else {
             System.out.println("INFO: Metadata: No instrument so no metadata.");
