@@ -623,6 +623,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                     tvDec.setRegularizationThreshold(epsilon.getValue());
                     tvDec.setRelativeTolerance(grtol.getValue());
                     tvDec.setMaximumIterations((int)nbIteration.getValue());
+                    tvDec.deconvolve(shape);
                     setResult(tvDec);
                 } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
                     System.out.println("Ticho ON");
