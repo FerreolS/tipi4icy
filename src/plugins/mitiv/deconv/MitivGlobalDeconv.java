@@ -131,7 +131,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         public myDouble(String name, double input) {
             this(name, input, 1.0);
         }
-        
+
         //Here we give the the multiplication factor, the result will be multiply by this factor
         public myDouble(String name, double input, double valueMult) {
             mult = valueMult;
@@ -154,7 +154,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             add(filler);
             add(field);
         }
-        
+
 
 
         public double getValue(){
@@ -215,6 +215,14 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private JTabbedPane tabbedPane;
 
     private Shape shape;
+    boolean run = true;
+
+    /*********************************/
+    /**            DEBUG            **/
+    /*********************************/
+    private boolean debug = true; //Show psf steps 
+    private boolean verbose = false;    //show some values, need debug to true
+    
     //Global variables for the algorithms
     TotalVariationDeconvolution tvDec;
     PSF_Estimation PSFEstimation;
@@ -241,7 +249,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private myDouble createDouble(String name, double input){
         return new myDouble(name, input);
     }
-    
+
     private myDouble createDouble(String name, double input, double mult){
         return new myDouble(name, input, mult);
     }
@@ -315,7 +323,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                     }
                     canalImage.updateData(canalImageOptions);
                     //Update PSF metadata
-                    myMetaData meta = getMetaData(seq);
+                    myMetaData meta = getMetaData(seq); //FIXME Do it only one time
                     dxy.setValue(    meta.dxy);
                     dz.setValue(     meta.dz);
                     nxy.setValue(    meta.nxy);
@@ -328,8 +336,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         });
 
         //Little hack to have a minimal size at startup
-        JLabel sizeTab = new JLabel("                                                                    ");
-        imagePan.add(sizeTab);
+        //JLabel sizeTab = new JLabel("                                                                    ");
+        //imagePan.add(sizeTab);
 
         //Creation of IMAGE TAB
         imageGlob.add(imagePan, BorderLayout.NORTH);
@@ -487,45 +495,74 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         addComponent(tabbedPane);
     }
 
+    public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, double[] weight){
+        if (deconvOptions.getValue() == deconvStringOptions[0]) { //Total variation
+            if (tvDec != null &&  restart.getValue()) {
+                tvDec.setResult(tvDec.getResult());
+            } else {
+                tvDec = new TotalVariationDeconvolution();
+                tvDec.setResult(null);
+                tvDec.setAbsoluteTolerance(0.0);
+                tvDec.setWeight(weight);
+                tvDec.setData(imgArray);
+                tvDec.setPsf(psfArray);
+                tvDec.setViewer(new tvViewer());
+            }
+            tvDec.setRegularizationWeight(mu.getValue()); //TODO : faire comme PSFEstimationInit
+            tvDec.setRegularizationThreshold(epsilon.getValue());
+            tvDec.setRelativeTolerance(grtol.getValue());
+            tvDec.setMaximumIterations((int)nbIteration.getValue());
+            tvDec.deconvolve(shape);
+            setResult(tvDec);
+        } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
+            System.out.println("Ticho ON");
+        } else {
+            throw new IllegalArgumentException("Unknow deconvolution option");
+        }
+    }
+
     @Override
     protected void execute() {
-        System.out.println("-------------IMAGE-------------------");
-        System.out.println("File: "+image.getValue());              //Used
-        System.out.println("Canal: "+canalImage.getValue());
-        System.out.println("--------------PSF------------------");
-        System.out.println("PSF: "+psf.getValue());                 //Used
-        System.out.println("dxy: "+dxy.getValue());
-        System.out.println("dz: "+dz.getValue());
-        System.out.println("nxy: "+nxy.getValue());
-        System.out.println("nz: "+nz.getValue());
-        System.out.println("NA: "+na.getValue());
-        System.out.println("\u03BB: "+lambda.getValue());
-        System.out.println("ni: "+ni.getValue());
-        System.out.println("--------------Variance------------------");
-        System.out.println("Weights: "+weights.getValue());
-        System.out.println("Gain: "+gain.getValue());
-        System.out.println("Noise: "+noise.getValue());
-        System.out.println("deadPix: "+deadPixel.getValue());
-        System.out.println("--------------DECONV------------------");
-        System.out.println("Methode: "+deconvOptions.getValue());   //Used
-        System.out.println("zeroPad: "+zeroPadding.getValue());
-        System.out.println("nbIter: "+nbIteration.getValue());
-        System.out.println("Restart: "+restart.getValue());
-        System.out.println("--------------BDEC------------------");
-        System.out.println("nbIter: "+nbIteration.getValue());
-        System.out.println("zeroPad: "+zeroPadding.getValue());
-        System.out.println("nbIterZern: "+grtolPhase.getValue());
-        System.out.println("module: "+grtolModulus.getValue());
-        System.out.println("defoc: "+grtolDefocus.getValue());
-        System.out.println("Number of total iterations: "+bDecTotalIteration.getValue());
-        System.out.println("");
+        if (debug && verbose) {
+            System.out.println("-------------IMAGE-------------------");
+            System.out.println("File: "+image.getValue());              //Used
+            System.out.println("Canal: "+canalImage.getValue());
+            System.out.println("--------------PSF------------------");
+            System.out.println("PSF: "+psf.getValue());                 //Used
+            System.out.println("dxy: "+dxy.getValue());
+            System.out.println("dz: "+dz.getValue());
+            System.out.println("nxy: "+nxy.getValue());
+            System.out.println("nz: "+nz.getValue());
+            System.out.println("NA: "+na.getValue());
+            System.out.println("\u03BB: "+lambda.getValue());
+            System.out.println("ni: "+ni.getValue());
+            System.out.println("--------------Variance------------------");
+            System.out.println("Weights: "+weights.getValue());
+            System.out.println("Gain: "+gain.getValue());
+            System.out.println("Noise: "+noise.getValue());
+            System.out.println("deadPix: "+deadPixel.getValue());
+            System.out.println("--------------DECONV------------------");
+            System.out.println("Methode: "+deconvOptions.getValue());   //Used
+            System.out.println("zeroPad: "+zeroPadding.getValue());
+            System.out.println("nbIter: "+nbIteration.getValue());
+            System.out.println("Restart: "+restart.getValue());
+            System.out.println("--------------BDEC------------------");
+            System.out.println("nbIter: "+nbIteration.getValue());
+            System.out.println("zeroPad: "+zeroPadding.getValue());
+            System.out.println("nbIterZern: "+grtolPhase.getValue());
+            System.out.println("module: "+grtolModulus.getValue());
+            System.out.println("defoc: "+grtolDefocus.getValue());
+            System.out.println("Number of total iterations: "+bDecTotalIteration.getValue());
+            System.out.println("");
+        }
+        run = true;
 
         // Preparing parameters and testing input
         Sequence imgSeq = getSequence(image);
         Sequence psfSeq = getSequence(psf);
         if (imgSeq == null)
         {
-            throwError("A sequence of images should be given");
+            throwError("An image/sequence of images should be given");
         }
         ArrayList<IcyBufferedImage> listImg = imgSeq.getAllImage();
 
@@ -548,17 +585,18 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         // If no PSF is loaded -> creation of a PSF
         if ( psfSeq == null) {
             if (runBdec) {
-                if(psfInitFlag == 0) {
+                
+                //if(psfInitFlag == 0) {
+                
                     psf0Init();
                     pupil.computePSF();
                     psfInitFlag = 1;
-                }
+                //}
                 if (shape.rank() == 2) {
                     psfArray =  Double2D.wrap(MathUtils.uint16(MathUtils.fftShift1D(pupil.getPSF(), width, height)) , shape);
                 } else {
                     psfArray =  Double3D.wrap(MathUtils.uint16(MathUtils.fftShift3D(pupil.getPSF(), width, height, sizeZ)) , shape);
                 }
-
             } else {
                 throw new IllegalArgumentException("You should give a PSF or run from BDEC tab");
             }
@@ -596,7 +634,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             double[] alpha = new double[(int)nbAlphaCoef.getValue()];
             double[] beta = new double[(int)nbBetaCoef.getValue()];
             beta[0] = 1;
-            System.out.println();
             double[] defocus = {ni.getValue()/lambda.getValue(), 0., 0.};
             DoubleShapedVectorSpace defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
             DoubleShapedVector defocusVector = defocuSpace.wrap(defocus);
@@ -605,90 +642,59 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             DoubleShapedVectorSpace betaSpace = new DoubleShapedVectorSpace(new int[]{beta.length});
             DoubleShapedVector betaVector = betaSpace.wrap(beta);
 
+            PSFEstimation = new PSF_Estimation();
+            PSFEstimationInit(); //TODO : peut-être foutre les autres plus bas dedans
+            PSFEstimation.setWeight(weight); //TODO : peut-être le mettre avant la boucle, inutile de réinitialiser les poids et data
+
+            PSFEstimation.setData(imgArray);
+
             for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
                 /* OBJET ESTIMATION (by the current PSF) */
-                if (deconvOptions.getValue() == deconvStringOptions[0]) { //Total variation
-                    if (tvDec != null &&  restart.getValue()) {
-                        tvDec.setResult(tvDec.getResult());
-                    } else {
-                        tvDec = new TotalVariationDeconvolution();
-                        tvDec.setResult(null);
-                        tvDec.setAbsoluteTolerance(0.0);
-                        tvDec.setWeight(weight);
-                        tvDec.setData(imgArray);
-                        tvDec.setPsf(psfArray);
-                        tvDec.setViewer(new tvViewer());
-                    }
-                    tvDec.setRegularizationWeight(mu.getValue()); //TODO : faire comme PSFEstimationInit
-                    tvDec.setRegularizationThreshold(epsilon.getValue());
-                    tvDec.setRelativeTolerance(grtol.getValue());
-                    tvDec.setMaximumIterations((int)nbIteration.getValue());
-                    tvDec.deconvolve(shape);
-                    setResult(tvDec);
-                } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
-                    System.out.println("Ticho ON");
-                } else {
-                    throw new IllegalArgumentException("Unknow deconvolution option");
-                }
+                launchDeconvolution(imgArray, psfArray, weight);
 
                 /* PSF ESTIMATION (by the current objet) */
-                PSFEstimation = new PSF_Estimation();
-                PSFEstimationInit(); //TODO : peut-être foutre les autres plus bas dedans
-                PSFEstimation.setWeight(weight); //TODO : peut-être le mettre avant la boucle, inutile de réinitialiser les poids et data
 
-                PSFEstimation.setData(imgArray);
+
                 PSFEstimation.setPupil(pupil);
                 PSFEstimation.setPsf(tvDec.getData());
 
                 /* Defocus estimation */
-                System.out.println("------------------");
-                System.out.println("Defocus estimation");
-                System.out.println("------------------");
+                if (debug && verbose) {
+                    System.out.println("------------------");
+                    System.out.println("Defocus estimation");
+                    System.out.println("------------------");
+                }
                 PSFEstimation.setRelativeTolerance(0.1); //TODO : grtolDefocus..
-                PSFEstimation.fitPSF(defocusVector, 1);
+                PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
 
                 /* Phase estimation */
-                System.out.println("------------------");
-                System.out.println("Phase estimation");
-                System.out.println("------------------");
+                if (debug && verbose) {
+                    System.out.println("Phase estimation");
+                    System.out.println("------------------");
+                }
                 PSFEstimation.setResult(null);
                 PSFEstimation.setRelativeTolerance(0.1);
-                PSFEstimation.fitPSF(alphaVector, 2);
+                PSFEstimation.fitPSF(alphaVector, PSF_Estimation.ALPHA);
 
                 /* Modulus estimation */
-                System.out.println("------------------");
-                System.out.println("Modulus estimation");
-                System.out.println("------------------");
+                if (debug && verbose) {
+                    System.out.println("Modulus estimation");
+                    System.out.println("------------------");
+                }
                 PSFEstimation.setResult(null);
                 PSFEstimation.setRelativeTolerance(0.1);
-                PSFEstimation.fitPSF(betaVector, 3);
+                PSFEstimation.fitPSF(betaVector, PSF_Estimation.BETA);
                 MathUtils.normalise(betaVector.getData());
-                showResult();
+                if (debug) {
+                    showResult(i);
+                }
+                //If we want a emergency stop
+                if (!run) {
+                    return;
+                }
             }
         } else {
-            if (deconvOptions.getValue() == deconvStringOptions[0]) { //Total variation
-                if (tvDec != null &&  restart.getValue()) {
-                    tvDec.setResult(tvDec.getResult());
-                } else {
-                    tvDec = new TotalVariationDeconvolution();
-                    tvDec.setResult(null);
-                    tvDec.setAbsoluteTolerance(0.0);
-                    tvDec.setWeight(weight);
-                    tvDec.setData(imgArray);
-                    tvDec.setPsf(psfArray);
-                    tvDec.setViewer(new tvViewer());
-                }
-                tvDec.setRegularizationWeight(mu.getValue()); //TODO : faire comme PSFEstimationInit
-                tvDec.setRegularizationThreshold(epsilon.getValue());
-                tvDec.setRelativeTolerance(grtol.getValue());
-                tvDec.setMaximumIterations((int)nbIteration.getValue());
-                tvDec.deconvolve(shape);
-                setResult(tvDec);
-            } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
-                System.out.println("Ticho ON");
-            } else {
-                throw new IllegalArgumentException("Unknow deconvolution option");
-            }
+            launchDeconvolution(imgArray, psfArray, weight);
         }
         setMetaData(imgSeq, sequence);
         sequence = null; //In any cases the next image will be in a new sequence
@@ -726,7 +732,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     //Get the results from a reconstruction and plot the intermediate result
     private void setResult(ReconstructionJob tvDec){
-        if (sequence == null) {
+        if (sequence == null || (sequence != null && sequence.isEmpty())) {
             sequence = new Sequence();
             addSequence(sequence);
         }
@@ -743,11 +749,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         sequence.endUpdate();
     }
 
-    private void showResult()
+    private void showResult(int num)
     {
         Sequence psf3DSequence = new Sequence();
         double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue());
-        psf3DSequence.setName("PSF Estimated - " + 0);
+        psf3DSequence.setName("PSF Estimated - " + num);
         for (int k = 0; k < (int)nz.getValue(); k++)
         {
             psf3DSequence.setImage(0, k, new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(),
@@ -835,17 +841,19 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private myMetaData getMetaData(Sequence seq){
         OMEXMLMetadata metDat = seq.getMetadata();
         myMetaData data = new myMetaData();
+        //If no instrument found, at least we have the right image size
+        data.nxy     = seq.getSizeX(); //We suppose X and Y equal
+        data.nz      = seq.getSizeZ();
         if (metDat.getInstrumentCount() > 0) {
-            System.out.println("Count: "+metDat.getObjectiveCount(0)+" Obj immersion "+metDat.getObjectiveImmersion(0, 0).getValue());
             data.dxy     = metDat.getPixelsSizeX(0).getValue().doubleValue()*1E9;   //FIXME In doubt I suppose it will give the size in meters
             data.dz      = metDat.getPixelsSizeZ(0).getValue().doubleValue()*1E9;   //FIXME In doubt I suppose it will give the size in meters
-            data.nxy     = seq.getSizeX(); //We suppose X and Y equal
-            data.nz      = seq.getSizeZ();
             data.na      = metDat.getObjectiveLensNA(0, 0);
             data.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E9;  //FIXME In doubt I suppose it will give the size in meters
             //data.ni      = metDat.getObjectiveImmersion(0, 0).getValue().doubleValue(); //STRANGE why a string
         } else {
-            System.out.println("INFO: Metadata: No instrument so no metadata.");
+            if (debug && verbose) {
+                System.out.println("INFO: Metadata: No instrument so no metadata.");
+            }
         }
         return data;
     }
@@ -875,6 +883,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         if (tvDec != null) {
             tvDec.stop();
         }
+        if (PSFEstimation != null) {
+            PSFEstimation.stop();
+        }
+        run = false;
     }
-
 }
