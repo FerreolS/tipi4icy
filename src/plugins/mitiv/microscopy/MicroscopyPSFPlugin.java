@@ -36,7 +36,6 @@ import java.awt.event.ActionListener;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 
-import mitiv.array.ArrayUtils;
 import mitiv.microscopy.*;
 import mitiv.utils.MathUtils;
 import plugins.adufour.ezplug.EzButton;
@@ -259,12 +258,13 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
         dim.setSize(600, 500);
         scroll.setPreferredSize(dim);
         GenericFrame infoFrame = new GenericFrame(title, scroll);
-        infoFrame.addToMainDesktopPane();
+        infoFrame.addToDesktopPane();
         infoFrame.setVisible(true);
         infoFrame.requestFocus();
     }
     
     /**
+     * @return Numerical Aperture
      * 
      */
     public double getNa() {
@@ -272,6 +272,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Wavelength (nm)
      * 
      */
     public double getLambda() {
@@ -279,6 +280,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Refractive index of the immersion medium
      * 
      */
     public double getNi() {
@@ -286,7 +288,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
-     
+     * @return Lateral pixel size (nm)
      * 
      */
     public double getDxy() {
@@ -294,6 +296,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Axial pixel size (um)
      * 
      */
     public double getDz() {
@@ -301,6 +304,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Number of samples along lateral X-dimension
      * 
      */
     public double getNx() {
@@ -308,6 +312,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Number of samples along lateral Y-dimension
      * 
      */
     public double getNy() {
@@ -315,6 +320,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Number of samples along lateral Z-dimension"
      * 
      */
     public double getNz() {
@@ -322,6 +328,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Number of zernike modes
      * 
      */
     public double getJ() {
@@ -329,6 +336,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Defocus along lateral X-dimension
      * 
      */
     public double getDeltax() {
@@ -336,6 +344,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Defocus along lateral Y-dimension
      * 
      */
     public double getDeltay() {
@@ -343,6 +352,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Zernike coefficients of the modulus
      * 
      */
     public double[] getAlpha() {
@@ -350,6 +360,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Zernike coefficients of the phase
      * 
      */
     public double[] getBeta() {
@@ -357,6 +368,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return modulus of the pupil
      * 
      */
     public boolean getRho() {
@@ -364,6 +376,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Phi
      * 
      */
     public boolean getPhi() {
@@ -371,6 +384,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     }
 
     /**
+     * @return Psi
      * 
      */
     public boolean getPsi() {

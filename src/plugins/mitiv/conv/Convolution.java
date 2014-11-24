@@ -219,7 +219,7 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
         dim.setSize(600, 500);
         scroll.setPreferredSize(dim);
         GenericFrame infoFrame = new GenericFrame(title, scroll);
-        infoFrame.addToMainDesktopPane();
+        infoFrame.addToDesktopPane();
         infoFrame.setVisible(true);
         infoFrame.requestFocus();
     }
