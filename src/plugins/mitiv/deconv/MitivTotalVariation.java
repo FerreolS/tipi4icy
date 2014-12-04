@@ -84,7 +84,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private boolean goodInput = true;
     private boolean psfSplitted = false;
     private boolean computeNew = true;
-    private boolean reuse = true;
+    private boolean reuse = false;
 
     private int width = -1;
     private int height = -1;
@@ -271,25 +271,23 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
 
                 ArrayList<IcyBufferedImage> listImg = sequenceImg.getValue().getAllImage();
                 ArrayList<IcyBufferedImage> listPSf= sequencePsf.getValue().getAllImage();
-                DoubleArray imgArray, psfArray;
-                double[] weight;
+                DoubleArray imgArray, psfArray, weight;
                 if (listImg.size() == 1) { //2D
                     double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
                     double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
-                    weight = createWeight(image);
                     shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)), FFTUtils.bestDimension((int)(height*coef)));
                     imgArray =  Double2D.wrap(image, width, height);
                     psfArray =  Double2D.wrap(psfTmp, psf.getWidth(), psf.getHeight());
+                    weight = createWeight(imgArray);
                 } else { //3D
                     double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
                     double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
-                    weight = createWeight(image);
-                    
                     shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)),
                             FFTUtils.bestDimension((int)(height*coef)),
                             FFTUtils.bestDimension((int)(sizeZ*coef)));
                     imgArray =  Double3D.wrap(image, width, height, sizeZ);
                     psfArray =  Double3D.wrap(psfTmp, psf.getWidth(), psf.getHeight(), sizeZ);
+                    weight = createWeight(imgArray);
                 }
 
                 //BEWARE here we change the value to match the new padded image size
@@ -325,7 +323,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         return Double1D.wrap(tmp, tmp.length);
     }
 
-    private double[] createWeight(double[] data){
+    private DoubleArray createWeight(ShapedArray data){
         WeightGenerator weightGen = new WeightGenerator();
         String newValue = options.getValue();
         ShapedArray array;
@@ -350,15 +348,12 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
             weightGen.setWeightMap(array);//Gain + readOut
 
         } else if(newValue == weightOption4) {
-            //In the case of computed variance: we give gain, readout noise, and the image
-            array = Double1D.wrap(data, data.length);
-            weightGen.setComputedVariance(array, alpha.getValue(), beta.getValue());
-
+            weightGen.setComputedVariance(data, alpha.getValue(), beta.getValue());
         } else {
             throw new IllegalArgumentException("Incorrect argument for weightmap");
         }
         weightGen.setPixelMap(deadPixMap);
-        return weightGen.getWeightMap().toDouble().flatten();//FIXME WRONG but Good for now
+        return weightGen.getWeightMap(data.getShape()).toDouble();
     }
 
     //Debug function Will have to be deleted in the future 

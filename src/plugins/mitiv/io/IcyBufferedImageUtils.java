@@ -26,6 +26,8 @@ package plugins.mitiv.io;
 
 
 import icy.image.IcyBufferedImage;
+import icy.sequence.Sequence;
+import icy.type.collection.array.Array1DUtil;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -99,6 +101,36 @@ public class IcyBufferedImageUtils {
         }
     }
 
+    public static ShapedArray imageToArray(Sequence seq, int canal) {
+        if (seq.getSizeZ() == 1) {
+            return imageToArray(seq, Shape.make(seq.getSizeX(), seq.getSizeY()), canal);
+        } else {
+            return imageToArray(seq, Shape.make(seq.getSizeX(), seq.getSizeY(), seq.getSizeZ()), canal);
+        }
+    }
+
+    public static ShapedArray imageToArray(Sequence seq, Shape shape, int canal) {
+        if (seq.getSizeT() != 1) {
+            throw new IllegalArgumentException("The input canno't be a 4D sequence");
+        }
+        try {
+            double[] out = Array1DUtil.arrayToDoubleArray(seq.getDataCopyXYZT( canal ), seq.isSignedDataType());
+            if (shape.rank() == 2) {    //2D input -> Rank = 2
+                return Double2D.wrap(out, shape);
+            } else {
+                return Double3D.wrap(out, shape);
+            }
+        } catch (Exception e) {
+            System.err.println("Canno't take only one canal "+e);
+            if (shape.rank() == 2) {    //2D input -> Rank = 2
+                return Double2D.wrap(icyImage3DToArray1D(seq.getAllImage(), shape.dimension(0), shape.dimension(1), 1, false), shape);
+            } else {
+                return Double3D.wrap(icyImage3DToArray1D(seq.getAllImage(), shape.dimension(0), shape.dimension(1), shape.dimension(2), false), shape);
+            }
+        }
+    }
+
+
     public static ShapedArray sequenceToArray(IcyBufferedImage image, int width,int height) {
         //First we try if we can convert the data directly by using Icy Capacities
         int[] shape = new int[]{width, height};
@@ -108,7 +140,7 @@ public class IcyBufferedImageUtils {
             return BufferedImageUtils.imageToArray(image);
         }
     }
-    
+
     public static double[] shiftIcyPsf3DToArray1D(ArrayList<IcyBufferedImage>listPSF,int width, int height, int sizeZ,  boolean isComplex) {
         double[] out;
         if (isComplex) {
@@ -175,13 +207,13 @@ public class IcyBufferedImageUtils {
         list.add(img);
         return list;
     }
-    
+
     /*
      * 
      * HERE BACKUP FROM DELETED FUNCTION FROM DECONVUTILS
      * 
      */
-    
+
     //FIXME TMP COPY
     public static double[] icyImage3DToArray1D(ArrayList<IcyBufferedImage>listImage, int width, int height, int sizeZ, boolean isComplex) {
         double[] out;
@@ -208,7 +240,7 @@ public class IcyBufferedImageUtils {
         }
         return out;
     }
-    
+
     public ArrayList<BufferedImage> arrayToIcyImage3D(double[] array, int job, boolean isComplex, int width, int height, int sizeZ){
         ArrayList<BufferedImage> out = new ArrayList<BufferedImage>();
         if (isComplex) {
