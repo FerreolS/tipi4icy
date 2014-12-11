@@ -21,10 +21,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import commands.TotalVariationDeconvolution;
 import loci.formats.ome.OMEXMLMetadata;
-import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.Double1D;
 import mitiv.array.Double2D;
 import mitiv.array.Double3D;
@@ -223,7 +224,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private JButton psfShow, psfShow2, showModulus, showPhase;
 
     private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob; 
-
+    private boolean canRunBdec = true;
     private JTabbedPane tabbedPane;
 
     private Shape shape;
@@ -372,6 +373,21 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160, 1E-9)));
         psfPannel.add((psfShow = new JButton("Show PSF")));
 
+        psf.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                canRunBdec = psf.getValue().equals("None"); // If no psf given, we can run bdec tab, else we disable the run button in bdec tab
+                na.setVisible(canRunBdec);                  // AND if we can run BDEC we can show the options of bdec
+                ni.setVisible(canRunBdec);
+                lambda.setVisible(canRunBdec);
+                nxy.setVisible(canRunBdec);
+                nz.setVisible(canRunBdec);
+                dxy.setVisible(canRunBdec);
+                dz.setVisible(canRunBdec);
+                psfShow.setVisible(canRunBdec);
+            }
+        });
+
         psfShow.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -513,6 +529,19 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         listChoiceList.add(weights);
         listChoiceList.add(deadPixel);
         //Add the tabbed pane to this panel.
+        tabbedPane.addChangeListener(new ChangeListener() {
+            //This is the part where we disable the run button if we are not in the good tab (bdec or deconv)
+            //Also if there is a psf we canno't run the BDEC
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (tabbedPane.getSelectedComponent() == deconvGlob || (tabbedPane.getSelectedComponent() == bdecGlob && canRunBdec )) {
+                    getUI().setRunButtonEnabled(true);
+                }else{
+                    getUI().setRunButtonEnabled(false);
+                }
+            }
+        });
+        getUI().setRunButtonEnabled(false); //Disable start button if we are not on bdec or deconv tab
         addComponent(tabbedPane);
     }
 
@@ -585,7 +614,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         {
             throwError("An image/sequence of images should be given");
         }
-        ArrayList<IcyBufferedImage> listImg = imgSeq.getAllImage();
+        //ArrayList<IcyBufferedImage> listImg = imgSeq.getAllImage();
 
         BufferedImage img = imgSeq.getFirstNonNullImage();
         // Set the informations about the input
@@ -609,10 +638,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
         DoubleArray imgArray, psfArray;
         double coef = zeroPadding.getValue();
-        boolean runBdec = true; 
-        if (tabbedPane.getSelectedComponent() == deconvGlob) {  //If the deconv panel is selected we run only the deconvolution
-            runBdec = false;
-        }
+        boolean runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
         // If no PSF is loaded -> creation of a PSF
         if ( psfSeq == null) {
             psf0Init();
@@ -657,6 +683,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         /*---------------------------------------*/
         /*            OPTIMISATION               */
         /*---------------------------------------*/
+
         if (runBdec) {
             double[] alpha = new double[(int)nbAlphaCoef.getValue()];
             double[] beta = new double[(int)nbBetaCoef.getValue()];
@@ -896,9 +923,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         return meta;
     }
 
+    //TODO overwrite all data that we want to keep
     private void setMetaData(Sequence seqOld, Sequence seqNew) {
-        OMEXMLMetadataImpl metDat = seqOld.getMetadata();
-        seqNew.setMetaData(metDat);
+        //OMEXMLMetadataImpl metDat = seqOld.getMetadata();
+        //FIXME AT this point if we modify the name we will modify the input and output, we need to duplicate/clone metDat 
+        //seqNew.setMetaData(metDat);
     }
 
     private void update(){
