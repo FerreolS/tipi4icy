@@ -291,7 +291,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 }
 
                 //BEWARE here we change the value to match the new padded image size
-                //addImage(weight, "weights", width, height, sizeZ); //Uncomment this to see weights
+                //addImage(weight.flatten(), "weights", width, height, sizeZ); //Uncomment this to see weights
                 width = FFTUtils.bestDimension((int)(width*coef));
                 height = FFTUtils.bestDimension((int)(height*coef));
                 sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
