@@ -26,10 +26,11 @@
 package plugins.mitiv.reconstruction;
 
 import mitiv.array.ShapedArray;
+import mitiv.utils.reconstruction.ReconstructionThreadToken;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 
-public abstract class ReconstructionJobForIcy implements Runnable {
+public abstract class ReconstructionJobForIcy implements Runnable  {
 
     protected IcyBufferedImage image;
     protected Sequence sequence;

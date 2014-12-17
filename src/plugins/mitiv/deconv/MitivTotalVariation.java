@@ -37,6 +37,8 @@ import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.WeightGenerator;
 import mitiv.utils.FFTUtils;
+import mitiv.utils.reconstruction.ReconstructionThread;
+import mitiv.utils.reconstruction.ReconstructionThreadToken;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
@@ -55,8 +57,6 @@ import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
-import plugins.mitiv.reconstruction.ReconstructionThreadForIcy;
-import plugins.mitiv.reconstruction.ReconstructionThreadToken;
 import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
 
 public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, SequenceListener, EzVarListener<String> {
@@ -95,7 +95,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private Shape shape;
     
     private ReconstructionThreadToken token;
-    ReconstructionThreadForIcy thread;
+    ReconstructionThread thread;
     
     private EzVarSequence sequencePsf = new EzVarSequence("PSF");
     private EzVarSequence sequenceImg = new EzVarSequence("Image");
@@ -182,7 +182,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         addEzComponent(groupWeighting);
         
         token = new ReconstructionThreadToken(new double[]{mu,epsilon,gatol,grtol});
-        thread = new ReconstructionThreadForIcy(token);
+        thread = new ReconstructionThread(token);
         thread.start();
     }
 

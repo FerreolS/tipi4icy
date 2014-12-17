@@ -57,6 +57,7 @@ import mitiv.optim.SimpleLowerBound;
 import mitiv.optim.SimpleUpperBound;
 import mitiv.optim.VMLMB;
 import mitiv.utils.Timer;
+import mitiv.utils.reconstruction.ReconstructionThreadToken;
 import icy.sequence.Sequence;
 
 public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements ReconstructionJob {
