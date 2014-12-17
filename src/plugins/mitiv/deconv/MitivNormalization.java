@@ -25,14 +25,13 @@
 
 package plugins.mitiv.deconv;
 
-import java.util.ArrayList;
-
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
-import mitiv.utils.CommonUtils;
+import mitiv.array.ShapedArray;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarSequence;
+import plugins.mitiv.io.IcyBufferedImageUtils;
 
 public class MitivNormalization extends EzPlug {
 
@@ -60,16 +59,12 @@ public class MitivNormalization extends EzPlug {
             int width = img.getWidth();
             int height = img.getHeight();
             int sizeZ = seq.getSizeZ();
-            ArrayList<IcyBufferedImage> listImage = seq.getAllImage();
-            double[] out = new double[sizeZ*width*height];
             double count = 0.0;
             //Icy to double
-            for (int j = 0; j < sizeZ; j++) {
-                double[] tmp = CommonUtils.imageToArray1D(listImage.get(j), false);
-                for (int i = 0; i < tmp.length; i++) {
-                    out[i+j*tmp.length] = tmp[i] >= 0 ? tmp[i] :-tmp[i];
-                    count += tmp[i];
-                }
+            ShapedArray tmp1 =  IcyBufferedImageUtils.imageToArray(seq, 0); //By default we take the first canal
+            double[] out = tmp1.toDouble().flatten();
+            for (int i = 0; i < out.length; i++) {
+                count += out[i];
             }
             //Normalization
             System.out.println(count);
