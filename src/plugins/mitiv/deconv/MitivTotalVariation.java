@@ -42,7 +42,6 @@ import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import icy.sequence.SequenceEvent;
 import icy.sequence.SequenceListener;
-import commands.TotalVariationDeconvolution;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzGroup;
@@ -56,6 +55,9 @@ import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
+import plugins.mitiv.reconstruction.ReconstructionThreadForIcy;
+import plugins.mitiv.reconstruction.ReconstructionThreadToken;
+import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
 
 public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, SequenceListener, EzVarListener<String> {
     
@@ -72,7 +74,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     /**                 VARIABLES                      **/
     /****************************************************/
     
-    TotalVariationDeconvolution tvDec;
+    TotalVariationJobForIcy tvDec;
 
     private Sequence sequence;
 
@@ -91,7 +93,10 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private int sizeZ = -1;
     private double coef = 1.0;
     private Shape shape;
-
+    
+    private ReconstructionThreadToken token;
+    ReconstructionThreadForIcy thread;
+    
     private EzVarSequence sequencePsf = new EzVarSequence("PSF");
     private EzVarSequence sequenceImg = new EzVarSequence("Image");
     private EzVarSequence output = new EzVarSequence("Output"); //In headLess mode only
@@ -175,6 +180,10 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         addEzComponent(eZrestart);
 
         addEzComponent(groupWeighting);
+        
+        token = new ReconstructionThreadToken(new double[]{mu,epsilon,gatol,grtol});
+        thread = new ReconstructionThreadForIcy(token);
+        thread.start();
     }
 
     /****************************************************/
@@ -249,21 +258,19 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 tvDec.setRegularizationThreshold(epsilon);
                 tvDec.setRelativeTolerance(grtol);
                 tvDec.setMaximumIterations(maxIter);
-                //Computation HERE
-                tvDec.deconvolve(shape);
-                //Getting the results
-                setResult();
+                tvDec.setOutputShape(shape);
+                token.start();  //By default wait for the end of the job
                 computeNew = true;
             } else {
                 //Launching computation
-                tvDec = new TotalVariationDeconvolution();
+                tvDec = new TotalVariationJobForIcy(token);
                 tvDec.setRegularizationWeight(mu);
                 tvDec.setRegularizationThreshold(epsilon);
                 tvDec.setRelativeTolerance(grtol);
                 tvDec.setAbsoluteTolerance(gatol);
                 tvDec.setMaximumIterations(maxIter);
                 tvDec.setViewer(new tvViewer());
-
+                thread.setJob(tvDec);
                 // Read the image and the PSF.
                 width = img.getWidth();
                 height = img.getHeight();
@@ -299,15 +306,8 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 tvDec.setWeight(weight);
                 tvDec.setData(imgArray);
                 tvDec.setPsf(psfArray);
-
-                //Computation HERE
-                try{
-                tvDec.deconvolve(shape);
-                }catch(Exception e){
-                    System.err.println(e);
-                }
-                //Getting the results
-                setResult();
+                tvDec.setOutputShape(shape);
+                token.start();  //By default wait for the end of the job
                 computeNew = true;
             }
             tvDec.setResult(tvDec.getResult());
@@ -384,7 +384,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
             computeNew = false;
         }
         sequence.beginUpdate();
-        double[] in = tvDec.getResult().flatten();
+        double[] in = tvDec.getResult().toDouble().flatten();
         for (int j = 0; j < sizeZ; j++) {
             double[] temp = new double[width*height];
             for (int i = 0; i < width*height; i++) {
@@ -402,8 +402,9 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         if (sequence != null) {
             sequence.close();
         }
-        if (tvDec != null) {
-            tvDec.stop();
+        if (token != null) {
+            token.stop();
+            token.exit();
         }
     }
 
@@ -449,8 +450,8 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     //If the user call the stop button
     @Override
     public void stopExecution() {
-        if (tvDec != null) {
-            tvDec.stop();
+        if (token != null) {
+            token.stop();
         }
     }
 
