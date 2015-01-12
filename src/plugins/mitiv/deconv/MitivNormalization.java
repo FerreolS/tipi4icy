@@ -67,7 +67,7 @@ public class MitivNormalization extends EzPlug {
                 count += out[i];
             }
             //Normalization
-            System.out.println(count);
+            System.out.println("SUM: "+count);
             //Double to icy
             Sequence seqOut = new Sequence();
             for (int j = 0; j < sizeZ; j++) {
