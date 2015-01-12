@@ -210,7 +210,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private ArrayList<myComboBox> listChoiceList = new ArrayList<myComboBox>();
     private myDouble dxy, dz, nxy, nz, na, lambda, ni, nbAlphaCoef, nbBetaCoef;    //PSF
     private MicroscopyModelPSF1D pupil;
-    private int psfInitFlag = 0;
+    private boolean psfInitFlag = false;
     private myDouble mu, epsilon, grtol, nbIteration, zeroPadding;          //Deconvolution
     private myDouble gain,noise;                          //VARIANCE
     private myDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration;          //BDec
@@ -393,7 +393,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             public void actionPerformed(ActionEvent e) {
                 // Show the initial PSF
                 PSF0Clicked();
-                System.out.println("First PSF compute");
+                if (debug) {
+                    System.out.println("First PSF compute");
+                }
             }
         });
 
@@ -468,7 +470,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             public void actionPerformed(ActionEvent e) {
                 // Show the initial PSF
                 PSF0Clicked();
-                System.out.println("First PSF compute");
+                if (debug) {
+                    System.out.println("First PSF compute");
+                }
             }
         });
 
@@ -476,7 +480,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             @Override
             public void actionPerformed(ActionEvent e) {
                 phaseClicked();
-                System.out.println("Show phase");
+                if (debug) {
+                    System.out.println("Show phase");
+                }
             }
         });
 
@@ -484,7 +490,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             @Override
             public void actionPerformed(ActionEvent e) {
                 modulusClicked();
-                System.out.println("Show modulus");
+                if (debug) {
+                    System.out.println("Show modulus");
+                }
             }
         });
         //Creation of BDec TAB
@@ -643,7 +651,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         if ( psfSeq == null) {
             psf0Init();
             pupil.computePSF();
-            psfInitFlag = 1;
+            psfInitFlag = true;
             if (shape.rank() == 2) {
                 psfArray =  Double2D.wrap(MathUtils.uint16(MathUtils.fftShift1D(pupil.getPSF(), width, height)) , shape);
             } else {
@@ -833,11 +841,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private void PSF0Clicked()
     {
         /* PSF0 initialisation */
-        if(psfInitFlag == 0)
+        if(!psfInitFlag)
         {
             psf0Init();
             pupil.computePSF();
-            psfInitFlag = 1;
+            psfInitFlag = true;
         }
 
         /* PSF0 Sequence */
@@ -850,17 +858,17 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                     MathUtils.getArray(PSF_shift, (int)nxy.getValue(), (int)nxy.getValue(), k)));
         }
         addSequence(PSF0Sequence);
-        psfInitFlag = 1;
+        psfInitFlag = true;
     }
 
     private void phaseClicked()
     {
         /* PSF0 initialisation */
-        if(psfInitFlag == 0)
+        if(!psfInitFlag)
         {
             psf0Init();
             pupil.computePSF();
-            psfInitFlag = 1;
+            psfInitFlag = true;
         }
         /* Phase Sequence */
         Sequence phaseSequence = new Sequence();
@@ -873,11 +881,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private void modulusClicked()
     {
         /* PSF0 initialisation */
-        if(psfInitFlag == 0)
+        if(!psfInitFlag)
         {
             psf0Init();
             pupil.computePSF();
-            psfInitFlag = 1;
+            psfInitFlag = true;
         }
         /* Modulus Sequence */
         Sequence modulusSequence = new Sequence();
