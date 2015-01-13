@@ -32,17 +32,13 @@ import mitiv.base.Shape;
 import mitiv.cost.CompositeDifferentiableCostFunction;
 import mitiv.cost.HyperbolicTotalVariation;
 import mitiv.cost.QuadraticCost;
-import mitiv.deconv.ConvolutionOperator;
 import mitiv.deconv.WeightedConvolutionOperator;
-import mitiv.exception.IncorrectSpaceException;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionSynchronizer;
 import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.LinearOperator;
-import mitiv.linalg.Vector;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
-import mitiv.linalg.shaped.RealComplexFFT;
 import mitiv.linalg.shaped.ShapedLinearOperator;
 import mitiv.optim.ArmijoLineSearch;
 import mitiv.optim.BoundProjector;
@@ -77,8 +73,6 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
     private double upperBound = Double.POSITIVE_INFINITY;
 
     private int maxiter = 200;
-
-    private boolean old;
 
     private Shape resultShape;
 
@@ -191,6 +185,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
     }
 
     public void run() {
+
         //INIT
         timer.start();
 
@@ -209,13 +204,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
             fatal("PSF must have same rank as data.");
         }
         Shape psfShape = psf.getShape();
-        if (old) {
-            for (int k = 0; k < rank; ++k) {
-                if (psf.getDimension(k) != dataShape.dimension(k)) {
-                    fatal("The dimensions of the PSF must match those of the data.");
-                }
-            }
-        }
+
         if (result != null) {
             /* We try to keep the previous result, at least its dimensions
              * must match. */
@@ -229,40 +218,25 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
 
         // Check the shape of the result.
         for (int k = 0; k < rank; ++k) {
-            if (old) {
-                if (resultShape.dimension(k) != dataShape.dimension(k)) {
-                    fatal("The dimensions of the result must be equal to those of the data.");
-                }
-            } else {
-                if (resultShape.dimension(k) < dataShape.dimension(k)) {
-                    fatal("The dimensions of the result must be at least those of the data.");
-                }
-                if (resultShape.dimension(k) < psfShape.dimension(k)) {
-                    fatal("The dimensions of the result must be at least those of the PSF.");
-                }
+            if (resultShape.dimension(k) < dataShape.dimension(k)) {
+                fatal("The dimensions of the result must be at least those of the data.");
             }
+            if (resultShape.dimension(k) < psfShape.dimension(k)) {
+                fatal("The dimensions of the result must be at least those of the PSF.");
+            }
+
         }
 
         // Initialize an input and output vector spaces and populate them with
         // workspace vectors.
 
         DoubleShapedVectorSpace dataSpace = new DoubleShapedVectorSpace(dataShape);
-        DoubleShapedVectorSpace resultSpace = (old ? dataSpace : new DoubleShapedVectorSpace(resultShape));
+        DoubleShapedVectorSpace resultSpace = new DoubleShapedVectorSpace(resultShape);
         LinearOperator W = null;
         DoubleShapedVector y = dataSpace.create(data);
         DoubleShapedVector x = null;
         if (result != null) {
             x = resultSpace.create(result);
-        } else if (old) {
-            double psf_sum = psf.sum();
-            x = resultSpace.create();
-            if (psf_sum != 1.0) {
-                if (psf_sum != 0.0) {
-                    x.axpby(0.0, x, 1.0/psf_sum, y);
-                } else {
-                    x.fill(0.0);
-                }
-            }
         } else {
             x = resultSpace.create(0.0);
         }
@@ -270,40 +244,15 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
 
         // Build convolution operator.
         ShapedLinearOperator H = null;
-        if (old) {
-            RealComplexFFT FFT = new RealComplexFFT(resultSpace);
-            if (weight != null) {
-                // FIXME: for now the weights are stored as a simple Java vector.
-                if (weight.getNumber() != data.getNumber()) {
-                    throw new IllegalArgumentException("Error weights and input data size don't match");
-                }
-                W = new LinearOperator(resultSpace) {
-                    @Override
-                    protected void privApply(Vector src, Vector dst, int job)
-                            throws IncorrectSpaceException {
-                        double[] inp = ((DoubleShapedVector)src).getData();
-                        double[] out = ((DoubleShapedVector)dst).getData();
-                        double[] weights = weight.flatten();
-                        int number = src.getNumber();
-                        for (int i = 0; i < number; ++i) {
-                            out[i] = inp[i]*weights[i];
-                        }
-                    }
-                };
-            }
-            DoubleShapedVector h = resultSpace.create(psf);
-            H = new ConvolutionOperator(FFT, h);
-        } else {
-            // FIXME: add a method for that
-            WeightedConvolutionOperator A = WeightedConvolutionOperator.build(resultSpace, dataSpace);
-            A.setPSF(psf);
-            A.setWeights(weight);
-            H = A;
-        }
-
+        // FIXME: add a method for that
+        WeightedConvolutionOperator A = WeightedConvolutionOperator.build(resultSpace, dataSpace);
+        A.setPSF(psf);
+        A.setWeights(weight);
+        H = A;
         // Build the cost functions
         QuadraticCost fdata = new QuadraticCost(H, y, W);
         HyperbolicTotalVariation fprior = new HyperbolicTotalVariation(resultSpace, epsilon);
+
         CompositeDifferentiableCostFunction cost = new CompositeDifferentiableCostFunction(1.0, fdata, mu, fprior);
         fcost = 0.0;
         gcost = resultSpace.create();
@@ -358,13 +307,10 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
             vmlmb.setAbsoluteTolerance(gatol);
             vmlmb.setRelativeTolerance(grtol);
             minimizer = vmlmb;
-            projector.apply(x, x);
-
+            projector.projectGradient(x, x);
         }
         timer.stop();
         timer.reset();
-
-
         // Launch the non linear conjugate gradient
         OptimTask task = minimizer.start();
         while (!token.isStopped()) {
@@ -406,7 +352,6 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
             }
             task = minimizer.iterate(x, fcost, gcost);
         }
-        token.jobFinished();
     }
     @Override
     public int getIterations() {
