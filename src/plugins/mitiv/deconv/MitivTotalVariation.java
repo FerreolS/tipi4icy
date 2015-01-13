@@ -25,11 +25,7 @@
 
 package plugins.mitiv.deconv;
 
-import java.util.ArrayList;
-
 import mitiv.array.Double1D;
-import mitiv.array.Double2D;
-import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
@@ -60,7 +56,7 @@ import plugins.mitiv.io.IcyBufferedImageUtils;
 import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
 
 public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, SequenceListener, EzVarListener<String> {
-    
+
     /****************************************************/
     /**                 VIEWER UPDATE                  **/
     /****************************************************/
@@ -73,7 +69,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     /****************************************************/
     /**                 VARIABLES                      **/
     /****************************************************/
-    
+
     TotalVariationJobForIcy tvDec;
 
     private Sequence sequence;
@@ -93,10 +89,10 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private int sizeZ = -1;
     private double coef = 1.0;
     private Shape shape;
-    
+
     private ReconstructionThreadToken token;
     ReconstructionThread thread;
-    
+
     private EzVarSequence sequencePsf = new EzVarSequence("PSF");
     private EzVarSequence sequenceImg = new EzVarSequence("Image");
     private EzVarSequence output = new EzVarSequence("Output"); //In headLess mode only
@@ -167,7 +163,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         showPixMap.setToolTipText(ToolTipText.sequencePixel);
         weightMap.setToolTipText(ToolTipText.sequenceWeigth);
         varianceMap.setToolTipText(ToolTipText.sequenceVariance);
-        
+
         //Adding all components
         addEzComponent(sequencePsf);
         addEzComponent(sequenceImg);
@@ -180,7 +176,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         addEzComponent(eZrestart);
 
         addEzComponent(groupWeighting);
-        
+
         token = new ReconstructionThreadToken(new double[]{mu,epsilon,gatol,grtol});
         thread = new ReconstructionThread(token);
         thread.start();
@@ -275,28 +271,19 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 width = img.getWidth();
                 height = img.getHeight();
                 sizeZ = sequenceImg.getValue().getSizeZ();
-
-                ArrayList<IcyBufferedImage> listImg = sequenceImg.getValue().getAllImage();
-                ArrayList<IcyBufferedImage> listPSf= sequencePsf.getValue().getAllImage();
                 DoubleArray imgArray, psfArray, weight;
-                if (listImg.size() == 1) { //2D
-                    double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
-                    double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
+
+                if (sequenceImg.getValue().getSizeZ() == 1) { //2D
                     shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)), FFTUtils.bestDimension((int)(height*coef)));
-                    imgArray =  Double2D.wrap(image, width, height);
-                    psfArray =  Double2D.wrap(psfTmp, psf.getWidth(), psf.getHeight());
-                    weight = createWeight(imgArray);
                 } else { //3D
-                    double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
-                    double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psf.getWidth(), psf.getHeight(), sizeZ, false);
                     shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)),
                             FFTUtils.bestDimension((int)(height*coef)),
                             FFTUtils.bestDimension((int)(sizeZ*coef)));
-                    imgArray =  Double3D.wrap(image, width, height, sizeZ);
-                    psfArray =  Double3D.wrap(psfTmp, psf.getWidth(), psf.getHeight(), sizeZ);
-                    weight = createWeight(imgArray);
                 }
+                imgArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(sequenceImg.getValue(), 0);
+                psfArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(sequencePsf.getValue(), 0);
 
+                weight = createWeight(imgArray);
                 //BEWARE here we change the value to match the new padded image size
                 //addImage(weight.flatten(), "weights", width, height, sizeZ); //Uncomment this to see weights
                 width = FFTUtils.bestDimension((int)(width*coef));
@@ -319,8 +306,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     /****************************************************/
     //Small utils function that will get the sequence and convert it to ShapedArray
     private ShapedArray weightMapToArray(EzVarSequence seq){
-        double[] tmp = IcyBufferedImageUtils.icyImage3DToArray1D(seq.getValue().getAllImage(), width, height, sizeZ, false);
-        return Double1D.wrap(tmp, tmp.length);
+        return IcyBufferedImageUtils.imageToArray(seq.getValue(), 0);
     }
 
     private DoubleArray createWeight(ShapedArray data){
@@ -346,7 +332,6 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
             //If the user give a varianceMap map we give it to weightGen
             array = weightMapToArray(varianceMap);
             weightGen.setWeightMap(array);//Gain + readOut
-
         } else if(newValue == weightOption4) {
             weightGen.setComputedVariance(data, alpha.getValue(), beta.getValue());
         } else {
@@ -392,8 +377,8 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
             }
             sequence.setImage(0,j, new IcyBufferedImage(width, height, temp));
         }
-        sequence.setName("TV mu:"+mu+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
         sequence.endUpdate();
+        sequence.setName("TV mu:"+mu+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
     }
 
     //When the plugin is closed we try to close/stop everything
