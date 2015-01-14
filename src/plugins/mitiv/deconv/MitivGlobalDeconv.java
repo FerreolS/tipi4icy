@@ -41,9 +41,12 @@ import mitiv.microscopy.MicroscopyModelPSF1D;
 import mitiv.microscopy.PSF_Estimation;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.MathUtils;
+import mitiv.utils.reconstruction.ReconstructionThread;
+import mitiv.utils.reconstruction.ReconstructionThreadToken;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.mitiv.io.IcyBufferedImageUtils;
+import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
 
 public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener, EzStoppable {
     /***************************************************/
@@ -229,6 +232,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     private Shape shape;
     boolean run = true;
+    
+    /*********************************/
+    /**            Job              **/
+    /*********************************/
+    private ReconstructionThreadToken token;
+    ReconstructionThread thread;
 
     /*********************************/
     /**            DEBUG            **/
@@ -237,7 +246,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private boolean verbose = true;    //show some values, need debug to true
 
     //Global variables for the algorithms
-    TotalVariationDeconvolution tvDec;
+    TotalVariationJobForIcy tvDec;
     PSF_Estimation PSFEstimation;
     //Global variable for the deconvolution
     Sequence sequence; //The reference to the sequence we use to plot 
@@ -302,7 +311,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     }
     @Override
     public void clean() {
-
+        if (token != null) {
+            token.stop();
+            token.exit();
+        }
     }
 
     @Override
@@ -551,6 +563,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         });
         getUI().setRunButtonEnabled(false); //Disable start button if we are not on bdec or deconv tab
         addComponent(tabbedPane);
+        
+        token = new ReconstructionThreadToken(new double[]{mu.getValue(),epsilon.getValue(),0.0,grtol.getValue()});
+        thread = new ReconstructionThread(token);
+        thread.start();
     }
 
     public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
@@ -558,7 +574,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             if (tvDec != null &&  restart.getValue()) {
                 tvDec.setResult(tvDec.getResult());
             } else {
-                tvDec = new TotalVariationDeconvolution();
+                tvDec = new TotalVariationJobForIcy(token);
                 tvDec.setResult(null);
                 tvDec.setAbsoluteTolerance(0.0);
                 tvDec.setWeight(weight);
@@ -570,7 +586,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             tvDec.setRegularizationThreshold(epsilon.getValue());
             tvDec.setRelativeTolerance(grtol.getValue());
             tvDec.setMaximumIterations((int)nbIteration.getValue());
-            tvDec.deconvolve(shape);
+            tvDec.setOutputShape(shape);
+            token.start();
             setResult(tvDec);
         } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
             System.out.println("Ticho ON");
@@ -648,7 +665,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         double coef = zeroPadding.getValue();
         boolean runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
         // If no PSF is loaded -> creation of a PSF
-        if ( psfSeq == null) {
+        if (psfSeq == null) {
             psf0Init();
             pupil.computePSF();
             psfInitFlag = true;
@@ -658,23 +675,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 psfArray =  Double3D.wrap(MathUtils.uint16(MathUtils.fftShift3D(pupil.getPSF(), width, height, sizeZ)) , shape);
             }
         } else {
-            ArrayList<IcyBufferedImage> listPSf = psfSeq.getAllImage();
             if (shape.rank() == 2) {
-                double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, psfSeq.getWidth(), psfSeq.getHeight(), sizeZ, false);
-                psfArray =  Double2D.wrap(psfTmp, Shape.make(psfSeq.getWidth(), psfSeq.getHeight()));
+                psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight()), numCanal);
             } else {
-                double[] psfTmp = IcyBufferedImageUtils.icyImage3DToArray1D(listPSf, width, height, sizeZ, false);
-                psfArray =  Double3D.wrap(psfTmp, Shape.make(psfSeq.getWidth(), psfSeq.getHeight(), psfSeq.getSizeZ()));
+                psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight(), psfSeq.getSizeZ()), numCanal);
             }
         }
-
-        //double[] image = IcyBufferedImageUtils.icyImage3DToArray1D(listImg, width, height, sizeZ, false);
-        //double[] weight = createWeight(image);
-        //if (shape.rank() == 2) {
-        //    imgArray =  Double2D.wrap(image, shape);
-        //} else {
-        //    imgArray =  Double3D.wrap(image, shape);
-        //}
 
         imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, shape, numCanal);
 
@@ -958,8 +964,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     @Override
     public void stopExecution() {
-        if (tvDec != null) {
-            tvDec.stop();
+        if (token != null) {
+            token.stop();
         }
         if (PSFEstimation != null) {
             PSFEstimation.stop();
