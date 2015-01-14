@@ -24,7 +24,6 @@ import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import commands.TotalVariationDeconvolution;
 import loci.formats.ome.OMEXMLMetadata;
 import mitiv.array.Double1D;
 import mitiv.array.Double2D;
@@ -232,7 +231,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     private Shape shape;
     boolean run = true;
-    
+
     /*********************************/
     /**            Job              **/
     /*********************************/
@@ -242,7 +241,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = true; //Show psf steps 
+    private boolean debug = false; //Show psf steps 
     private boolean verbose = true;    //show some values, need debug to true
 
     //Global variables for the algorithms
@@ -319,7 +318,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     @Override
     protected void initialize() {
-
         Icy.getMainInterface().addGlobalSequenceListener(this);
         seqList = getSequencesName();
         tabbedPane = new JTabbedPane();
@@ -563,7 +561,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         });
         getUI().setRunButtonEnabled(false); //Disable start button if we are not on bdec or deconv tab
         addComponent(tabbedPane);
-        
+
         token = new ReconstructionThreadToken(new double[]{mu.getValue(),epsilon.getValue(),0.0,grtol.getValue()});
         thread = new ReconstructionThread(token);
         thread.start();
@@ -581,6 +579,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 tvDec.setData(imgArray);
                 tvDec.setPsf(psfArray);
                 tvDec.setViewer(new tvViewer());
+                thread.setJob(tvDec);
             }
             tvDec.setRegularizationWeight(mu.getValue()); //TODO : faire comme PSFEstimationInit
             tvDec.setRegularizationThreshold(epsilon.getValue());
