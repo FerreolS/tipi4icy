@@ -217,87 +217,90 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         if (maxIter < -1)  {
             maxIter = -1;
         }
-
-        //Test if we have the image and the psf ...
-        if(sequenceImg.getValue() == null || sequencePsf.getValue() == null){
-            //If there is a missing parameter we notify the user with the missing parameter as information
-            String message = "You have forgotten to give ";
-            String messageEnd = "";
-            if (sequenceImg.getValue() == null) {
-                messageEnd = messageEnd.concat("the image ");
-            }
-            if(sequencePsf.getValue() == null) {
+        try {
+            //Test if we have the image and the psf ...
+            if(sequenceImg.getValue() == null || sequencePsf.getValue() == null){
+                //If there is a missing parameter we notify the user with the missing parameter as information
+                String message = "You have forgotten to give ";
+                String messageEnd = "";
                 if (sequenceImg.getValue() == null) {
-                    messageEnd = messageEnd.concat("and ");
+                    messageEnd = messageEnd.concat("the image ");
                 }
-                messageEnd = messageEnd.concat("a PSF");
-            }
-            message(message+messageEnd);
-        }else{
-            //And if the sizes are matching
-            img = sequenceImg.getValue().getFirstNonNullImage();
-            psf = sequencePsf.getValue().getFirstNonNullImage();
-            //if the user they the psf is splitted and the psf and image are not of the same size
-            if (psfSplitted && (img.getWidth() != psf.getWidth() || img.getHeight() != psf.getHeight())) {
-                message("The image and the psf should be of same size");
-            }
-            //if the user make a mistake between psf and image
-            if (psf.getWidth() > img.getWidth() || psf.getHeight() > img.getHeight()) {
-                message("The psf canno't be larger than the image");
-            }
-        }
-        //Everything seems good we are ready to launch
-        if (goodInput) {
-            if (reuse && tvDec != null) {
-                //If we restart, we reuse the same data and PSF
-                tvDec.setRegularizationWeight(mu);
-                tvDec.setRegularizationThreshold(epsilon);
-                tvDec.setRelativeTolerance(grtol);
-                tvDec.setMaximumIterations(maxIter);
-                tvDec.setOutputShape(shape);
-                token.start();  //By default wait for the end of the job
-                computeNew = true;
-            } else {
-                //Launching computation
-                tvDec = new TotalVariationJobForIcy(token);
-                tvDec.setRegularizationWeight(mu);
-                tvDec.setRegularizationThreshold(epsilon);
-                tvDec.setRelativeTolerance(grtol);
-                tvDec.setAbsoluteTolerance(gatol);
-                tvDec.setMaximumIterations(maxIter);
-                tvDec.setViewer(new tvViewer());
-                thread.setJob(tvDec);
-                // Read the image and the PSF.
-                width = img.getWidth();
-                height = img.getHeight();
-                sizeZ = sequenceImg.getValue().getSizeZ();
-                DoubleArray imgArray, psfArray, weight;
-
-                if (sequenceImg.getValue().getSizeZ() == 1) { //2D
-                    shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)), FFTUtils.bestDimension((int)(height*coef)));
-                } else { //3D
-                    shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)),
-                            FFTUtils.bestDimension((int)(height*coef)),
-                            FFTUtils.bestDimension((int)(sizeZ*coef)));
+                if(sequencePsf.getValue() == null) {
+                    if (sequenceImg.getValue() == null) {
+                        messageEnd = messageEnd.concat("and ");
+                    }
+                    messageEnd = messageEnd.concat("a PSF");
                 }
-                imgArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(sequenceImg.getValue(), 0);
-                psfArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(sequencePsf.getValue(), 0);
-
-                weight = createWeight(imgArray);
-                //BEWARE here we change the value to match the new padded image size
-                //addImage(weight.flatten(), "weights", width, height, sizeZ); //Uncomment this to see weights
-                width = FFTUtils.bestDimension((int)(width*coef));
-                height = FFTUtils.bestDimension((int)(height*coef));
-                sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
-
-                tvDec.setWeight(weight);
-                tvDec.setData(imgArray);
-                tvDec.setPsf(psfArray);
-                tvDec.setOutputShape(shape);
-                token.start();  //By default wait for the end of the job
-                computeNew = true;
+                message(message+messageEnd);
+            }else{
+                //And if the sizes are matching
+                img = sequenceImg.getValue().getFirstNonNullImage();
+                psf = sequencePsf.getValue().getFirstNonNullImage();
+                //if the user they the psf is splitted and the psf and image are not of the same size
+                if (psfSplitted && (img.getWidth() != psf.getWidth() || img.getHeight() != psf.getHeight())) {
+                    message("The image and the psf should be of same size");
+                }
+                //if the user make a mistake between psf and image
+                if (psf.getWidth() > img.getWidth() || psf.getHeight() > img.getHeight()) {
+                    message("The psf canno't be larger than the image");
+                }
             }
-            tvDec.setResult(tvDec.getResult());
+            //Everything seems good we are ready to launch
+            if (goodInput) {
+                if (reuse && tvDec != null) {
+                    //If we restart, we reuse the same data and PSF
+                    tvDec.setRegularizationWeight(mu);
+                    tvDec.setRegularizationThreshold(epsilon);
+                    tvDec.setRelativeTolerance(grtol);
+                    tvDec.setMaximumIterations(maxIter);
+                    tvDec.setOutputShape(shape);
+                    token.start();  //By default wait for the end of the job
+                    computeNew = true;
+                } else {
+                    //Launching computation
+                    tvDec = new TotalVariationJobForIcy(token);
+                    tvDec.setRegularizationWeight(mu);
+                    tvDec.setRegularizationThreshold(epsilon);
+                    tvDec.setRelativeTolerance(grtol);
+                    tvDec.setAbsoluteTolerance(gatol);
+                    tvDec.setMaximumIterations(maxIter);
+                    tvDec.setViewer(new tvViewer());
+                    thread.setJob(tvDec);
+                    // Read the image and the PSF.
+                    width = img.getWidth();
+                    height = img.getHeight();
+                    sizeZ = sequenceImg.getValue().getSizeZ();
+                    DoubleArray imgArray, psfArray, weight;
+
+                    if (sequenceImg.getValue().getSizeZ() == 1) { //2D
+                        shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)), FFTUtils.bestDimension((int)(height*coef)));
+                    } else { //3D
+                        shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)),
+                                FFTUtils.bestDimension((int)(height*coef)),
+                                FFTUtils.bestDimension((int)(sizeZ*coef)));
+                    }
+                    imgArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(sequenceImg.getValue(), 0);
+                    psfArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(sequencePsf.getValue(), 0);
+
+                    weight = createWeight(imgArray);
+                    //BEWARE here we change the value to match the new padded image size
+                    //addImage(weight.flatten(), "weights", width, height, sizeZ); //Uncomment this to see weights
+                    width = FFTUtils.bestDimension((int)(width*coef));
+                    height = FFTUtils.bestDimension((int)(height*coef));
+                    sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
+
+                    tvDec.setWeight(weight);
+                    tvDec.setData(imgArray);
+                    tvDec.setPsf(psfArray);
+                    tvDec.setOutputShape(shape);
+                    token.start();  //By default wait for the end of the job
+                    computeNew = true;
+                }
+                tvDec.setResult(tvDec.getResult());
+            }
+        } catch (IllegalArgumentException e) {
+            new AnnounceFrame("Oops, Error: "+ e.getMessage());
         }
     }
 
@@ -306,7 +309,13 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     /****************************************************/
     //Small utils function that will get the sequence and convert it to ShapedArray
     private ShapedArray weightMapToArray(EzVarSequence seq){
-        return IcyBufferedImageUtils.imageToArray(seq.getValue(), 0);
+        Sequence in = seq.getValue();
+        if (in != null) {
+            return IcyBufferedImageUtils.imageToArray(in, 0);
+        } else {
+            throw new IllegalArgumentException("The input requested was not found");
+        }
+
     }
 
     private DoubleArray createWeight(ShapedArray data){
