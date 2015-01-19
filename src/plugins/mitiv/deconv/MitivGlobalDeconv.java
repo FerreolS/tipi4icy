@@ -445,13 +445,13 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         deconvGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel deconvTab = new JPanel(false);
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
-        deconvTab.add((deconvOptions = createChoiceList("<html><pre>Method:                  </pre></html>", deconvStringOptions)));
-        deconvTab.add((mu = new myDouble(               "<html><pre>Mu:                      </pre></html>", 5E-4)));
-        deconvTab.add((epsilon = new myDouble(          "<html><pre>Epsilon:                 </pre></html>", 1E-2)));
-        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                   </pre></html>", 1E-2)));
-        deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Padding multiplication:  </pre></html>", 1.0)));
-        deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:    </pre></html>", 50)));
-        deconvTab.add((restart = new myBoolean(         "<html><pre>Start from last result:  </pre></html>", false)));
+        deconvTab.add((deconvOptions = createChoiceList("<html><pre>Method:                           </pre></html>", deconvStringOptions)));
+        deconvTab.add((mu = new myDouble(               "<html><pre>Mu:                               </pre></html>", 5E-4)));
+        deconvTab.add((epsilon = new myDouble(          "<html><pre>Epsilon:                          </pre></html>", 1E-2)));
+        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-2)));
+        deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 1.0)));
+        deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
+        deconvTab.add((restart = new myBoolean(         "<html><pre>Start from last result:           </pre></html>", false)));
 
         //Creation of DECONVOLUTION TAB
         deconvGlob.add(deconvTab, BorderLayout.NORTH);
@@ -467,13 +467,13 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
         bdecTab.add((nbAlphaCoef = createDouble(    "<html><pre>N\u03B2:                          </pre></html>", 76)));
         bdecTab.add((nbBetaCoef = createDouble(     "<html><pre>N\u03B1:                          </pre></html>", 22)));
-        bdecTab.add((grtolDefocus = new myDouble("<html><pre>Grtol defocus:               </pre></html>", 0.1)));
-        bdecTab.add((grtolPhase = new myDouble(  "<html><pre>Grtol phase:                 </pre></html>", 0.1)));
-        bdecTab.add((grtolModulus = new myDouble("<html><pre>Grtol modulus:               </pre></html>", 0.1)));
+        bdecTab.add((grtolDefocus = new myDouble(   "<html><pre>Grtol defocus:               </pre></html>", 0.1)));
+        bdecTab.add((grtolPhase = new myDouble(     "<html><pre>Grtol phase:                 </pre></html>", 0.1)));
+        bdecTab.add((grtolModulus = new myDouble(   "<html><pre>Grtol modulus:               </pre></html>", 0.1)));
         bdecTab.add((bDecTotalIteration = new myDouble("<html><pre>Number of total iterations:  </pre></html>", 2)));
-        bdecTab.add((psfShow2 = new JButton("Show PSF"))); //Already created in psf tab
-        bdecTab.add((showPhase = new JButton("Show phase of the pupil")));
-        bdecTab.add((showModulus = new JButton("Show modulus of the pupil")));
+        bdecTab.add((psfShow2 = new JButton(        "Show PSF"))); //Already created in psf tab
+        bdecTab.add((showPhase = new JButton(       "Show phase of the pupil")));
+        bdecTab.add((showModulus = new JButton(     "Show modulus of the pupil")));
 
         psfShow2.addActionListener(new ActionListener() {
             @Override
@@ -661,7 +661,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         }
 
         DoubleArray imgArray, psfArray;
-        double coef = zeroPadding.getValue();
+        if (zeroPadding.getValue() < 1.0) {
+            throw new IllegalArgumentException("Padding value canno't be inferior to the image size");
+        }
+        double coef = (width + ((int)zeroPadding.getValue()))/width;
         boolean runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
         // If no PSF is loaded -> creation of a PSF
         if (psfSeq == null) {

@@ -100,7 +100,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private EzVarDouble eZmu = new EzVarDouble("Mu", 0, Double.MAX_VALUE, 0.1);
     private EzVarDouble eZepsilon = new EzVarDouble("Epsilon", 0, Double.MAX_VALUE, 1);
     private EzVarDouble eZgrtol = new EzVarDouble("grtol", 0, 1, 0.1);
-    private EzVarDouble eZcoef = new EzVarDouble("Padding multiplication", 1.0, 10, 0.1);
+    private EzVarInteger eZcoef = new EzVarInteger("Number of lines to add (padding)", 1, 10000, 1);
     private EzVarInteger eZmaxIter = new EzVarInteger("Max Iterations", -1, Integer.MAX_VALUE, 1);
     private EzVarBoolean eZrestart = new EzVarBoolean("Restart with previous result", false);
 
@@ -139,7 +139,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         eZepsilon.setValue(epsilon);
         eZgrtol.setValue(grtol);
         eZmaxIter.setValue(maxIter);
-        eZcoef.setValue(coef);
+        eZcoef.setValue(1);
         options.addVarChangeListener(this);
 
         //Setting visibility to weights parameters
@@ -194,7 +194,8 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         grtol = eZgrtol.getValue();
         maxIter = eZmaxIter.getValue();
         psfSplitted = eZpsfSplitted.getValue();
-        coef = eZcoef.getValue();
+        double tmp = sequenceImg.getValue().getSizeX(); //Just to compute the size of the coefficient, we take the width of the image
+        coef = (tmp + eZcoef.getValue())/tmp;
         if (isHeadLess()) {
             reuse = false;
         }else {

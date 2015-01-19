@@ -46,7 +46,7 @@ public class ToolTipText {
     static final String doubleGrtolModulus = "Relative gradient tolerance for the convergence of the modulus coeficients";
     static final String doubleGrtolDefocus = "Relative gradient tolerance for the convergence of the defocus coeficients";
     
-    static final String doubleDxy = "Lateral pixel size (nm)";    //TODO Ludo + add units in the description AND  in GlobalDeconv
+    static final String doubleDxy = "Lateral pixel size (nm)";
     static final String doubleDz = "Axial pixel size (nm)";
     static final String doubleNxy = "Number of pixels along XY-axis";
     static final String doubleNz = "Number of pixels along Z-axis";
