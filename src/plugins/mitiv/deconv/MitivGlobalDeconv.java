@@ -449,7 +449,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         deconvTab.add((mu = new myDouble(               "<html><pre>Mu:                               </pre></html>", 5E-4)));
         deconvTab.add((epsilon = new myDouble(          "<html><pre>Epsilon:                          </pre></html>", 1E-2)));
         deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-2)));
-        deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 1.0)));
+        deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
         deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
         deconvTab.add((restart = new myBoolean(         "<html><pre>Start from last result:           </pre></html>", false)));
 
@@ -661,10 +661,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         }
 
         DoubleArray imgArray, psfArray;
-        if (zeroPadding.getValue() < 1.0) {
+        if (zeroPadding.getValue() < 0.0) {
             throw new IllegalArgumentException("Padding value canno't be inferior to the image size");
         }
-        double coef = (width + ((int)zeroPadding.getValue()))/width;
+        double coef = (width + zeroPadding.getValue())/width;
         boolean runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
         // If no PSF is loaded -> creation of a PSF
         if (psfSeq == null) {

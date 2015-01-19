@@ -139,7 +139,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         eZepsilon.setValue(epsilon);
         eZgrtol.setValue(grtol);
         eZmaxIter.setValue(maxIter);
-        eZcoef.setValue(1);
+        eZcoef.setValue(0);
         options.addVarChangeListener(this);
 
         //Setting visibility to weights parameters
