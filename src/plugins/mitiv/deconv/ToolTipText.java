@@ -53,7 +53,8 @@ public class ToolTipText {
     static final String doubleNa = "Numerical Aperture";
     static final String doubleLambda = "Wavelength (nm)";
     static final String doubleNi = "Refractive index of the immersion medium";
-    
+    static final String doubleNalpha = "Number of zernike describing the pupil phase";
+    static final String doubleNbeta = "Number of zernike describing the pupil modulus";
     //static final String booleanPSFSplitted = "If the PSF is not centered check this box";
     static final String booleanPSFSplitted = "<html><pre>"
             + "Is the PSF:<br/>"
@@ -64,6 +65,7 @@ public class ToolTipText {
             + " ---------      ---------     <br/>"
             + "</pre></html>";
     static final String booleanRestart = "Restart from previous result, if enabled will start with last image and PSF";
+    static final String booleanPositivity = "Limit the negatives values while computing the solution";
     
     static final String textMethod = "Choose the algorithm used to deconvoluate the image";
     static final String textCanal = "Choose the image canal to use for the deconvolution";

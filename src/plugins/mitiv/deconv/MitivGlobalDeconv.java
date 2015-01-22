@@ -1,5 +1,6 @@
 package plugins.mitiv.deconv;
 
+import icy.gui.frame.progress.AnnounceFrame;
 import icy.gui.main.GlobalSequenceListener;
 import icy.image.IcyBufferedImage;
 import icy.main.Icy;
@@ -210,23 +211,25 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /**                  All variables                **/
     /***************************************************/
     private ArrayList<myComboBox> listChoiceList = new ArrayList<myComboBox>();
-    private myDouble dxy, dz, nxy, nz, na, lambda, ni, nbAlphaCoef, nbBetaCoef;    //PSF
+    private myDouble dxy, dz, nxy, nz, na, lambda, ni;    //PSF
     private MicroscopyModelPSF1D pupil;
     private boolean psfInitFlag = false;
     private myDouble mu, epsilon, grtol, nbIteration, zeroPadding;          //Deconvolution
     private myDouble gain,noise;                          //VARIANCE
     private myDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration;          //BDec
-    private myComboBox image, canalImage, psf, weights, deadPixel, deconvOptions;
-    private myBoolean deadPixGiven, restart;
-    private String[] seqList;
-    private final String[] deconvStringOptions = new String[]{"Total Variation","Tichonov"}; 
+    private myComboBox image, canalImage, psf, weightsMethod, weights, deadPixel, deconvOptions, nbAlphaCoef, nbBetaCoef;
+    private myBoolean deadPixGiven, restart, positivity;
+    private String[] seqList;           //Global list given to all ComboBox that should show the actual image
+    private final String[] deconvStringOptions = new String[]{"Total Variation","Tichonov"};
+    private final String[] weightOptions = new String[]{"None","Personnalized map","Variance map","Computed variance"}; 
+    private final String[] nAlphaOptions = new String[]{"-2","1","8","19","34","53","76","103","134","169"}; 
+    private final String[] nBetaOptions = new String[]{"1","4","11","22","37","56","79","106","137","172"}; 
     private String[] canalImageOptions = new String[]{"None"}; 
-
-    private myMetaData meta = null;
+    private myMetaData meta = null;     //The image metadata that we will move from one image to another
     private JButton psfShow, psfShow2, showModulus, showPhase;
 
     private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob; 
-    private boolean canRunBdec = true;
+    private boolean canRunBdec = true;      //In the case where a psf is given we will not allow to run bdec
     private JTabbedPane tabbedPane;
 
     private Shape shape;
@@ -276,6 +279,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     }
 
     //Mini Jlabel factory
+    @SuppressWarnings("unused")
     private JLabel createLabel(String input){
         JLabel tmp = new JLabel(input);
         tmp.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -420,20 +424,45 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         varianceGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel varianceTab = new JPanel(false);
         varianceTab.setLayout(new BoxLayout(varianceTab, BoxLayout.Y_AXIS));
-        varianceTab.add((weights = createChoiceList(  "<html><pre> MAP:     </pre></html>", seqList)));
-        varianceTab.add(createLabel(                  "Personnalized Map:"));
-        varianceTab.add((gain = createDouble(         "<html><pre>Gain:             </pre></html>", 0.0)));
-        varianceTab.add((noise = createDouble(        "<html><pre>Readout Noise:    </pre></html>", 0.0)));
-        varianceTab.add((deadPixGiven = new myBoolean("<html><pre>Dead Pixel Map ?  </pre></html>", false)));
-        deadPixel = createChoiceList(                 "<html><pre>Dead pixel Map:   </pre></html>", seqList);
+        varianceTab.add((weightsMethod = createChoiceList(  "<html><pre> Weighting:     </pre></html>", weightOptions)));
+        varianceTab.add((weights = createChoiceList(        "<html><pre> Map:     </pre></html>", seqList)));
+        varianceTab.add((gain = createDouble(               "<html><pre>Gain:             </pre></html>", 0.0)));
+        varianceTab.add((noise = createDouble(              "<html><pre>Readout Noise:    </pre></html>", 0.0)));
+        varianceTab.add((deadPixGiven = new myBoolean(      "<html><pre>Dead Pixel Map ?  </pre></html>", false)));
+        varianceTab.add((deadPixel = createChoiceList(      "<html><pre>Map: </pre></html>", seqList)));
+
+        weightsMethod.addActionListener(new ActionListener() {
+            //weightOptions =  new String[]{"None","Personnalized map","Variance map","Computed variance"};
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (weightsMethod.getValue() == weightOptions[0]) { //None
+                    weights.setVisible(false);
+                    gain.setVisible(false);
+                    noise.setVisible(false);
+                } else if (weightsMethod.getValue() == weightOptions[1] || weightsMethod.getValue() == weightOptions[2]) {  //Personnalized map ou Variance map
+                    weights.setVisible(true);
+                    gain.setVisible(false);
+                    noise.setVisible(false);
+                } else if (weightsMethod.getValue() == weightOptions[3]) {  //Computed variance
+                    weights.setVisible(false);
+                    gain.setVisible(true);
+                    noise.setVisible(true);
+                } else {
+                    throw new IllegalArgumentException("Invalid argument passed to weight method");
+                }
+            }
+        });
+
         deadPixGiven.addListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 deadPixel.setVisible(deadPixGiven.getValue());
             }
         });
+        weights.setVisible(false);
+        gain.setVisible(false);
+        noise.setVisible(false);
         deadPixel.setVisible(false);
-        varianceTab.add(deadPixel);
         //Creation of VARIANCE TAB
         varianceGlob.add(varianceTab, BorderLayout.NORTH);
         tabbedPane.addTab("Variance", null, varianceGlob, "Selecting the weights, the variance and the dead pixels");
@@ -451,6 +480,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-2)));
         deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
         deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
+        deconvTab.add((positivity = new myBoolean(      "<html><pre>Enable positivity:                </pre></html>", false)));
         deconvTab.add((restart = new myBoolean(         "<html><pre>Start from last result:           </pre></html>", false)));
 
         //Creation of DECONVOLUTION TAB
@@ -465,8 +495,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         bdecGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel bdecTab = new JPanel(false);
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
-        bdecTab.add((nbAlphaCoef = createDouble(    "<html><pre>N\u03B2:                          </pre></html>", 76)));
-        bdecTab.add((nbBetaCoef = createDouble(     "<html><pre>N\u03B1:                          </pre></html>", 22)));
+        bdecTab.add((nbAlphaCoef = createChoiceList(    "<html><pre>N\u03B1:                          </pre></html>", nAlphaOptions)));
+        bdecTab.add((nbBetaCoef = createChoiceList(     "<html><pre>N\u03B2:                          </pre></html>", nBetaOptions)));
         bdecTab.add((grtolDefocus = new myDouble(   "<html><pre>Grtol defocus:               </pre></html>", 0.1)));
         bdecTab.add((grtolPhase = new myDouble(     "<html><pre>Grtol phase:                 </pre></html>", 0.1)));
         bdecTab.add((grtolModulus = new myDouble(   "<html><pre>Grtol modulus:               </pre></html>", 0.1)));
@@ -515,6 +545,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         image.setToolTipText(ToolTipText.sequenceImage);
         psf.setToolTipText(ToolTipText.sequencePSF);
         weights.setToolTipText(ToolTipText.sequenceWeigth);
+        weightsMethod.setToolTipText(ToolTipText.sequenceWeigth);
         deadPixel.setToolTipText(ToolTipText.sequencePixel);
 
         canalImage.setToolTipText(ToolTipText.textCanal);
@@ -535,12 +566,15 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         nbIteration.setToolTipText(ToolTipText.doubleMaxIter);
         zeroPadding.setToolTipText(ToolTipText.doublePadding);
 
+        nbAlphaCoef.setToolTipText(ToolTipText.doubleNalpha);
+        nbBetaCoef.setToolTipText(ToolTipText.doubleNbeta);
         grtolPhase.setToolTipText(ToolTipText.doubleGrtolPhase);
         grtolModulus.setToolTipText(ToolTipText.doubleGrtolModulus);
         grtolDefocus.setToolTipText(ToolTipText.doubleGrtolDefocus);
         bDecTotalIteration.setToolTipText(ToolTipText.doubleBDecTotalIteration);
 
         restart.setToolTipText(ToolTipText.booleanRestart);
+        positivity.setToolTipText(ToolTipText.booleanPositivity);
         // Adding image, canalImage, psf, weights, deadPixel to auto refresh when sequence is added/removed
         listChoiceList.add(image);
         listChoiceList.add(psf);
@@ -581,7 +615,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 tvDec.setViewer(new tvViewer());
                 thread.setJob(tvDec);
             }
-            tvDec.setRegularizationWeight(mu.getValue()); //TODO : faire comme PSFEstimationInit
+            tvDec.setPositivity(positivity.getValue());
+            tvDec.setRegularizationWeight(mu.getValue());
             tvDec.setRegularizationThreshold(epsilon.getValue());
             tvDec.setRelativeTolerance(grtol.getValue());
             tvDec.setMaximumIterations((int)nbIteration.getValue());
@@ -597,177 +632,182 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     @Override
     protected void execute() {
-        if (debug && verbose) {
-            System.out.println("-------------IMAGE-------------------");
-            System.out.println("File: "+image.getValue());              //Used
-            System.out.println("Canal: "+canalImage.getValue());
-            System.out.println("--------------PSF------------------");
-            System.out.println("PSF: "+psf.getValue());                 //Used
-            System.out.println("dxy: "+dxy.getValue());
-            System.out.println("dz: "+dz.getValue());
-            System.out.println("nxy: "+nxy.getValue());
-            System.out.println("nz: "+nz.getValue());
-            System.out.println("NA: "+na.getValue());
-            System.out.println("\u03BB: "+lambda.getValue());
-            System.out.println("ni: "+ni.getValue());
-            System.out.println("--------------Variance------------------");
-            System.out.println("Weights: "+weights.getValue());
-            System.out.println("Gain: "+gain.getValue());
-            System.out.println("Noise: "+noise.getValue());
-            System.out.println("deadPix: "+deadPixel.getValue());
-            System.out.println("--------------DECONV------------------");
-            System.out.println("Methode: "+deconvOptions.getValue());   //Used
-            System.out.println("zeroPad: "+zeroPadding.getValue());
-            System.out.println("nbIter: "+nbIteration.getValue());
-            System.out.println("Restart: "+restart.getValue());
-            System.out.println("--------------BDEC------------------");
-            System.out.println("nbIter: "+nbIteration.getValue());
-            System.out.println("zeroPad: "+zeroPadding.getValue());
-            System.out.println("nbIterZern: "+grtolPhase.getValue());
-            System.out.println("module: "+grtolModulus.getValue());
-            System.out.println("defoc: "+grtolDefocus.getValue());
-            System.out.println("Number of total iterations: "+bDecTotalIteration.getValue());
-            System.out.println("");
-        }
-        run = true;
-
-        // Preparing parameters and testing input
-        Sequence imgSeq = getSequence(image);
-        Sequence psfSeq = getSequence(psf);
-        if (imgSeq == null)
-        {
-            throwError("An image/sequence of images should be given");
-        }
-        //ArrayList<IcyBufferedImage> listImg = imgSeq.getAllImage();
-
-        BufferedImage img = imgSeq.getFirstNonNullImage();
-        // Set the informations about the input
-        width = img.getWidth();
-        height = img.getHeight();
-        sizeZ = imgSeq.getSizeZ();
-        if (sizeZ == 1) { //2D
-            shape = Shape.make(width, height);
-        } else {    //3D
-            shape = Shape.make(width, height, sizeZ);
-        }
-
-        // Guessing the canal
-        String canalToUse = canalImage.getValue();
-        int numCanal = -1;
-        for (int ii = 0; ii < imgSeq.getSizeC(); ii++) {
-            if (canalToUse.equals(imgSeq.getChannelName(ii))) {
-                numCanal = ii;
+        try {
+            if (debug && verbose) {
+                System.out.println("-------------IMAGE-------------------");
+                System.out.println("File: "+image.getValue());              //Used
+                System.out.println("Canal: "+canalImage.getValue());
+                System.out.println("--------------PSF------------------");
+                System.out.println("PSF: "+psf.getValue());                 //Used
+                System.out.println("dxy: "+dxy.getValue());
+                System.out.println("dz: "+dz.getValue());
+                System.out.println("nxy: "+nxy.getValue());
+                System.out.println("nz: "+nz.getValue());
+                System.out.println("NA: "+na.getValue());
+                System.out.println("\u03BB: "+lambda.getValue());
+                System.out.println("ni: "+ni.getValue());
+                System.out.println("--------------Variance------------------");
+                System.out.println("Weights: "+weights.getValue());
+                System.out.println("Gain: "+gain.getValue());
+                System.out.println("Noise: "+noise.getValue());
+                System.out.println("deadPix: "+deadPixel.getValue());
+                System.out.println("--------------DECONV------------------");
+                System.out.println("Methode: "+deconvOptions.getValue());   //Used
+                System.out.println("zeroPad: "+zeroPadding.getValue());
+                System.out.println("nbIter: "+nbIteration.getValue());
+                System.out.println("Restart: "+restart.getValue());
+                System.out.println("Positivity: "+positivity.getValue());
+                System.out.println("--------------BDEC------------------");
+                System.out.println("nbIter: "+nbIteration.getValue());
+                System.out.println("zeroPad: "+zeroPadding.getValue());
+                System.out.println("nbIterZern: "+grtolPhase.getValue());
+                System.out.println("module: "+grtolModulus.getValue());
+                System.out.println("defoc: "+grtolDefocus.getValue());
+                System.out.println("Number of total iterations: "+bDecTotalIteration.getValue());
+                System.out.println("");
             }
-        }
+            run = true;
 
-        DoubleArray imgArray, psfArray;
-        if (zeroPadding.getValue() < 0.0) {
-            throw new IllegalArgumentException("Padding value canno't be inferior to the image size");
-        }
-        double coef = (width + zeroPadding.getValue())/width;
-        boolean runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
-        // If no PSF is loaded -> creation of a PSF
-        if (psfSeq == null) {
-            psf0Init();
-            pupil.computePSF();
-            psfInitFlag = true;
-            if (shape.rank() == 2) {
-                psfArray =  Double2D.wrap(MathUtils.uint16(MathUtils.fftShift1D(pupil.getPSF(), width, height)) , shape);
+            // Preparing parameters and testing input
+            Sequence imgSeq = getSequence(image);
+            Sequence psfSeq = getSequence(psf);
+            if (imgSeq == null)
+            {
+                throwError("An image/sequence of images should be given");
+            }
+            //ArrayList<IcyBufferedImage> listImg = imgSeq.getAllImage();
+
+            BufferedImage img = imgSeq.getFirstNonNullImage();
+            // Set the informations about the input
+            width = img.getWidth();
+            height = img.getHeight();
+            sizeZ = imgSeq.getSizeZ();
+            if (sizeZ == 1) { //2D
+                shape = Shape.make(width, height);
+            } else {    //3D
+                shape = Shape.make(width, height, sizeZ);
+            }
+
+            // Guessing the canal
+            String canalToUse = canalImage.getValue();
+            int numCanal = -1;
+            for (int ii = 0; ii < imgSeq.getSizeC(); ii++) {
+                if (canalToUse.equals(imgSeq.getChannelName(ii))) {
+                    numCanal = ii;
+                }
+            }
+
+            DoubleArray imgArray, psfArray;
+            if (zeroPadding.getValue() < 0.0) {
+                throw new IllegalArgumentException("Padding value canno't be inferior to the image size");
+            }
+            double coef = (width + zeroPadding.getValue())/width;
+            boolean runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
+            // If no PSF is loaded -> creation of a PSF
+            if (psfSeq == null) {
+                psf0Init();
+                pupil.computePSF();
+                psfInitFlag = true;
+                if (shape.rank() == 2) {
+                    psfArray =  Double2D.wrap(MathUtils.uint16(MathUtils.fftShift1D(pupil.getPSF(), width, height)) , shape);
+                } else {
+                    psfArray =  Double3D.wrap(MathUtils.uint16(MathUtils.fftShift3D(pupil.getPSF(), width, height, sizeZ)) , shape);
+                }
             } else {
-                psfArray =  Double3D.wrap(MathUtils.uint16(MathUtils.fftShift3D(pupil.getPSF(), width, height, sizeZ)) , shape);
+                if (shape.rank() == 2) {
+                    psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight()), numCanal);
+                } else {
+                    psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight(), psfSeq.getSizeZ()), numCanal);
+                }
             }
-        } else {
+
+            imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, shape, numCanal);
+
+            DoubleArray weight = createWeight(imgArray).toDouble();
+            //BEWARE here we change the value to match the new padded image size
+            width = FFTUtils.bestDimension((int)(width*coef));
+            height = FFTUtils.bestDimension((int)(height*coef));
+            sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
             if (shape.rank() == 2) {
-                psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight()), numCanal);
+                shape = Shape.make(width, height);
             } else {
-                psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight(), psfSeq.getSizeZ()), numCanal);
+                shape = Shape.make(width, height, sizeZ);
             }
-        }
+            /*---------------------------------------*/
+            /*            OPTIMISATION               */
+            /*---------------------------------------*/
 
-        imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, shape, numCanal);
+            if (runBdec) {
+                double[] alpha = new double[Integer.parseInt(nbAlphaCoef.getValue())];
+                double[] beta = new double[Integer.parseInt(nbBetaCoef.getValue())];
+                beta[0] = 1;
+                double[] defocus = {ni.getValue()/lambda.getValue(), 0., 0.};
+                DoubleShapedVectorSpace defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
+                DoubleShapedVector defocusVector = defocuSpace.wrap(defocus);
+                DoubleShapedVectorSpace alphaSpace = new DoubleShapedVectorSpace(new int[]{alpha.length});
+                DoubleShapedVector alphaVector = alphaSpace.create();
+                DoubleShapedVectorSpace betaSpace = new DoubleShapedVectorSpace(new int[]{beta.length});
+                DoubleShapedVector betaVector = betaSpace.wrap(beta);
 
-        DoubleArray weight = createWeight(imgArray).toDouble();
-        //BEWARE here we change the value to match the new padded image size
-        width = FFTUtils.bestDimension((int)(width*coef));
-        height = FFTUtils.bestDimension((int)(height*coef));
-        sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
-        if (shape.rank() == 2) {
-            shape = Shape.make(width, height);
-        } else {
-            shape = Shape.make(width, height, sizeZ);
-        }
-        /*---------------------------------------*/
-        /*            OPTIMISATION               */
-        /*---------------------------------------*/
+                PSFEstimation = new PSF_Estimation();
+                PSFEstimationInit();
+                PSFEstimation.setWeight(weight.flatten());
 
-        if (runBdec) {
-            double[] alpha = new double[(int)nbAlphaCoef.getValue()];
-            double[] beta = new double[(int)nbBetaCoef.getValue()];
-            beta[0] = 1;
-            double[] defocus = {ni.getValue()/lambda.getValue(), 0., 0.};
-            DoubleShapedVectorSpace defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
-            DoubleShapedVector defocusVector = defocuSpace.wrap(defocus);
-            DoubleShapedVectorSpace alphaSpace = new DoubleShapedVectorSpace(new int[]{alpha.length});
-            DoubleShapedVector alphaVector = alphaSpace.create();
-            DoubleShapedVectorSpace betaSpace = new DoubleShapedVectorSpace(new int[]{beta.length});
-            DoubleShapedVector betaVector = betaSpace.wrap(beta);
+                PSFEstimation.setData(imgArray);
 
-            PSFEstimation = new PSF_Estimation();
-            PSFEstimationInit(); //TODO : peut-être foutre les autres plus bas dedans
-            PSFEstimation.setWeight(weight.flatten()); //TODO : peut-être le mettre avant la boucle, inutile de réinitialiser les poids et data
+                for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
+                    /* OBJET ESTIMATION (by the current PSF) */
+                    launchDeconvolution(imgArray, psfArray, weight);
 
-            PSFEstimation.setData(imgArray);
+                    /* PSF ESTIMATION (by the current objet) */
 
-            for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
-                /* OBJET ESTIMATION (by the current PSF) */
+
+                    PSFEstimation.setPupil(pupil);
+                    PSFEstimation.setPsf(tvDec.getData());
+
+                    /* Defocus estimation */
+                    if (debug && verbose) {
+                        System.out.println("------------------");
+                        System.out.println("Defocus estimation");
+                        System.out.println("------------------");
+                    }
+                    PSFEstimation.setRelativeTolerance(0.1);
+                    PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
+
+                    /* Phase estimation */
+                    if (debug && verbose) {
+                        System.out.println("Phase estimation");
+                        System.out.println("------------------");
+                    }
+                    PSFEstimation.setResult(null);
+                    PSFEstimation.setRelativeTolerance(0.1);
+                    PSFEstimation.fitPSF(alphaVector, PSF_Estimation.ALPHA);
+
+                    /* Modulus estimation */
+                    if (debug && verbose) {
+                        System.out.println("Modulus estimation");
+                        System.out.println("------------------");
+                    }
+                    PSFEstimation.setResult(null);
+                    PSFEstimation.setRelativeTolerance(0.1);
+                    PSFEstimation.fitPSF(betaVector, PSF_Estimation.BETA);
+                    MathUtils.normalise(betaVector.getData());
+                    if (debug) {
+                        showResult(i);
+                    }
+                    //If we want a emergency stop
+                    if (!run) {
+                        return;
+                    }
+                }
+            } else {
                 launchDeconvolution(imgArray, psfArray, weight);
-
-                /* PSF ESTIMATION (by the current objet) */
-
-
-                PSFEstimation.setPupil(pupil);
-                PSFEstimation.setPsf(tvDec.getData());
-
-                /* Defocus estimation */
-                if (debug && verbose) {
-                    System.out.println("------------------");
-                    System.out.println("Defocus estimation");
-                    System.out.println("------------------");
-                }
-                PSFEstimation.setRelativeTolerance(0.1); //TODO : grtolDefocus..
-                PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
-
-                /* Phase estimation */
-                if (debug && verbose) {
-                    System.out.println("Phase estimation");
-                    System.out.println("------------------");
-                }
-                PSFEstimation.setResult(null);
-                PSFEstimation.setRelativeTolerance(0.1);
-                PSFEstimation.fitPSF(alphaVector, PSF_Estimation.ALPHA);
-
-                /* Modulus estimation */
-                if (debug && verbose) {
-                    System.out.println("Modulus estimation");
-                    System.out.println("------------------");
-                }
-                PSFEstimation.setResult(null);
-                PSFEstimation.setRelativeTolerance(0.1);
-                PSFEstimation.fitPSF(betaVector, PSF_Estimation.BETA);
-                MathUtils.normalise(betaVector.getData());
-                if (debug) {
-                    showResult(i);
-                }
-                //If we want a emergency stop
-                if (!run) {
-                    return;
-                }
             }
-        } else {
-            launchDeconvolution(imgArray, psfArray, weight);
+            setMetaData(imgSeq, sequence);
+            sequence = null; //In any cases the next image will be in a new sequence
+        } catch (IllegalArgumentException e) {
+            new AnnounceFrame("Oops, Error: "+ e.getMessage());
         }
-        setMetaData(imgSeq, sequence);
-        sequence = null; //In any cases the next image will be in a new sequence
     }
 
     private ShapedArray createWeight(ShapedArray data){
@@ -775,24 +815,30 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         ShapedArray array;
         ShapedArray deadPixMap = null;
         Sequence tmp;
+        //If a dead pixel map was given
         if (deadPixGiven.getValue() && (tmp = getSequence(deadPixel)) != null) {
             deadPixMap = IcyBufferedImageUtils.imageToArray(tmp.getAllImage());
         }
-        if((tmp = getSequence(weights)) != null) {//Variance map
-            //If the user give a varianceMap map we give it to weightGen
-            array = IcyBufferedImageUtils.imageToArray(tmp.getAllImage());
-            weightGen.setWeightMap(array);//Gain + readOut
-
-        } else if(gain.getValue() != 0.0 &&  noise.getValue() != 0.0) {
-            //In the case of computed variance: we give gain, readout noise, and the image
-            weightGen.setComputedVariance(data, gain.getValue(), noise.getValue());
-        } else {
-            //Last case, we create an array of 1, that correspond to the image
+        //We check the values given
+        if (weightsMethod.getValue() == weightOptions[0]) { //None
+            //we create an array of 1, that correspond to the image
             double[] weight = new double[width*height*sizeZ];
             for (int i = 0; i < weight.length; i++) {
                 weight[i] = 1;
             }
             weightGen.setWeightMap(Double1D.wrap(weight, weight.length));
+        } else if (weightsMethod.getValue() == weightOptions[1]) {  //Personnalized map
+            if((tmp = getSequence(weights)) != null) {      
+                array = IcyBufferedImageUtils.imageToArray(tmp.getAllImage());
+                weightGen.setWeightMap(array);
+            }
+        } else if (weightsMethod.getValue() == weightOptions[2]) {  //Variance map
+            if((tmp = getSequence(weights)) != null) {//Variance map
+                array = IcyBufferedImageUtils.imageToArray(tmp.getAllImage());
+                weightGen.setVarianceMap(array);
+            }
+        }else if (weightsMethod.getValue() == weightOptions[3]) {   //Computed variance
+            weightGen.setComputedVariance(data, gain.getValue(), noise.getValue());
         }
         weightGen.setPixelMap(deadPixMap);
         return weightGen.getWeightMap(data.getShape()).toDouble();
@@ -858,7 +904,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
         /* PSF0 Sequence */
         Sequence PSF0Sequence = new Sequence();
-        PSF0Sequence.setName("Initial PSF");
+        PSF0Sequence.setName("PSF");
         double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue());
         for (int k = 0; k < (int)nz.getValue(); k++)
         {

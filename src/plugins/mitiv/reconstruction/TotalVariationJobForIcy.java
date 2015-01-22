@@ -66,7 +66,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
 
     private double grtol = 1e-3;
 
-    private int limitedMemorySize = 0;
+    private int limitedMemorySize = 5;
 
     private double lowerBound = Double.NEGATIVE_INFINITY;
 
@@ -163,6 +163,10 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
     }
     public void setOutputShape(Shape shape){
         resultShape = shape;
+    }
+    
+    public void setPositivity(boolean bool){
+        lowerBound = bool ? 0 : Double.NEGATIVE_INFINITY;
     }
 
     /********************************************************************************************************************************/
