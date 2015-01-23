@@ -102,6 +102,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private EzVarDouble eZgrtol = new EzVarDouble("grtol", 0, 1, 0.1);
     private EzVarInteger eZcoef = new EzVarInteger("Number of lines to add (padding)", 1, 10000, 1);
     private EzVarInteger eZmaxIter = new EzVarInteger("Max Iterations", -1, Integer.MAX_VALUE, 1);
+    private EzVarBoolean eZpositivity = new EzVarBoolean("Enable positivity", false);
     private EzVarBoolean eZrestart = new EzVarBoolean("Restart with previous result", false);
 
     private String weightOption1 = new String("None");
@@ -160,6 +161,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         alpha.setToolTipText(ToolTipText.doubleGain);
         beta.setToolTipText(ToolTipText.doubleNoise);
         eZrestart.setToolTipText(ToolTipText.booleanRestart);
+        eZpositivity.setToolTipText(ToolTipText.booleanPositivity);
         showPixMap.setToolTipText(ToolTipText.sequencePixel);
         weightMap.setToolTipText(ToolTipText.sequenceWeigth);
         varianceMap.setToolTipText(ToolTipText.sequenceVariance);
@@ -173,6 +175,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         addEzComponent(eZgrtol);
         addEzComponent(eZmaxIter);
         addEzComponent(eZcoef);
+        addEzComponent(eZpositivity);
         addEzComponent(eZrestart);
 
         addEzComponent(groupWeighting);
@@ -256,6 +259,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                     tvDec.setRelativeTolerance(grtol);
                     tvDec.setMaximumIterations(maxIter);
                     tvDec.setOutputShape(shape);
+                    tvDec.setPositivity(eZpositivity.getValue());
                     token.start();  //By default wait for the end of the job
                     computeNew = true;
                 } else {
@@ -266,6 +270,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                     tvDec.setRelativeTolerance(grtol);
                     tvDec.setAbsoluteTolerance(gatol);
                     tvDec.setMaximumIterations(maxIter);
+                    tvDec.setPositivity(eZpositivity.getValue());
                     tvDec.setViewer(new tvViewer());
                     thread.setJob(tvDec);
                     // Read the image and the PSF.
