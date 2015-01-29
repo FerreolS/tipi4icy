@@ -222,7 +222,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private String[] seqList;           //Global list given to all ComboBox that should show the actual image
     private final String[] deconvStringOptions = new String[]{"Total Variation","Tichonov"};
     private final String[] weightOptions = new String[]{"None","Personnalized map","Variance map","Computed variance"}; 
-    private final String[] nAlphaOptions = new String[]{"-2","1","8","19","34","53","76","103","134","169"}; 
+    private final String[] nAlphaOptions = new String[]{"1","8","19","34","53","76","103","134","169"}; 
     private final String[] nBetaOptions = new String[]{"1","4","11","22","37","56","79","106","137","172"}; 
     private String[] canalImageOptions = new String[]{"None"}; 
     private myMetaData meta = null;     //The image metadata that we will move from one image to another
