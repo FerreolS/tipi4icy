@@ -5,6 +5,7 @@ import icy.gui.main.GlobalSequenceListener;
 import icy.image.IcyBufferedImage;
 import icy.main.Icy;
 import icy.sequence.Sequence;
+import icy.util.OMEUtil;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -26,6 +27,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import loci.formats.ome.OMEXMLMetadata;
+import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.Double1D;
 import mitiv.array.Double2D;
 import mitiv.array.Double3D;
@@ -987,9 +989,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     //TODO overwrite all data that we want to keep
     private void setMetaData(Sequence seqOld, Sequence seqNew) {
-        //OMEXMLMetadataImpl metDat = seqOld.getMetadata();
-        //FIXME AT this point if we modify the name we will modify the input and output, we need to duplicate/clone metDat 
-        //seqNew.setMetaData(metDat);
+        //OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(seqNew.getMetadata());
+        //newMetdat.setImageDescription("MyDescription", 0);
+        //seqNew.setMetaData(newMetdat);
     }
 
     private void update(){
