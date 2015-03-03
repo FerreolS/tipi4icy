@@ -64,7 +64,7 @@ import plugins.mitiv.io.IcyBufferedImageUtils;
  * @author Leger Jonathan
  *
  */
-public class MitivDeconvolution extends EzPlug implements EzStoppable,SequenceListener,Block, EzVarListener<String>
+public class MitivDeconvolution extends EzPlug implements EzStoppable, SequenceListener, Block, EzVarListener<String>
 {
 
     JSlider slider;
