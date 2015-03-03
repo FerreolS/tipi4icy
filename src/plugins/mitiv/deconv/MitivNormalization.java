@@ -29,13 +29,17 @@ import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import mitiv.array.ShapedArray;
+import plugins.adufour.blocks.lang.Block;
+import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 
-public class MitivNormalization extends EzPlug {
+public class MitivNormalization extends EzPlug implements Block {
 
     EzVarSequence image = new EzVarSequence("Image to normalize");
+    //Block
+    EzVarSequence imageOut = new EzVarSequence("Image Normalized");
     boolean goodInput = true;
     
     @Override
@@ -79,13 +83,27 @@ public class MitivNormalization extends EzPlug {
             }
             //Add the sequence to icy
             seqOut.setName("Normalized_"+seq.getName());
-            addSequence(seqOut);
+            if (isHeadLess()) {
+            	imageOut.setValue(seqOut);
+            } else {
+                addSequence(seqOut);
+            }
         }
     }
     
     @Override
     public void clean() {
     }
+
+	@Override
+	public void declareInput(VarList inputMap) {
+		inputMap.add(image.getVariable());		
+	}
+
+	@Override
+	public void declareOutput(VarList outputMap) {
+		outputMap.add(imageOut.getVariable());
+	}
 
 
 
