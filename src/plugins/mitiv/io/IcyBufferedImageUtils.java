@@ -215,6 +215,7 @@ public class IcyBufferedImageUtils {
      */
 
     //FIXME TMP COPY
+    @Deprecated
     public static double[] icyImage3DToArray1D(ArrayList<IcyBufferedImage>listImage, int width, int height, int sizeZ, boolean isComplex) {
         double[] out;
         if (isComplex) {
