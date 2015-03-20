@@ -247,7 +247,15 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 }
                 //if the user make a mistake between psf and image
                 if (psf.getWidth() > img.getWidth() || psf.getHeight() > img.getHeight()) {
-                    message("The psf canno't be larger than the image");
+                    message("The psf can not be larger than the image");
+                }
+                //if the user does not give data with same dimensions
+                if (sequenceImg.getValue().getSizeZ() != sequencePsf.getValue().getSizeZ()) {
+                    message("The psf and the image should have the same dimension");
+                }
+              //if the user give data in 4D
+                if (sequenceImg.getValue().getSizeT() > 1 || sequencePsf.getValue().getSizeT() > 1) {
+                    message("Sorry we do not support 4D data for now");
                 }
             }
             //Everything seems good we are ready to launch
@@ -324,6 +332,18 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
 
     }
 
+    /**
+     * The goal is to create an weight array, but it will be created depending
+     * the user input so we will have to test each cases:
+     *  	-None
+     *  	-A given map
+     *  	-A variance map
+     *  	-A computed variance
+     * Then we apply the dead pixel map
+     * 
+     * @param data
+     * @return
+     */
     private DoubleArray createWeight(ShapedArray data){
         WeightGenerator weightGen = new WeightGenerator();
         String newValue = options.getValue();
