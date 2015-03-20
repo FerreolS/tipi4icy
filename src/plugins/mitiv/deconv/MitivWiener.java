@@ -64,7 +64,7 @@ import plugins.mitiv.io.IcyBufferedImageUtils;
  * @author Leger Jonathan
  *
  */
-public class MitivDeconvolution extends EzPlug implements EzStoppable, SequenceListener, Block, EzVarListener<String>
+public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener, Block, EzVarListener<String>
 {
 
     JSlider slider;
@@ -80,12 +80,6 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable, SequenceL
     EzVarSequence sequenceImage = new EzVarSequence("Image");
     
     EzVarDouble eZcoef = new EzVarDouble("Padding multiplication", 1.0, 10, 0.1);
-
-    EzVarInteger advOne = new EzVarInteger("Complex1");
-    EzVarInteger advTwo = new EzVarInteger("Complex2");
-    EzVarInteger advThree = new EzVarInteger("Complex3");
-
-    EzVarBoolean advancedOptions = new EzVarBoolean("Show advanced options", false);
 
     Sequence myseq;
     
@@ -108,6 +102,8 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable, SequenceL
     private void updateLabel(double val){
         DecimalFormat df = new DecimalFormat("#.####");
         label.setText( "Actual Value : "+df.format(val));
+        //If in the future we want the output image to have some name
+        //myseq.setName(options.getValue()+" "+df.format(val));
     }
 
     public void updateProgressBarMessage(String msg){
@@ -253,13 +249,6 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable, SequenceL
         addEzComponent(eZcoef);
         addComponent(slider);
         addComponent(label);
-        advancedOptions.addVisibilityTriggerTo(advOne, true);
-        advancedOptions.addVisibilityTriggerTo(advTwo, true);
-        advancedOptions.addVisibilityTriggerTo(advThree, true);
-        addEzComponent(advancedOptions);
-        addEzComponent(advOne);
-        addEzComponent(advTwo);
-        addEzComponent(advThree);
 
     }
 
@@ -300,61 +289,42 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable, SequenceL
             try {
                 Sequence seqIm = sequenceImage.getValue();
                 Sequence seqPsf = sequencePSF.getValue();
+                //If there is a 2D image and a 2D psf
+                myseq = new Sequence();
+                myseq.addListener(this); 
+                myseq.setName("");
                 if (seqIm.getSizeZ() == 1 && seqPsf.getSizeZ() == 1) {
                     deconvolution = new Deconvolution(seqIm.getFirstNonNullImage(), seqPsf.getFirstNonNullImage(),correct);
                     deconvolution.setPaddingCoefficient(eZcoef.getValue());
-                    myseq = new Sequence();
-                    myseq.addImage(0,firstJob(job));
-                    myseq.addListener(this); 
-                    myseq.setName("");
-                    if (isHeadLess()) {
-                        double value = valueBlock.getValue();
-                        updateImage(nextJob((int)value, job), (int)value);
-                    } else {
-                        addSequence(myseq);
-                        slider.setEnabled(true);
-                        slider.addChangeListener(new ChangeListener(){
-                            public void stateChanged(ChangeEvent event){
-                                //getUI().setProgressBarMessage("Computation in progress");
-                                int sliderValue =(((JSlider)event.getSource()).getValue());
-                                updateProgressBarMessage("Computing");
-                                thread.prepareNextJob(sliderValue, job);
-                                //OMEXMLMetadataImpl metaData = new OMEXMLMetadataImpl();
-                                //myseq.setMetaData(metaData);
-                                //updateImage(buffered, tmp);
-                            }
-                        });  
-                        //Beware, need to be called at the END
-                        slider.setValue(0);
-                    }
-                } else {
+                    myseq.addImage(0,firstJob(job));	//For 2D data there is a first job then a next job (faster that way)
+                } else if(seqIm.getSizeZ() == seqPsf.getSizeZ()) {
                     ShapedArray imgShapped = IcyBufferedImageUtils.imageToArray(seqIm.getAllImage());
                     ShapedArray psfShapped = IcyBufferedImageUtils.imageToArray(seqPsf.getAllImage());
                     deconvolution = new Deconvolution(imgShapped, psfShapped,correct);
                     deconvolution.setPaddingCoefficient(eZcoef.getValue());
-                    myseq = new Sequence();
-                    myseq.addListener(this); 
-                    myseq.setName("");
                     firstJob3D(job);
-                    if (isHeadLess()) {
-                        //TODO pour 3D verifier
-                        double value = valueBlock.getValue();
-                        updateImage(nextJob((int)value, job), (int)value);
-                    } else {
-                        addSequence(myseq);
-                        slider.setEnabled(true);
-                        slider.setValue(0);
-                        slider.addChangeListener(new ChangeListener(){
-                            public void stateChanged(ChangeEvent event){
-                                int sliderValue =(((JSlider)event.getSource()).getValue());
-                                updateProgressBarMessage("Computing");
-                                thread.prepareNextJob(sliderValue, job);
-                            }
-                        });
-                    }
+                } else {
+                	new AnnounceFrame("The PSF and the image should be of same dimensions");
+                	return;
+                }
+                if (isHeadLess()) {
+                    double value = valueBlock.getValue();
+                    updateImage(nextJob((int)value, job), (int)value);
+                } else {
+                    addSequence(myseq);
+                    slider.setEnabled(true);
+                    slider.addChangeListener(new ChangeListener(){
+                        public void stateChanged(ChangeEvent event){
+                            int sliderValue =(((JSlider)event.getSource()).getValue());
+                            updateProgressBarMessage("Computing");
+                            thread.prepareNextJob(sliderValue, job);
+                        }
+                    });
+                    slider.setValue(0);
                 }
             } catch (Exception e) {
                 new AnnounceFrame("Oops, Error: "+ e.getMessage());
+                e.printStackTrace();
             }
         }
     }
@@ -403,16 +373,16 @@ public class MitivDeconvolution extends EzPlug implements EzStoppable, SequenceL
     //Inputs for the protocols / blocks
     @Override
     public void declareInput(VarList inputMap) {
-        inputMap.add(sequencePSF.getVariable());
-        inputMap.add(sequenceImage.getVariable());
-        inputMap.add(options.getVariable());
-        inputMap.add(valueBlock.getVariable());
+        inputMap.add("psf", sequencePSF.getVariable());
+        inputMap.add("image", sequenceImage.getVariable());
+        inputMap.add("options", options.getVariable());
+        inputMap.add("value", valueBlock.getVariable());
     }
 
     //Outputs for the protocols / blocks
     @Override
     public void declareOutput(VarList outputMap) {
-        outputMap.add(output.getVariable());
+        outputMap.add("output",output.getVariable());
 
     }
 

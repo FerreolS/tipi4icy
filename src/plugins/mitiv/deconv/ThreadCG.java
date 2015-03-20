@@ -30,7 +30,7 @@ import mitiv.linalg.LinearConjugateGradient;
 
 public class ThreadCG extends Thread {
 
-    MitivDeconvolution deconv;
+    MitivWiener deconv;
 
     boolean stop = false;
     boolean hasjob = false;
@@ -40,7 +40,7 @@ public class ThreadCG extends Thread {
 
     private boolean compute3D = false;
     
-    public ThreadCG(MitivDeconvolution deconv){
+    public ThreadCG(MitivWiener deconv){
         this.deconv = deconv;
     }
     
