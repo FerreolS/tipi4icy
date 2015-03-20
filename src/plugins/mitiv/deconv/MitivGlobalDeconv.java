@@ -85,13 +85,13 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     public class myComboBox extends JPanel{
         private static final long serialVersionUID = 1L;
         private JLabel filler;
-        private JComboBox<String> jcb;
+        private JComboBox jcb;
 
         myComboBox(String name, String[] inputs){
             filler = new JLabel(name);
             setLayout(new FlowLayout());
             add(filler);
-            jcb = new JComboBox<String>();
+            jcb = new JComboBox();
             for (int j = 0; j < inputs.length; j++) {
                 jcb.addItem(inputs[j]);
             }
@@ -117,7 +117,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         public void setValue(String value){
             int size = jcb.getItemCount();
             for (int i = 0; i < size; i++) {
-                String tmp = jcb.getItemAt(i);
+                String tmp = (String) jcb.getItemAt(i);
                 if (tmp.compareTo(value) == 0) {
                     jcb.setSelectedIndex(i);
                     return;
