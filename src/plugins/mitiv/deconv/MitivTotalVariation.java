@@ -458,19 +458,19 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     //The input variable for the protocol
     @Override
     public void declareInput(VarList inputMap) {
-        inputMap.add(sequencePsf.getVariable());
-        inputMap.add(sequenceImg.getVariable());
-        inputMap.add(eZmu.getVariable());
-        inputMap.add(eZepsilon.getVariable());
-        inputMap.add(eZgrtol.getVariable());
-        inputMap.add(eZmaxIter.getVariable());
-        inputMap.add(eZcoef.getVariable());
+        inputMap.add("psf", sequencePsf.getVariable());
+        inputMap.add("image", sequenceImg.getVariable());
+        inputMap.add("mu", eZmu.getVariable());
+        inputMap.add("epsilon", eZepsilon.getVariable());
+        inputMap.add("grtol", eZgrtol.getVariable());
+        inputMap.add("maxIter", eZmaxIter.getVariable());
+        inputMap.add("coef", eZcoef.getVariable());
     }
 
     //The output variable for the protocol
     @Override
     public void declareOutput(VarList outputMap) {
-        outputMap.add(output.getVariable());
+        outputMap.add("output", output.getVariable());
     }
 }
 

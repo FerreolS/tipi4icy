@@ -97,12 +97,12 @@ public class MitivNormalization extends EzPlug implements Block {
 
 	@Override
 	public void declareInput(VarList inputMap) {
-		inputMap.add(image.getVariable());		
+		inputMap.add("imageIn", image.getVariable());		
 	}
 
 	@Override
 	public void declareOutput(VarList outputMap) {
-		outputMap.add(imageOut.getVariable());
+		outputMap.add("imageOut", imageOut.getVariable());
 	}
 
 
