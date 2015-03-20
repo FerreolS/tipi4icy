@@ -164,7 +164,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
     public void setOutputShape(Shape shape){
         resultShape = shape;
     }
-    
+
     public void setPositivity(boolean bool){
         lowerBound = bool ? 0 : Double.NEGATIVE_INFINITY;
     }
@@ -336,7 +336,8 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
                     break;
                 }
             } else {
-                System.err.println("error/warning: " + task);
+                //To see the reason: got to abstract class ReverseCommunicationOptimizer
+                System.err.println("error/warning: " +task+" reason: "+minimizer.getReason());
                 break;
             }
             if (synchronizer != null) {
