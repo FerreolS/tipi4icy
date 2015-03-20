@@ -35,6 +35,13 @@ import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 
+/**
+ * This plugin is normalizing all the data so that the sum of all pixels
+ * is equal to one. 
+ * 
+ * @author light
+ *
+ */
 public class MitivNormalization extends EzPlug implements Block {
 
     EzVarSequence image = new EzVarSequence("Image to normalize");

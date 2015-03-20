@@ -165,7 +165,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             add(field);
         }
 
-
         public double getValue(boolean withMult){
             if (withMult) {
                 return mult*Double.valueOf(field.getText());
@@ -212,7 +211,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /***************************************************/
     /**                  All variables                **/
     /***************************************************/
-    private ArrayList<myComboBox> listChoiceList = new ArrayList<myComboBox>();
+    private ArrayList<myComboBox> listChoiceList = new ArrayList<myComboBox>(); //Contain all the list that will be updated
     private myDouble dxy, dz, nxy, nz, na, lambda, ni;    //PSF
     private MicroscopyModelPSF1D pupil;
     private boolean psfInitFlag = false;
@@ -450,7 +449,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                     gain.setVisible(true);
                     noise.setVisible(true);
                 } else {
-                    throw new IllegalArgumentException("Invalid argument passed to weight method");
+                    throwError("Invalid argument passed to weight method");
                 }
             }
         });
@@ -628,7 +627,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
             System.out.println("Ticho ON");
         } else {
-            throw new IllegalArgumentException("Unknow deconvolution option");
+            throwError("Unknow deconvolution option");
         }
     }
 
@@ -701,7 +700,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
             DoubleArray imgArray, psfArray;
             if (zeroPadding.getValue() < 0.0) {
-                throw new IllegalArgumentException("Padding value canno't be inferior to the image size");
+                throwError("Padding value canno't be inferior to the image size");
             }
             double coef = (width + zeroPadding.getValue())/width;
             boolean runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
@@ -812,6 +811,18 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         }
     }
 
+    /**
+     * The goal is to create an weight array, but it will be created depending
+     * the user input so we will have to test each cases:
+     *  	-None
+     *  	-A given map
+     *  	-A variance map
+     *  	-A computed variance
+     * Then we apply the dead pixel map
+     * 
+     * @param data
+     * @return
+     */
     private ShapedArray createWeight(ShapedArray data){
         WeightGenerator weightGen = new WeightGenerator();
         ShapedArray array;
@@ -846,7 +857,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         return weightGen.getWeightMap(data.getShape()).toDouble();
     }
 
-    //Get the results from a reconstruction and plot the intermediate result
+    /**
+     * Get the results from a reconstruction and plot the intermediate result
+     * 
+     * @param tvDec
+     */
     private void setResult(ReconstructionJob tvDec){
         try{
             if (sequence == null || (sequence != null && sequence.isEmpty())) {
@@ -871,6 +886,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         }
     }
 
+    /**
+     * A debug function linked to the PSF
+     * 
+     * @param num Number of PSF already generated
+     */
     private void showResult(int num)
     {
         Sequence psf3DSequence = new Sequence();
@@ -884,6 +904,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         addSequence(psf3DSequence);
     }
 
+    /*****************************************/
+    /** All the PSF buttons call are here   **/
+    /*****************************************/
+    
     private void psf0Init()
     {
 
@@ -960,6 +984,16 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         PSFEstimation.setMaximumIterations(10);
     }
 
+    /**
+     * Here we get the informations given by the users but not all.
+     * In fact we trust only a few data that we know that are given by Icy.
+     * Else we are trying to keep them for the next run.
+     * 
+     * Remember: if users may lie, they will !
+     * 
+     * @param seq
+     * @return
+     */
     private myMetaData getMetaData(Sequence seq){
         OMEXMLMetadata metDat = seq.getMetadata();
         if (meta == null) {
@@ -994,6 +1028,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         //seqNew.setMetaData(newMetdat);
     }
 
+    /**
+     * This function update all the names of the available sequences contains 
+     * in the myComboBox AND that have been added to the update list
+     */
     private void update(){
         seqList = getSequencesName();
         updateAllList();
