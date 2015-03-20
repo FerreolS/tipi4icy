@@ -53,3 +53,11 @@ In progress...
 
 [TiPi](https://github.com/emmt/TiPi) and [tipi4icy](https://github.com/emmt/tipi4icy)
 have been developed as part of the [MiTiV](http://mitiv.univ-lyon1.fr) project.
+
+## Links
+
+[Main site web](http://mitiv.univ-lyon1.fr/)
+
+[Plugins presentation](http://mitiv.univ-lyon1.fr/software/available-plugins.html)
+
+[Tutorial](http://mitiv.univ-lyon1.fr/software/tutorial.html)
