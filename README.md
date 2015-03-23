@@ -1,6 +1,8 @@
 tipi4icy
 ========
 
+![Travis build status](http://travis-ci.org/emmt/tipi4icy.png)
+
 tipi4icy is a collection of [Icy](http://icy.bioimageanalysis.org/) plugins based on
 [TiPi](https://github.com/emmt/TiPi), a Java *Toolkit for Inverse Problems and Imaging*.
 
