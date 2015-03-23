@@ -2,7 +2,7 @@ language: java
 jdk:
 - openjdk6
 before_install:
-- wget http://mitiv.univ-lyon1.fr/tipi4icy.zip && unzip tipi4icy.zip && rm tipi4icy.zip
+- wget http://mitiv.univ-lyon1.fr/${PROJECT}.zip && unzip ${PROJECT}.zip && rm ${PROJECT}.zip
 script:
 - ant build
 - ant doc > /dev/null
@@ -10,9 +10,10 @@ after_success:
 - git config --global user.email "eric.thiebaut@univ-lyon1.fr"
 - git config --global user.name "emmt"
 - git config --global push.default matching
-- git clone --quiet --branch=gh-pages https://${GH_TOKEN}@github.com/emmt/tipi4icy
-- cp -r doc/* tipi4icy
-- cd tipi4icy && git add * && git commit -am "Doc update" && git push
+- git clone --quiet --branch=gh-pages https://${GH_TOKEN}@github.com/emmt/${PROJECT}
+- cp -r doc/* ${PROJECT}
+- cd ${PROJECT} && git add * && git commit -am "Doc update" && git push
 env:
 global:
 - secure: MGlG61HggbcUgBcZYJEYQmNJS8FZiaIvQDvm/BcoNZYZi4BmQY/aLL9c0xSFywZR12iuiomAw3ykU5NMDx1LHiTTVqwRE/6PZ9F5jYM6AHHwSALaETpJnMVZC48iP0lpWAAwgKGnlxR+sPSKk3Qk7b9aAQmV9MyrZxNrur4CSwQ=
+- PROJECT=tipi4icy
