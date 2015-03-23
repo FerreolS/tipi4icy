@@ -14,6 +14,6 @@ after_success:
 - cp -r doc/* ${PROJECT}
 - cd ${PROJECT} && git add * && git commit -am "Doc update" && git push
 env:
-global:
-- secure: MGlG61HggbcUgBcZYJEYQmNJS8FZiaIvQDvm/BcoNZYZi4BmQY/aLL9c0xSFywZR12iuiomAw3ykU5NMDx1LHiTTVqwRE/6PZ9F5jYM6AHHwSALaETpJnMVZC48iP0lpWAAwgKGnlxR+sPSKk3Qk7b9aAQmV9MyrZxNrur4CSwQ=
-- PROJECT=tipi4icy
+  global:
+  - secure: MGlG61HggbcUgBcZYJEYQmNJS8FZiaIvQDvm/BcoNZYZi4BmQY/aLL9c0xSFywZR12iuiomAw3ykU5NMDx1LHiTTVqwRE/6PZ9F5jYM6AHHwSALaETpJnMVZC48iP0lpWAAwgKGnlxR+sPSKk3Qk7b9aAQmV9MyrZxNrur4CSwQ=
+  - PROJECT=tipi4icy
