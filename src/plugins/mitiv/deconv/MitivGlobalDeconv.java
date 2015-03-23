@@ -804,7 +804,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             } else {
                 launchDeconvolution(imgArray, psfArray, weight);
             }
-            setMetaData(imgSeq, sequence);
             sequence = null; //In any cases the next image will be in a new sequence
         } catch (IllegalArgumentException e) {
             new AnnounceFrame("Oops, Error: "+ e.getMessage());
@@ -866,6 +865,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         try{
             if (sequence == null || (sequence != null && sequence.isEmpty())) {
                 sequence = new Sequence();
+                setMetaData(getSequence(image), sequence);
                 addSequence(sequence);
             }
             sequence.beginUpdate();
@@ -1021,11 +1021,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         return meta;
     }
 
-    //TODO overwrite all data that we want to keep
+    //Copy the input metadata to the output. We may want to change some with our values
+    //So it should be done here
     private void setMetaData(Sequence seqOld, Sequence seqNew) {
-        //OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(seqNew.getMetadata());
+        OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(seqOld.getMetadata());
         //newMetdat.setImageDescription("MyDescription", 0);
-        //seqNew.setMetaData(newMetdat);
+        seqNew.setMetaData(newMetdat);
     }
 
     /**

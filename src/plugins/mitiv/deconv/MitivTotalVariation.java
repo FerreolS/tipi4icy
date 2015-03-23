@@ -25,6 +25,7 @@
 
 package plugins.mitiv.deconv;
 
+import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.Double1D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
@@ -40,6 +41,7 @@ import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import icy.sequence.SequenceEvent;
 import icy.sequence.SequenceListener;
+import icy.util.OMEUtil;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzGroup;
@@ -249,9 +251,10 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 if (psf.getWidth() > img.getWidth() || psf.getHeight() > img.getHeight()) {
                     message("The psf can not be larger than the image");
                 }
-                //if the user does not give data with same dimensions
-                if (sequenceImg.getValue().getSizeZ() != sequencePsf.getValue().getSizeZ()) {
-                    message("The psf and the image should have the same dimension");
+                //if the user does not give data with same dimensions : no 3d and 2d at same time.
+                if (sequenceImg.getValue().getSizeZ() == 1 && sequencePsf.getValue().getSizeZ() > 1 ||
+                		sequenceImg.getValue().getSizeZ() > 1 && sequencePsf.getValue().getSizeZ() == 1) {
+                    message("The psf and the image should have the same number of dimensions");
                 }
               //if the user give data in 4D
                 if (sequenceImg.getValue().getSizeT() > 1 || sequencePsf.getValue().getSizeT() > 1) {
@@ -391,6 +394,15 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         addSequence(tmpSeq);
     }
 
+    //Copy the metadata from the input image to the output image
+    //In the future if we want to change metadata should be here
+    private void updateMetaData(Sequence seq) {
+    	Sequence imageIn = sequenceImg.getValue();
+        OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(imageIn.getMetadata());
+        //newMetdat.setImageDescription("MyDescription", 0);
+        seq.setMetaData(newMetdat);
+    }
+    
     //The function called by the viewer, here we take care of printing the result in headless mode (protocol) or not
     private void setResult(){
         if (sequence == null || computeNew == true) {
@@ -401,6 +413,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
             }else{
                 addSequence(sequence);
             }
+            updateMetaData(sequence);
             computeNew = false;
         }
         sequence.beginUpdate();
