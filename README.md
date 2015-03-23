@@ -49,6 +49,10 @@ MitivGlobalDeconv (temporary name) is the plugin that is able to do blind deconv
 
 In progress...
 
+## Javadoc
+
+The javadoc is auto generated at each push and is [HERE](http://emmt.github.io/tipi4icy)
+
 ## Credits
 
 [TiPi](https://github.com/emmt/TiPi) and [tipi4icy](https://github.com/emmt/tipi4icy)
