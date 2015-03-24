@@ -57,9 +57,12 @@ import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 
 /**
- * EzPlug interface to get the choices of the user
+ * MiTivWiener is a deconvolution tool based on linear methods. It's goal is to offer a simple 
+ * interface for the user with a minimal amount of parameters to change.
  * 
- * Full CODE see EzPlugTutorial
+ * It includes 3 methods with two of them that are nearly equals: wiener, quad.
+ * 
+ * CG is the linear conjugate gradients, for the on linear part see the other plugin: total variation.
  * 
  * @author Leger Jonathan
  *

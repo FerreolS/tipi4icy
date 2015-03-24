@@ -56,7 +56,13 @@ import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
-
+/**
+ * MitivTotalVariation is intended to offer a powerful deconvolution tool with 
+ * a nice interface and options for advanced users.
+ * 
+ * @author light
+ *
+ */
 public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, SequenceListener, EzVarListener<String> {
 
     /****************************************************/

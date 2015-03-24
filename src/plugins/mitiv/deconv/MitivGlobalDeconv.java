@@ -50,6 +50,15 @@ import plugins.adufour.ezplug.EzStoppable;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
 
+/**
+ * MiTivGlobalDeconv is a blind deconvolution tool built on the same basis than
+ * MiTivTotalVariation. The blind deconvolution process is trying to guess the PSF 
+ * and then the it is a standard deconvolution. By iterating on the result we can affine 
+ * the PSF until the result is good enough for the user.
+ * 
+ * @author light
+ *
+ */
 public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener, EzStoppable {
     /***************************************************/
     /**                  MyMetaData                   **/
