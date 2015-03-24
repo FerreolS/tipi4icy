@@ -48,6 +48,9 @@ import icy.type.collection.array.Array1DUtil;
 import plugins.adufour.ezplug.*;
 
 /**
+ * A demo plugin used to create blurred for a presentation.
+ * 
+ * Note: This plugin was not updated and may (will) not works.
  * 
  * @author Ludovic Beaubras
  *
