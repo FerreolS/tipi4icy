@@ -25,6 +25,13 @@
 
 package plugins.mitiv.deconv;
 
+/**
+ * In this class is contained all the tooltip texts. It can be usefull for correcting mistakes or
+ * new languages.
+ * 
+ * @author light
+ *
+ */
 public class ToolTipText {
 
     static final String deconvolutionSlider = "Update Mu value";
