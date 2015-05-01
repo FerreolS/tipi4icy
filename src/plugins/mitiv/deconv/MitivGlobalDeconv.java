@@ -254,7 +254,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = true; //Show psf steps 
+    private boolean debug = false; //Show psf steps 
     private boolean verbose = true;    //show some values, need debug to true
 
     //Global variables for the algorithms
