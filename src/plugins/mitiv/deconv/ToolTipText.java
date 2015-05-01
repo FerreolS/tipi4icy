@@ -42,8 +42,8 @@ public class ToolTipText {
     static final String sequencePixel = "The binary pixel map representing the pixels that we should ignore";
     
     static final String doubleGrtoll = "Relative gradient tolerance for the convergence";
-    static final String doubleMu = "Regularization level";
-    static final String doubleEpsilon = "Threshold level";
+    static final String doubleMu = "Mu";
+    static final String doubleEpsilon = "Epsilon";
     static final String doubleMaxIter = "Maximum number of iterations, -1 for no limits";
     static final String doublePadding = "Add zero around the image (2D and 3D)";
     static final String doubleGain = "The gain in e-/level";
@@ -66,9 +66,9 @@ public class ToolTipText {
     static final String booleanPSFSplitted = "<html><pre>"
             + "Is the PSF:<br/>"
             + " ---------      ---------     <br/>"
-            + " |       |      |0     0|     <br/>"
-            + " |   0   |  OR  |       |     <br/>"
-            + " |       |      |0     0|     <br/>"
+            + " |       |      |*     *|     <br/>"
+            + " |   *   |  OR  |       |     <br/>"
+            + " |       |      |*     *|     <br/>"
             + " ---------      ---------     <br/>"
             + "</pre></html>";
     static final String booleanRestart = "Restart from previous result, if enabled will start with last image and PSF";

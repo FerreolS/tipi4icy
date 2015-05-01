@@ -198,6 +198,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
             fatal("Input data not specified.");
         }
         Shape dataShape = data.getShape();
+        Shape psfShape = psf.getShape();
         int rank = data.getRank();
 
         // Check the PSF.
@@ -207,7 +208,9 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         if (psf.getRank() != rank) {
             fatal("PSF must have same rank as data.");
         }
-        Shape psfShape = psf.getShape();
+        if (resultShape == null) {
+            fatal("An output shape must ge given.");
+        }
 
         if (result != null) {
             /* We try to keep the previous result, at least its dimensions
