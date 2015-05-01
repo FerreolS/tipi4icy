@@ -101,16 +101,16 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private ReconstructionThreadToken token;
     ReconstructionThread thread;
 
-    private EzVarSequence sequencePsf = new EzVarSequence("PSF");
-    private EzVarSequence sequenceImg = new EzVarSequence("Image");
+    private EzVarSequence sequencePsf = new EzVarSequence("Input PSF");
+    private EzVarSequence sequenceImg = new EzVarSequence("Input Image");
     private EzVarSequence output = new EzVarSequence("Output"); //In headLess mode only
-    private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted ?", psfSplitted);
-    private EzVarDouble eZmu = new EzVarDouble("Mu", 0, Double.MAX_VALUE, 0.1);
-    private EzVarDouble eZepsilon = new EzVarDouble("Epsilon", 0, Double.MAX_VALUE, 1);
+    private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted?", psfSplitted);
+    private EzVarDouble eZmu = new EzVarDouble("Regularization level", 0, Double.MAX_VALUE, 0.1);
+    private EzVarDouble eZepsilon = new EzVarDouble("Threshold level", 0, Double.MAX_VALUE, 1);
     private EzVarDouble eZgrtol = new EzVarDouble("grtol", 0, 1, 0.1);
     private EzVarInteger eZcoef = new EzVarInteger("Number of lines to add (padding)", 1, 10000, 1);
     private EzVarInteger eZmaxIter = new EzVarInteger("Max Iterations", -1, Integer.MAX_VALUE, 1);
-    private EzVarBoolean eZpositivity = new EzVarBoolean("Enable positivity", false);
+    private EzVarBoolean eZpositivity = new EzVarBoolean("Enforce nonnegativity", false);
     private EzVarBoolean eZrestart = new EzVarBoolean("Restart with previous result", false);
 
     private String weightOption1 = new String("None");
@@ -125,7 +125,9 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private EzVarSequence deadPixel = new EzVarSequence("Dead pixel map");
     private EzVarDouble alpha = new EzVarDouble("Gain e-/lvl");
     private EzVarDouble beta = new EzVarDouble("Readout noise e-/pxl");
+    private EzGroup groupRegularization = new EzGroup("Regularization", eZmu, eZepsilon);
     private EzGroup groupWeighting = new EzGroup("Weighting", options, weightMap, varianceMap, alpha, beta, showPixMap, deadPixel);
+    private EzGroup groupConvergence = new EzGroup("Convergence settings", eZgrtol, eZmaxIter);
 
     IcyBufferedImage img;
     IcyBufferedImage psf;
@@ -175,18 +177,17 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         varianceMap.setToolTipText(ToolTipText.sequenceVariance);
 
         //Adding all components
-        addEzComponent(sequencePsf);
         addEzComponent(sequenceImg);
+        addEzComponent(sequencePsf);
         addEzComponent(eZpsfSplitted);
-        addEzComponent(eZmu);
-        addEzComponent(eZepsilon);
-        addEzComponent(eZgrtol);
-        addEzComponent(eZmaxIter);
+        addEzComponent(groupRegularization);
+        addEzComponent(groupConvergence);
+        addEzComponent(groupWeighting);
         addEzComponent(eZcoef);
         addEzComponent(eZpositivity);
         addEzComponent(eZrestart);
 
-        addEzComponent(groupWeighting);
+
 
         token = new ReconstructionThreadToken(new double[]{mu,epsilon,gatol,grtol});
         thread = new ReconstructionThread(token);
@@ -205,7 +206,13 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         grtol = eZgrtol.getValue();
         maxIter = eZmaxIter.getValue();
         psfSplitted = eZpsfSplitted.getValue();
-        double tmp = sequenceImg.getValue().getSizeX(); //Just to compute the size of the coefficient, we take the width of the image
+        double tmp;
+        if (sequenceImg.getValue() != null  && sequencePsf.getValue() != null) {
+            tmp = sequenceImg.getValue().getSizeX(); //Just to compute the size of the coefficient, we take the width of the image
+        } else {
+            message("The Image or PSF given does not exist");
+            return;
+        }
         coef = (tmp + eZcoef.getValue())/tmp;
         if (isHeadLess()) {
             reuse = false;
@@ -432,7 +439,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
             sequence.setImage(0,j, new IcyBufferedImage(width, height, temp));
         }
         sequence.endUpdate();
-        sequence.setName("TV mu:"+mu+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
+        sequence.setName("TV mu:"+mu+" Epsilon:"+epsilon+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
     }
 
     //When the plugin is closed we try to close/stop everything
