@@ -254,7 +254,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = false; //Show psf steps 
+    private boolean debug = true; //Show psf steps 
     private boolean verbose = true;    //show some values, need debug to true
 
     //Global variables for the algorithms
@@ -485,8 +485,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         JPanel deconvTab = new JPanel(false);
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
         deconvTab.add((deconvOptions = createChoiceList("<html><pre>Method:                           </pre></html>", deconvStringOptions)));
-        deconvTab.add((mu = new myDouble(               "<html><pre>Mu:                               </pre></html>", 5E-4)));
-        deconvTab.add((epsilon = new myDouble(          "<html><pre>Epsilon:                          </pre></html>", 1E-2)));
+        deconvTab.add((mu = new myDouble(               "<html><pre>Regularization level:             </pre></html>", 5E-4)));
+        deconvTab.add((epsilon = new myDouble(          "<html><pre>Threshold level:                  </pre></html>", 1E-2)));
         deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-2)));
         deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
         deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
@@ -761,9 +761,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
                 PSFEstimation = new PSF_Estimation();
                 PSFEstimationInit();
-                PSFEstimation.setWeight(weight.flatten());
-
+                PSFEstimation.setWeight(weight);
                 PSFEstimation.setData(imgArray);
+                PSFEstimation.enablePositivity(positivity.getValue());
 
                 for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
                     /* OBJET ESTIMATION (by the current PSF) */
@@ -781,7 +781,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                         System.out.println("Defocus estimation");
                         System.out.println("------------------");
                     }
-                    PSFEstimation.setRelativeTolerance(0.1);
+                    PSFEstimation.setRelativeTolerance(grtol.getValue());
                     PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
 
                     /* Phase estimation */
@@ -790,7 +790,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                         System.out.println("------------------");
                     }
                     PSFEstimation.setResult(null);
-                    PSFEstimation.setRelativeTolerance(0.1);
                     PSFEstimation.fitPSF(alphaVector, PSF_Estimation.ALPHA);
 
                     /* Modulus estimation */
@@ -799,7 +798,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                         System.out.println("------------------");
                     }
                     PSFEstimation.setResult(null);
-                    PSFEstimation.setRelativeTolerance(0.1);
                     PSFEstimation.fitPSF(betaVector, PSF_Estimation.BETA);
                     MathUtils.normalise(betaVector.getData());
                     if (debug) {
@@ -816,6 +814,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             sequence = null; //In any cases the next image will be in a new sequence
         } catch (IllegalArgumentException e) {
             new AnnounceFrame("Oops, Error: "+ e.getMessage());
+            if (debug) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -916,7 +917,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /*****************************************/
     /** All the PSF buttons call are here   **/
     /*****************************************/
-    
+
     private void psf0Init()
     {
 
@@ -986,11 +987,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     private void PSFEstimationInit()
     {
-        PSFEstimation.setRegularizationWeight(0.1);
-        PSFEstimation.setRegularizationThreshold(0.01);
-        //pupilEstim.setRelativeTolerance(1.);
-        PSFEstimation.setAbsoluteTolerance(0.);
-        PSFEstimation.setMaximumIterations(10);
+        PSFEstimation.setRegularizationWeight(mu.getValue());   //mu
+        PSFEstimation.setRegularizationThreshold(epsilon.getValue()); //epsilon
+        PSFEstimation.setAbsoluteTolerance(0.0);        //gatol
+        PSFEstimation.setMaximumIterations(10);         //max iter
     }
 
     /**
