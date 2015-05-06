@@ -333,6 +333,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     @Override
     protected void initialize() {
         Icy.getMainInterface().addGlobalSequenceListener(this);
+        getUI().setParametersIOVisible(false);
         seqList = getSequencesName();
         tabbedPane = new JTabbedPane();
 
@@ -889,6 +890,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             }
             sequence.endUpdate();
             sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
+            update();
         } catch (NullPointerException e) {
             //Here in case of brutal stop the sequence can become null but it's not important as it's an emergency stop
             //So we do nothing
@@ -1007,16 +1009,21 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         OMEXMLMetadata metDat = seq.getMetadata();
         if (meta == null) {
             meta = new myMetaData();
-            meta.dxy     = metDat.getPixelsPhysicalSizeX(0).getValue().doubleValue()*1E3;  //FIXME In doubt I suppose it will give the size in umeters
-            meta.dz      = metDat.getPixelsPhysicalSizeZ(0).getValue().doubleValue()*1E3;  //FIXME In doubt I suppose it will give the size in umeters
+            meta.dxy     = seq.getPixelSizeX();
+            meta.dz      = seq.getPixelSizeZ();
             if (metDat.getInstrumentCount() > 0) {
-                meta.na      = metDat.getObjectiveLensNA(0, 0);
-                meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E9;  //FIXME In doubt I suppose it will give the size in meters
-                //data.ni      = metDat.getObjectiveImmersion(0, 0).getValue().doubleValue(); //STRANGE why a string
+                try {
+                    meta.na      = metDat.getObjectiveLensNA(0, 0);
+                    meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E9;  //FIXME In doubt I suppose it will give the size in meters
+                    //data.ni      = metDat.getObjectiveImmersion(0, 0).getValue().doubleValue(); //STRANGE why a string
+                } catch(Exception e){
+                    System.out.println("Failed to get some metadatas, will use default values for na, lambda");
+                }
+            } else {
                 if (debug && verbose) {
                     System.out.println("INFO: Metadata: No instrument so no metadata.");
                 }
-            } 
+            }
         }
         //If no instrument found, at least we have the right image size
         meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
