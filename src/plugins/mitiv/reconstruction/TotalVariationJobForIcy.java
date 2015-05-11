@@ -381,6 +381,10 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         return (gcost == null ? 0.0 : gcost.norm2());
     }
 
+    public double getLowerBound() {
+        return lowerBound;
+    }
+    
     @Override
     public double getGradientNorm1() {
         return (gcost == null ? 0.0 : gcost.norm1());

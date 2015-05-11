@@ -30,6 +30,7 @@ import mitiv.array.Double1D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
+import mitiv.base.mapping.DoubleFunction;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.WeightGenerator;
@@ -86,9 +87,10 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private double epsilon = 0.1;
     private double grtol = 0.1;
     private double gatol = 0.0;
+    private double lowerBound = Double.NEGATIVE_INFINITY;
     private int maxIter = 50;
     private boolean goodInput = true;
-    private boolean psfSplitted = false;
+    //private boolean psfSplitted = false;
     private boolean computeNew = true;
     private boolean reuse = false;
 
@@ -104,7 +106,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     private EzVarSequence sequencePsf = new EzVarSequence("Input PSF");
     private EzVarSequence sequenceImg = new EzVarSequence("Input Image");
     private EzVarSequence output = new EzVarSequence("Output"); //In headLess mode only
-    private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted?", psfSplitted);
+    //private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted?", psfSplitted);
     private EzVarDouble eZmu = new EzVarDouble("Regularization level", 0, Double.MAX_VALUE, 0.1);
     private EzVarDouble eZepsilon = new EzVarDouble("Threshold level", 0, Double.MAX_VALUE, 1);
     private EzVarDouble eZgrtol = new EzVarDouble("grtol", 0, 1, 0.1);
@@ -162,7 +164,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         //Setting all tooltips
         sequencePsf.setToolTipText(ToolTipText.sequencePSF);
         sequenceImg.setToolTipText(ToolTipText.sequenceImage);
-        eZpsfSplitted.setToolTipText(ToolTipText.booleanPSFSplitted);
+        //eZpsfSplitted.setToolTipText(ToolTipText.booleanPSFSplitted);
         eZmu.setToolTipText(ToolTipText.doubleMu);
         eZepsilon.setToolTipText(ToolTipText.doubleEpsilon);
         eZgrtol.setToolTipText(ToolTipText.doubleGrtoll);
@@ -179,7 +181,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         //Adding all components
         addEzComponent(sequenceImg);
         addEzComponent(sequencePsf);
-        addEzComponent(eZpsfSplitted);
+        //addEzComponent(eZpsfSplitted);
         addEzComponent(groupRegularization);
         addEzComponent(groupConvergence);
         addEzComponent(groupWeighting);
@@ -205,7 +207,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
         epsilon = eZepsilon.getValue();
         grtol = eZgrtol.getValue();
         maxIter = eZmaxIter.getValue();
-        psfSplitted = eZpsfSplitted.getValue();
+        //psfSplitted = eZpsfSplitted.getValue();
         double tmp;
         if (sequenceImg.getValue() != null  && sequencePsf.getValue() != null) {
             tmp = sequenceImg.getValue().getSizeX(); //Just to compute the size of the coefficient, we take the width of the image
@@ -257,9 +259,9 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 img = sequenceImg.getValue().getFirstNonNullImage();
                 psf = sequencePsf.getValue().getFirstNonNullImage();
                 //if the user they the psf is splitted and the psf and image are not of the same size
-                if (psfSplitted && (img.getWidth() != psf.getWidth() || img.getHeight() != psf.getHeight())) {
-                    message("The image and the psf should be of same size");
-                }
+                //if (psfSplitted && (img.getWidth() != psf.getWidth() || img.getHeight() != psf.getHeight())) {
+                //    message("The image and the psf should be of same size");
+                //}
                 //if the user make a mistake between psf and image
                 if (psf.getWidth() > img.getWidth() || psf.getHeight() > img.getHeight()) {
                     message("The psf can not be larger than the image");
@@ -284,6 +286,20 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                     tvDec.setMaximumIterations(maxIter);
                     tvDec.setOutputShape(shape);
                     tvDec.setPositivity(eZpositivity.getValue());
+                    // We verify that the bounds are respected for previous input
+                    lowerBound = tvDec.getLowerBound();
+                    DoubleArray myArray = (DoubleArray)tvDec.getResult();
+                    myArray.map(new DoubleFunction() {
+                        
+                        @Override
+                        public double apply(double arg) {
+                            if (arg >= lowerBound) {
+                                return arg;
+                            } else {
+                                return lowerBound;
+                            }
+                        }
+                    });
                     token.start();  //By default wait for the end of the job
                     computeNew = true;
                 } else {
@@ -324,10 +340,23 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                     tvDec.setData(imgArray);
                     tvDec.setPsf(psfArray);
                     tvDec.setOutputShape(shape);
+                    // We verify that the bounds are respected for previous input
+                    lowerBound = tvDec.getLowerBound();
+                    DoubleArray myArray = tvDec.getData();
+                    myArray.map(new DoubleFunction() {
+                        
+                        @Override
+                        public double apply(double arg) {
+                            if (arg >= lowerBound) {
+                                return arg;
+                            } else {
+                                return lowerBound;
+                            }
+                        }
+                    });
                     token.start();  //By default wait for the end of the job
                     computeNew = true;
                 }
-                tvDec.setResult(tvDec.getResult());
             }
         } catch (IllegalArgumentException e) {
             new AnnounceFrame("Oops, Error: "+ e.getMessage());
@@ -439,7 +468,7 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
             sequence.setImage(0,j, new IcyBufferedImage(width, height, temp));
         }
         sequence.endUpdate();
-        sequence.setName("TV mu:"+mu+" Epsilon:"+epsilon+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
+        sequence.setName("TV mu="+mu+" Epsilon="+epsilon+" Iteration="+tvDec.getIterations()+" grToll= "+tvDec.getRelativeTolerance());
     }
 
     //When the plugin is closed we try to close/stop everything
