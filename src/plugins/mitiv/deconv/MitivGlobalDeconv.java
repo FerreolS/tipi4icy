@@ -227,10 +227,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private myDouble mu, epsilon, grtol, nbIteration, zeroPadding;          //Deconvolution
     private myDouble gain,noise;                          //VARIANCE
     private myDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration;          //BDec
-    private myComboBox image, canalImage, psf, weightsMethod, weights, deadPixel, deconvOptions, nbAlphaCoef, nbBetaCoef;
+    private myComboBox image, canalImage, psf, weightsMethod, weights, deadPixel, nbAlphaCoef, nbBetaCoef;
     private myBoolean deadPixGiven, restart, positivity;
     private String[] seqList;           //Global list given to all ComboBox that should show the actual image
-    private final String[] deconvStringOptions = new String[]{"Total Variation","Tichonov"};
     private final String[] weightOptions = new String[]{"None","Personnalized map","Variance map","Computed variance"}; 
     private final String[] nAlphaOptions = new String[]{"1","8","19","34","53","76","103","134","169"}; 
     private final String[] nBetaOptions = new String[]{"1","4","11","22","37","56","79","106","137","172"}; 
@@ -254,7 +253,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = true; //Show psf steps 
+    private boolean debug = false; //Show psf steps 
     private boolean verbose = true;    //show some values, need debug to true
 
     //Global variables for the algorithms
@@ -333,6 +332,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     @Override
     protected void initialize() {
         Icy.getMainInterface().addGlobalSequenceListener(this);
+        getUI().setParametersIOVisible(false);
         seqList = getSequencesName();
         tabbedPane = new JTabbedPane();
 
@@ -484,13 +484,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         deconvGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel deconvTab = new JPanel(false);
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
-        deconvTab.add((deconvOptions = createChoiceList("<html><pre>Method:                           </pre></html>", deconvStringOptions)));
         deconvTab.add((mu = new myDouble(               "<html><pre>Regularization level:             </pre></html>", 5E-4)));
         deconvTab.add((epsilon = new myDouble(          "<html><pre>Threshold level:                  </pre></html>", 1E-2)));
         deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-2)));
         deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
         deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
-        deconvTab.add((positivity = new myBoolean(      "<html><pre>Enable positivity:                </pre></html>", false)));
+        deconvTab.add((positivity = new myBoolean(      "<html><pre>Enforce nonnegativity:            </pre></html>", false)));
         deconvTab.add((restart = new myBoolean(         "<html><pre>Start from last result:           </pre></html>", false)));
 
         //Creation of DECONVOLUTION TAB
@@ -505,8 +504,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         bdecGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel bdecTab = new JPanel(false);
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
-        bdecTab.add((nbAlphaCoef = createChoiceList(    "<html><pre>N\u03B1:                          </pre></html>", nAlphaOptions)));
-        bdecTab.add((nbBetaCoef = createChoiceList(     "<html><pre>N\u03B2:                          </pre></html>", nBetaOptions)));
+        bdecTab.add((nbAlphaCoef = createChoiceList("<html><pre>N\u03B1:                          </pre></html>", nAlphaOptions)));
+        bdecTab.add((nbBetaCoef = createChoiceList( "<html><pre>N\u03B2:                          </pre></html>", nBetaOptions)));
         bdecTab.add((grtolDefocus = new myDouble(   "<html><pre>Grtol defocus:               </pre></html>", 0.1)));
         bdecTab.add((grtolPhase = new myDouble(     "<html><pre>Grtol phase:                 </pre></html>", 0.1)));
         bdecTab.add((grtolModulus = new myDouble(   "<html><pre>Grtol modulus:               </pre></html>", 0.1)));
@@ -559,7 +558,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         deadPixel.setToolTipText(ToolTipText.sequencePixel);
 
         canalImage.setToolTipText(ToolTipText.textCanal);
-        deconvOptions.setToolTipText(ToolTipText.textMethod);
 
         dxy.setToolTipText(ToolTipText.doubleDxy);
         dz.setToolTipText(ToolTipText.doubleDz);
@@ -612,32 +610,26 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     }
 
     public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
-        if (deconvOptions.getValue() == deconvStringOptions[0]) { //Total variation
-            if (tvDec != null &&  restart.getValue()) {
-                tvDec.setResult(tvDec.getResult());
-            } else {
-                tvDec = new TotalVariationJobForIcy(token);
-                tvDec.setResult(null);
-                tvDec.setAbsoluteTolerance(0.0);
-                tvDec.setWeight(weight);
-                tvDec.setData(imgArray);
-                tvDec.setPsf(psfArray);
-                tvDec.setViewer(new tvViewer());
-                thread.setJob(tvDec);
-            }
-            tvDec.setPositivity(positivity.getValue());
-            tvDec.setRegularizationWeight(mu.getValue());
-            tvDec.setRegularizationThreshold(epsilon.getValue());
-            tvDec.setRelativeTolerance(grtol.getValue());
-            tvDec.setMaximumIterations((int)nbIteration.getValue());
-            tvDec.setOutputShape(shape);
-            token.start();
-            setResult(tvDec);
-        } else if (deconvOptions.getValue() == deconvStringOptions[1]) { //tichonov
-            System.out.println("Ticho ON");
+        if (tvDec != null &&  restart.getValue()) {
+            tvDec.setResult(tvDec.getResult());
         } else {
-            throwError("Unknow deconvolution option");
+            tvDec = new TotalVariationJobForIcy(token);
+            tvDec.setResult(null);
+            tvDec.setAbsoluteTolerance(0.0);
+            tvDec.setWeight(weight);
+            tvDec.setData(imgArray);
+            tvDec.setPsf(psfArray);
+            tvDec.setViewer(new tvViewer());
+            thread.setJob(tvDec);
         }
+        tvDec.setPositivity(positivity.getValue());
+        tvDec.setRegularizationWeight(mu.getValue());
+        tvDec.setRegularizationThreshold(epsilon.getValue());
+        tvDec.setRelativeTolerance(grtol.getValue());
+        tvDec.setMaximumIterations((int)nbIteration.getValue());
+        tvDec.setOutputShape(shape);
+        token.start();
+        setResult(tvDec);
     }
 
     @Override
@@ -662,7 +654,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 System.out.println("Noise: "+noise.getValue());
                 System.out.println("deadPix: "+deadPixel.getValue());
                 System.out.println("--------------DECONV------------------");
-                System.out.println("Methode: "+deconvOptions.getValue());   //Used
                 System.out.println("zeroPad: "+zeroPadding.getValue());
                 System.out.println("nbIter: "+nbIteration.getValue());
                 System.out.println("Restart: "+restart.getValue());
@@ -889,6 +880,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             }
             sequence.endUpdate();
             sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
+            update();
         } catch (NullPointerException e) {
             //Here in case of brutal stop the sequence can become null but it's not important as it's an emergency stop
             //So we do nothing
@@ -1007,23 +999,25 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         OMEXMLMetadata metDat = seq.getMetadata();
         if (meta == null) {
             meta = new myMetaData();
-            meta.dxy     = metDat.getPixelsPhysicalSizeX(0).getValue().doubleValue()*1E3;  //FIXME In doubt I suppose it will give the size in umeters
-            meta.dz      = metDat.getPixelsPhysicalSizeZ(0).getValue().doubleValue()*1E3;  //FIXME In doubt I suppose it will give the size in umeters
             if (metDat.getInstrumentCount() > 0) {
-                meta.na      = metDat.getObjectiveLensNA(0, 0);
-                meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E9;  //FIXME In doubt I suppose it will give the size in meters
-                //data.ni      = metDat.getObjectiveImmersion(0, 0).getValue().doubleValue(); //STRANGE why a string
+                try {
+                    meta.na      = metDat.getObjectiveLensNA(0, 0);
+                    meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E9;  //FIXME In doubt I suppose it will give the size in meters
+                    //data.ni      = metDat.getObjectiveImmersion(0, 0).getValue().doubleValue(); //STRANGE why a string
+                } catch(Exception e){
+                    System.out.println("Failed to get some metadatas, will use default values for na, lambda");
+                }
+            } else {
                 if (debug && verbose) {
                     System.out.println("INFO: Metadata: No instrument so no metadata.");
                 }
-            } 
+            }
         }
         //If no instrument found, at least we have the right image size
         meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
         meta.nz      = seq.getSizeZ();
-        //We keep the existing values for n(xyz) and d(xyz)
-        meta.dxy     = dxy.getValue()*1E9;  
-        meta.dz      = dz.getValue()*1E9;
+        meta.dxy     = seq.getPixelSizeX()*1000;
+        meta.dz      = seq.getPixelSizeZ()*1000;
         meta.na      = na.getValue();
         meta.lambda  = lambda.getValue(false);
         meta.ni      = ni.getValue();

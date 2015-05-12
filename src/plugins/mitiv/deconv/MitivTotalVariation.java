@@ -268,10 +268,10 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
                 }
                 //if the user does not give data with same dimensions : no 3d and 2d at same time.
                 if (sequenceImg.getValue().getSizeZ() == 1 && sequencePsf.getValue().getSizeZ() > 1 ||
-                		sequenceImg.getValue().getSizeZ() > 1 && sequencePsf.getValue().getSizeZ() == 1) {
+                        sequenceImg.getValue().getSizeZ() > 1 && sequencePsf.getValue().getSizeZ() == 1) {
                     message("The psf and the image should have the same number of dimensions");
                 }
-              //if the user give data in 4D
+                //if the user give data in 4D
                 if (sequenceImg.getValue().getSizeT() > 1 || sequencePsf.getValue().getSizeT() > 1) {
                     message("Sorry we do not support 4D data for now");
                 }
@@ -439,12 +439,12 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
     //Copy the metadata from the input image to the output image
     //In the future if we want to change metadata should be here
     private void updateMetaData(Sequence seq) {
-    	Sequence imageIn = sequenceImg.getValue();
+        Sequence imageIn = sequenceImg.getValue();
         OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(imageIn.getMetadata());
         //newMetdat.setImageDescription("MyDescription", 0);
         seq.setMetaData(newMetdat);
     }
-    
+
     //The function called by the viewer, here we take care of printing the result in headless mode (protocol) or not
     private void setResult(){
         if (sequence == null || computeNew == true) {
@@ -458,16 +458,19 @@ public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, S
             updateMetaData(sequence);
             computeNew = false;
         }
-        sequence.beginUpdate();
-        double[] in = tvDec.getResult().toDouble().flatten();
-        for (int j = 0; j < sizeZ; j++) {
-            double[] temp = new double[width*height];
-            for (int i = 0; i < width*height; i++) {
-                temp[i] = in[i+j*width*height];
+        try {
+            sequence.beginUpdate();
+            double[] in = tvDec.getResult().toDouble().flatten();
+            for (int j = 0; j < sizeZ; j++) {
+                double[] temp = new double[width*height];
+                for (int i = 0; i < width*height; i++) {
+                    temp[i] = in[i+j*width*height];
+                }
+                sequence.setImage(0,j, new IcyBufferedImage(width, height, temp));
             }
-            sequence.setImage(0,j, new IcyBufferedImage(width, height, temp));
+        } finally {
+            sequence.endUpdate();
         }
-        sequence.endUpdate();
         sequence.setName("TV mu="+mu+" Epsilon="+epsilon+" Iteration="+tvDec.getIterations()+" grToll= "+tvDec.getRelativeTolerance());
     }
 
