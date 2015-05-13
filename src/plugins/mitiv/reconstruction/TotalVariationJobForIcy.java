@@ -25,6 +25,7 @@
 
 package plugins.mitiv.reconstruction;
 
+import icy.sequence.Sequence;
 import mitiv.array.ArrayFactory;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
@@ -54,7 +55,6 @@ import mitiv.optim.SimpleUpperBound;
 import mitiv.optim.VMLMB;
 import mitiv.utils.Timer;
 import mitiv.utils.reconstruction.ReconstructionThreadToken;
-import icy.sequence.Sequence;
 
 public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements ReconstructionJob {
     /*****************************************************************************************/
@@ -120,6 +120,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
     public void setPsf(DoubleArray psf) {
         this.psf = psf;
     }
+    @Override
     public ShapedArray getResult() {
         /* Nothing else to do because the actual result is in a vector
          * which shares the contents of the ShapedArray.  Otherwise,
@@ -172,7 +173,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
     /********************************************************************************************************************************/
 
     /**
-     * 
+     *
      * @param sequence
      * @param token
      */
@@ -188,6 +189,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         throw new IllegalArgumentException(reason);
     }
 
+    @Override
     public void run() {
 
         //INIT
@@ -314,7 +316,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
             vmlmb.setAbsoluteTolerance(gatol);
             vmlmb.setRelativeTolerance(grtol);
             minimizer = vmlmb;
-            projector.projectGradient(x, x);
+            projector.projectVariables(x);
         }
         timer.stop();
         timer.reset();
@@ -384,7 +386,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
     public double getLowerBound() {
         return lowerBound;
     }
-    
+
     @Override
     public double getGradientNorm1() {
         return (gcost == null ? 0.0 : gcost.norm1());
