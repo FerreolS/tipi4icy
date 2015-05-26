@@ -230,12 +230,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private myComboBox image, canalImage, psf, weightsMethod, weights, deadPixel, nbAlphaCoef, nbBetaCoef;
     private myBoolean deadPixGiven, restart, positivity;
     private String[] seqList;           //Global list given to all ComboBox that should show the actual image
-    private final String[] weightOptions = new String[]{"None","Personnalized map","Variance map","Computed variance"}; 
+    private final String[] weightOptions = new String[]{"None","Inverse variance map","Variance map","Computed variance"}; 
     private final String[] nAlphaOptions = new String[]{"1","8","19","34","53","76","103","134","169"}; 
     private final String[] nBetaOptions = new String[]{"1","4","11","22","37","56","79","106","137","172"}; 
     private String[] canalImageOptions = new String[]{"None"}; 
     private myMetaData meta = null;     //The image metadata that we will move from one image to another
-    private JButton psfShow, psfShow2, showModulus, showPhase;
+    private JButton showPSF, psfShow2, showWeight, showModulus, showPhase;
 
     private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob; 
     private boolean canRunBdec = true;      //In the case where a psf is given we will not allow to run bdec
@@ -395,7 +395,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         psfPannel.add((nz = createDouble(     "<html><pre>Nz:        </pre></html>", 128)));
         psfPannel.add((dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 64.5, 1E-9)));
         psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160, 1E-9)));
-        psfPannel.add((psfShow = new JButton("Show PSF")));
+        psfPannel.add((showPSF = new JButton("Show PSF")));
 
         psf.addActionListener(new ActionListener() {
             @Override
@@ -408,11 +408,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 nz.setVisible(canRunBdec);
                 dxy.setVisible(canRunBdec);
                 dz.setVisible(canRunBdec);
-                psfShow.setVisible(canRunBdec);
+                showPSF.setVisible(canRunBdec);
             }
         });
 
-        psfShow.addActionListener(new ActionListener() {
+        showPSF.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 // Show the initial PSF
@@ -425,7 +425,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
         //Creation of IMAGE TAB
         psfGlob.add(psfPannel, BorderLayout.NORTH);
-        tabbedPane.addTab("PSF", null, psfGlob, "Choice of the PSF, visuakization of theoritical PSF");
+        tabbedPane.addTab("PSF", null, psfGlob, "Choice of the PSF, visualization of theoritical PSF");
 
         /****************************************************/
         /**                 VARIANCE TAB                   **/
@@ -436,8 +436,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         varianceTab.setLayout(new BoxLayout(varianceTab, BoxLayout.Y_AXIS));
         varianceTab.add((weightsMethod = createChoiceList(  "<html><pre> Weighting:     </pre></html>", weightOptions)));
         varianceTab.add((weights = createChoiceList(        "<html><pre> Map:     </pre></html>", seqList)));
-        varianceTab.add((gain = createDouble(               "<html><pre>Gain:             </pre></html>", 0.0)));
-        varianceTab.add((noise = createDouble(              "<html><pre>Readout Noise:    </pre></html>", 0.0)));
+        varianceTab.add((gain = createDouble(               "<html><pre>Gain:             </pre></html>", 1.0)));
+        varianceTab.add((noise = createDouble(              "<html><pre>Readout Noise:    </pre></html>", 1.0)));
         varianceTab.add((deadPixGiven = new myBoolean(      "<html><pre>Dead Pixel Map ?  </pre></html>", false)));
         varianceTab.add((deadPixel = createChoiceList(      "<html><pre>Map: </pre></html>", seqList)));
 
@@ -473,6 +473,18 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         gain.setVisible(false);
         noise.setVisible(false);
         deadPixel.setVisible(false);
+        varianceTab.add((showWeight = new JButton("Show weight map")));	
+        
+        showWeight.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Show the initial PSF
+                showWeightClicked();
+                if (debug) {
+                    System.out.println("Weight compute");
+                }
+            }
+        });
         //Creation of VARIANCE TAB
         varianceGlob.add(varianceTab, BorderLayout.NORTH);
         tabbedPane.addTab("Variance", null, varianceGlob, "Selecting the weights, the variance and the dead pixels");
@@ -486,7 +498,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
         deconvTab.add((mu = new myDouble(               "<html><pre>Regularization level:             </pre></html>", 5E-4)));
         deconvTab.add((epsilon = new myDouble(          "<html><pre>Threshold level:                  </pre></html>", 1E-2)));
-        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-2)));
+        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-4)));
         deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
         deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
         deconvTab.add((positivity = new myBoolean(      "<html><pre>Enforce nonnegativity:            </pre></html>", false)));
@@ -506,9 +518,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
         bdecTab.add((nbAlphaCoef = createChoiceList("<html><pre>N\u03B1:                          </pre></html>", nAlphaOptions)));
         bdecTab.add((nbBetaCoef = createChoiceList( "<html><pre>N\u03B2:                          </pre></html>", nBetaOptions)));
-        bdecTab.add((grtolDefocus = new myDouble(   "<html><pre>Grtol defocus:               </pre></html>", 0.1)));
-        bdecTab.add((grtolPhase = new myDouble(     "<html><pre>Grtol phase:                 </pre></html>", 0.1)));
-        bdecTab.add((grtolModulus = new myDouble(   "<html><pre>Grtol modulus:               </pre></html>", 0.1)));
+        bdecTab.add((grtolDefocus = new myDouble(   "<html><pre>Grtol defocus:               </pre></html>", 0.001)));
+        bdecTab.add((grtolPhase = new myDouble(     "<html><pre>Grtol phase:                 </pre></html>", 0.001)));
+        bdecTab.add((grtolModulus = new myDouble(   "<html><pre>Grtol modulus:               </pre></html>", 0.001)));
         bdecTab.add((bDecTotalIteration = new myDouble("<html><pre>Number of total iterations:  </pre></html>", 2)));
         bdecTab.add((psfShow2 = new JButton(        "Show PSF"))); //Already created in psf tab
         bdecTab.add((showPhase = new JButton(       "Show phase of the pupil")));
@@ -700,7 +712,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
             DoubleArray imgArray, psfArray;
             if (zeroPadding.getValue() < 0.0) {
-                throwError("Padding value canno't be inferior to the image size");
+                throwError("Padding value cannot be inferior to the image size");
             }
             double coef = (width + zeroPadding.getValue())/width;
             boolean runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
@@ -985,6 +997,16 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         PSFEstimation.setMaximumIterations(10);         //max iter
     }
 
+    private void showWeightClicked()
+    {
+       
+    //    DoubleArray weight = createWeight(...).toDouble();
+        /* PSF0 Sequence */
+        Sequence WeightSequence = new Sequence();
+        WeightSequence.setName("Weight");
+        // To be continued
+    }
+    
     /**
      * Here we get the informations given by the users but not all.
      * In fact we trust only a few data that we know that are given by Icy.
