@@ -26,6 +26,7 @@ import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+import ome.xml.model.primitives.PositiveFloat;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.Double1D;
@@ -60,6 +61,10 @@ import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
  *
  */
 public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener, EzStoppable {
+    
+    private final double DXY_INIT_VALUE = 64.5;
+    private final double DZ_INIT_VALUE = 160;
+    
     /***************************************************/
     /**                  MyMetaData                   **/
     /***************************************************/
@@ -75,8 +80,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /***************************************************/
     public class myMetaData {
         //Just a public object with all psf values inside
-        public double dxy     = 64.5;
-        public double dz      = 160;
+        public double dxy     = DXY_INIT_VALUE;
+        public double dz      = DZ_INIT_VALUE;
         public double nxy     = 256;
         public double nz      = 128;
         public double na      = 1.4;
@@ -230,7 +235,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private myComboBox image, canalImage, psf, weightsMethod, weights, deadPixel, nbAlphaCoef, nbBetaCoef;
     private myBoolean deadPixGiven, restart, positivity;
     private String[] seqList;           //Global list given to all ComboBox that should show the actual image
-    private final String[] weightOptions = new String[]{"None","Personnalized map","Variance map","Computed variance"}; 
+    private final String[] weightOptions = new String[]{"Gain 1","Personnalized map","Variance map","Computed variance"}; 
     private final String[] nAlphaOptions = new String[]{"1","8","19","34","53","76","103","134","169"}; 
     private final String[] nBetaOptions = new String[]{"1","4","11","22","37","56","79","106","137","172"}; 
     private String[] canalImageOptions = new String[]{"None"}; 
@@ -393,8 +398,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         psfPannel.add((lambda = createDouble( "<html><pre>\u03BB(nm):     </pre></html>", 542, 1E-9)));     //Here we give the the multiplication factor, the result will be multiply by this factor
         psfPannel.add((nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 256)));
         psfPannel.add((nz = createDouble(     "<html><pre>Nz:        </pre></html>", 128)));
-        psfPannel.add((dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 64.5, 1E-9)));
-        psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160, 1E-9)));
+        psfPannel.add((dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 64.5)));
+        psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160)));
         psfPannel.add((psfShow = new JButton("Show PSF")));
 
         psf.addActionListener(new ActionListener() {
@@ -434,8 +439,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         varianceGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel varianceTab = new JPanel(false);
         varianceTab.setLayout(new BoxLayout(varianceTab, BoxLayout.Y_AXIS));
-        varianceTab.add((weightsMethod = createChoiceList(  "<html><pre> Weighting:     </pre></html>", weightOptions)));
-        varianceTab.add((weights = createChoiceList(        "<html><pre> Map:     </pre></html>", seqList)));
+        varianceTab.add((weightsMethod = createChoiceList(  "<html><pre>Weighting:      </pre></html>", weightOptions)));
+        varianceTab.add((weights = createChoiceList(        "<html><pre>Map:      </pre></html>", seqList)));
         varianceTab.add((gain = createDouble(               "<html><pre>Gain:             </pre></html>", 0.0)));
         varianceTab.add((noise = createDouble(              "<html><pre>Readout Noise:    </pre></html>", 0.0)));
         varianceTab.add((deadPixGiven = new myBoolean(      "<html><pre>Dead Pixel Map ?  </pre></html>", false)));
@@ -486,7 +491,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
         deconvTab.add((mu = new myDouble(               "<html><pre>Regularization level:             </pre></html>", 5E-4)));
         deconvTab.add((epsilon = new myDouble(          "<html><pre>Threshold level:                  </pre></html>", 1E-2)));
-        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-2)));
+        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-3)));
         deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
         deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
         deconvTab.add((positivity = new myBoolean(      "<html><pre>Enforce nonnegativity:            </pre></html>", false)));
@@ -916,8 +921,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         double ns = 0;
         double zdepth = 0;
         int use_depth_scaling = 0;
-        pupil = new MicroscopyModelPSF1D(na.getValue(), lambda.getValue(), ni.getValue(), ns, zdepth, dxy.getValue(),
-                dz.getValue(), (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue(), use_depth_scaling);
+        pupil = new MicroscopyModelPSF1D(na.getValue(), lambda.getValue(), ni.getValue(), ns, zdepth, dxy.getValue()*1E-9,
+                dz.getValue()*1E-9, (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue(), use_depth_scaling);
     }
 
     private void PSF0Clicked()
@@ -1016,11 +1021,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         //If no instrument found, at least we have the right image size
         meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
         meta.nz      = seq.getSizeZ();
-        meta.dxy     = seq.getPixelSizeX()*1000;
-        meta.dz      = seq.getPixelSizeZ()*1000;
+        meta.dxy     = dxy.getValue(); //nm             //seq.getPixelSizeX()*1000
+        meta.dz      = dz.getValue();  //nm             //seq.getPixelSizeZ()*1000
         meta.na      = na.getValue();
         meta.lambda  = lambda.getValue(false);
         meta.ni      = ni.getValue();
+        seq.getPixelSizeX();
         return meta;
     }
 
@@ -1029,6 +1035,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private void setMetaData(Sequence seqOld, Sequence seqNew) {
         OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(seqOld.getMetadata());
         //newMetdat.setImageDescription("MyDescription", 0);
+        newMetdat.setPixelsPhysicalSizeX(new PositiveFloat(dxy.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeY(new PositiveFloat(dxy.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeZ(new PositiveFloat(dz.getValue()*1E-3), 0);
         seqNew.setMetaData(newMetdat);
     }
 
