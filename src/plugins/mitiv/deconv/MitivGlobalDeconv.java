@@ -9,7 +9,6 @@ import icy.util.OMEUtil;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
@@ -17,12 +16,9 @@ import java.util.ArrayList;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -48,6 +44,10 @@ import mitiv.utils.reconstruction.ReconstructionThreadToken;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.mitiv.io.IcyBufferedImageUtils;
+import plugins.mitiv.myEzPlug.MyBoolean;
+import plugins.mitiv.myEzPlug.MyComboBox;
+import plugins.mitiv.myEzPlug.MyDouble;
+import plugins.mitiv.myEzPlug.MyMetadata;
 import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
 
 /**
@@ -61,7 +61,7 @@ import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
  */
 public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener, EzStoppable {
     /***************************************************/
-    /**                  MyMetaData                   **/
+    /**               Viewer Update result            **/
     /***************************************************/
     public class tvViewer implements ReconstructionViewer{
         @Override
@@ -71,170 +71,23 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     }
 
     /***************************************************/
-    /**                  MyMetaData                   **/
-    /***************************************************/
-    public class myMetaData {
-        //Just a public object with all psf values inside
-        public double dxy     = 64.5;
-        public double dz      = 160;
-        public double nxy     = 256;
-        public double nz      = 128;
-        public double na      = 1.4;
-        public double lambda  = 542;
-        public double ni      = 1.518;
-
-        public String toString(){
-            return new String("dxy: "+dxy+" dz: "+dz+" nxy: "+nxy+" nz: "+nz+" na "+na+" lambda "+lambda+" ni "+ni);
-        }
-    }
-
-    /***************************************************/
-    /**                  MyJcomboBox                  **/
-    /***************************************************/
-    public class myComboBox extends JPanel{
-        private static final long serialVersionUID = 1L;
-        private JLabel filler;
-        private JComboBox jcb;
-
-        myComboBox(String name, String[] inputs){
-            filler = new JLabel(name);
-            setLayout(new FlowLayout());
-            add(filler);
-            jcb = new JComboBox();
-            for (int j = 0; j < inputs.length; j++) {
-                jcb.addItem(inputs[j]);
-            }
-            add(jcb);
-        }
-
-        public void updateData(String[] newInputs){
-            for (int i = 0; i < newInputs.length; i++) {
-                jcb.removeAllItems();
-                for (int j = 0; j < newInputs.length; j++) {
-                    jcb.addItem(newInputs[j]);
-                }
-            }
-        }
-
-        public String getValue(){
-            if (jcb.getSelectedItem() == null) {
-                return "None";
-            }
-            return jcb.getSelectedItem().toString();
-        }
-
-        public void setValue(String value){
-            int size = jcb.getItemCount();
-            for (int i = 0; i < size; i++) {
-                String tmp = (String) jcb.getItemAt(i);
-                if (tmp.compareTo(value) == 0) {
-                    jcb.setSelectedIndex(i);
-                    return;
-                }
-            }
-        }
-
-        public void addActionListener(ActionListener l){
-            jcb.addActionListener(l);
-        }
-    }
-
-    /***************************************************/
-    /**                  MyDouble                     **/
-    /***************************************************/
-    public class myDouble extends JPanel{
-        private static final long serialVersionUID = 1L;
-        private JLabel filler;
-        private JTextField field;
-        private double mult;
-        public myDouble(String name, double input) {
-            this(name, input, 1.0);
-        }
-
-        //Here we give the the multiplication factor, the result will be multiply by this factor
-        public myDouble(String name, double input, double valueMult) {
-            mult = valueMult;
-            filler = new JLabel(name);
-            field = new JTextField();
-            field.setText(String.valueOf(input));
-            field.setColumns(10);
-            field.addActionListener(new ActionListener() {
-
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    try {
-                        Double.valueOf(field.getText());
-                    } catch (Exception e2) {
-                        field.setText("0.0");
-                    }
-                }
-            });
-            setLayout(new FlowLayout());
-            add(filler);
-            add(field);
-        }
-
-        public double getValue(boolean withMult){
-            if (withMult) {
-                return mult*Double.valueOf(field.getText());
-            } else {
-                return Double.valueOf(field.getText());
-            }
-        }
-
-        public double getValue(){
-            return getValue(true);
-        }
-
-        public void setValue(double value){
-            field.setText(String.valueOf(value));
-        }
-    }
-
-    /***************************************************/
-    /**                  MyBoolean                    **/
-    /***************************************************/
-    public class myBoolean extends JPanel{
-        private static final long serialVersionUID = 1L;
-        private JLabel filler;
-        private JCheckBox box;
-
-        public myBoolean(String name, boolean defaultValue) {
-            filler = new JLabel(name);
-            box = new JCheckBox();
-            box.setSelected(defaultValue);
-            setLayout(new FlowLayout());
-            add(filler);
-            add(box);
-        }
-
-        public boolean getValue(){
-            return box.isSelected();
-        }
-
-        public void addListener(ActionListener l){
-            box.addActionListener(l);
-        }
-    }
-
-    /***************************************************/
     /**                  All variables                **/
     /***************************************************/
-    private ArrayList<myComboBox> listChoiceList = new ArrayList<myComboBox>(); //Contain all the list that will be updated
-    private myDouble dxy, dz, nxy, nz, na, lambda, ni;    //PSF
+    private ArrayList<MyComboBox> listChoiceList = new ArrayList<MyComboBox>(); //Contain all the list that will be updated
+    private MyDouble dxy, dz, nxy, nz, na, lambda, ni;    //PSF
     private MicroscopyModelPSF1D pupil;
     private boolean psfInitFlag = false;
-    private myDouble mu, epsilon, grtol, nbIteration, zeroPadding;          //Deconvolution
-    private myDouble gain,noise;                          //VARIANCE
-    private myDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration;          //BDec
-    private myComboBox image, canalImage, psf, weightsMethod, weights, deadPixel, nbAlphaCoef, nbBetaCoef;
-    private myBoolean deadPixGiven, restart, positivity;
+    private MyDouble mu, epsilon, grtol, nbIteration, zeroPadding;          //Deconvolution
+    private MyDouble gain,noise;                          //VARIANCE
+    private MyDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration;          //BDec
+    private MyComboBox image, canalImage, psf, weightsMethod, weights, deadPixel, nbAlphaCoef, nbBetaCoef;
+    private MyBoolean deadPixGiven, restart, positivity;
     private String[] seqList;           //Global list given to all ComboBox that should show the actual image
     private final String[] weightOptions = new String[]{"None","Inverse variance map","Variance map","Computed variance"}; 
     private final String[] nAlphaOptions = new String[]{"1","8","19","34","53","76","103","134","169"}; 
     private final String[] nBetaOptions = new String[]{"1","4","11","22","37","56","79","106","137","172"}; 
     private String[] canalImageOptions = new String[]{"None"}; 
-    private myMetaData meta = null;     //The image metadata that we will move from one image to another
+    private MyMetadata meta = null;     //The image metadata that we will move from one image to another
     private JButton showPSF, psfShow2, showWeight, showModulus, showPhase;
 
     private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob; 
@@ -253,8 +106,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = false; //Show psf steps 
-    private boolean verbose = true;    //show some values, need debug to true
+    private boolean debug = false;      //Show psf steps 
+    private boolean verbose = true;     //show some values, need debug to true
 
     //Global variables for the algorithms
     TotalVariationJobForIcy tvDec;
@@ -265,26 +118,29 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     //Update all sequence with the new sequence remove
     private void updateAllList(){
         for (int i = 0; i < listChoiceList.size(); i++) {
-            myComboBox box = listChoiceList.get(i);
+            MyComboBox box = listChoiceList.get(i);
             String current = box.getValue();
             box.updateData(seqList);
             box.setValue(current);
         }
     }
 
+    /*********************************/
+    /**            FACTORY          **/
+    /*********************************/
     //Mini factory for ComboBox => EzVarSequences
-    private myComboBox createChoiceList(String name, String[] inputs){
-        myComboBox jcb = new myComboBox(name, inputs);
+    private MyComboBox createChoiceList(String name, String[] inputs){
+        MyComboBox jcb = new MyComboBox(name, inputs);
         return jcb;
     }
 
     //Mini factory for double panel => EzVarDouble
-    private myDouble createDouble(String name, double input){
-        return new myDouble(name, input);
+    private MyDouble createDouble(String name, double input){
+        return new MyDouble(name, input);
     }
 
-    private myDouble createDouble(String name, double input, double mult){
-        return new myDouble(name, input, mult);
+    private MyDouble createDouble(String name, double input, double mult){
+        return new MyDouble(name, input, mult);
     }
 
     //Mini Jlabel factory
@@ -295,7 +151,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         return tmp;
     }
 
-    //Get from Icy all the sequences  presents
+    /*********************************/
+    /**    Communication with Icy   **/
+    /*********************************/
+    //Get, from Icy, all the existings sequences
     private String[] getSequencesName(){
         ArrayList<Sequence> list = getSequences();
         String[] listString = new String[list.size()+1];
@@ -307,7 +166,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     }
 
     //Will convert the input String to the corresponding sequence
-    private Sequence getSequence(myComboBox box){
+    private Sequence getSequence(MyComboBox box){
         String seqName = box.getValue();
         ArrayList<Sequence> list = getSequences();
         for (Sequence sequence : list) {
@@ -317,7 +176,18 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         }
         return null;
     }
-
+    
+    // Guessing the canal
+    private int getNumCanal(Sequence imgSeq) {
+        String canalToUse = canalImage.getValue();
+        for (int ii = 0; ii < imgSeq.getSizeC(); ii++) {
+            if (canalToUse.equals(imgSeq.getChannelName(ii))) {
+                return ii;
+            }
+        }
+        return -1;
+    }
+    
     private void throwError(String s){
         throw new IllegalArgumentException(s);
     }
@@ -329,6 +199,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         }
     }
 
+    /*********************************/
+    /**      Initialization         **/
+    /*********************************/
     @Override
     protected void initialize() {
         Icy.getMainInterface().addGlobalSequenceListener(this);
@@ -371,10 +244,6 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 }
             }
         });
-
-        //Little hack to have a minimal size at startup
-        //JLabel sizeTab = new JLabel("                                                                    ");
-        //imagePan.add(sizeTab);
 
         //Creation of IMAGE TAB
         imageGlob.add(imagePan, BorderLayout.NORTH);
@@ -434,11 +303,11 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         varianceGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel varianceTab = new JPanel(false);
         varianceTab.setLayout(new BoxLayout(varianceTab, BoxLayout.Y_AXIS));
-        varianceTab.add((weightsMethod = createChoiceList(  "<html><pre> Weighting:     </pre></html>", weightOptions)));
-        varianceTab.add((weights = createChoiceList(        "<html><pre> Map:     </pre></html>", seqList)));
+        varianceTab.add((weightsMethod = createChoiceList(  "<html><pre>Weighting:      </pre></html>", weightOptions)));
+        varianceTab.add((weights = createChoiceList(        "<html><pre>Map:      </pre></html>", seqList)));
         varianceTab.add((gain = createDouble(               "<html><pre>Gain:             </pre></html>", 1.0)));
         varianceTab.add((noise = createDouble(              "<html><pre>Readout Noise:    </pre></html>", 1.0)));
-        varianceTab.add((deadPixGiven = new myBoolean(      "<html><pre>Dead Pixel Map ?  </pre></html>", false)));
+        varianceTab.add((deadPixGiven = new MyBoolean(      "<html><pre>Dead Pixel Map ?  </pre></html>", false)));
         varianceTab.add((deadPixel = createChoiceList(      "<html><pre>Map: </pre></html>", seqList)));
 
         weightsMethod.addActionListener(new ActionListener() {
@@ -496,13 +365,13 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         deconvGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel deconvTab = new JPanel(false);
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
-        deconvTab.add((mu = new myDouble(               "<html><pre>Regularization level:             </pre></html>", 5E-4)));
-        deconvTab.add((epsilon = new myDouble(          "<html><pre>Threshold level:                  </pre></html>", 1E-2)));
-        deconvTab.add((grtol = new myDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-4)));
-        deconvTab.add((zeroPadding = new myDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
-        deconvTab.add((nbIteration = new myDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
-        deconvTab.add((positivity = new myBoolean(      "<html><pre>Enforce nonnegativity:            </pre></html>", false)));
-        deconvTab.add((restart = new myBoolean(         "<html><pre>Start from last result:           </pre></html>", false)));
+        deconvTab.add((mu = new MyDouble(               "<html><pre>Regularization level:             </pre></html>", 5E-4)));
+        deconvTab.add((epsilon = new MyDouble(          "<html><pre>Threshold level:                  </pre></html>", 1E-2)));
+        deconvTab.add((grtol = new MyDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-4)));
+        deconvTab.add((zeroPadding = new MyDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
+        deconvTab.add((nbIteration = new MyDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
+        deconvTab.add((positivity = new MyBoolean(      "<html><pre>Enforce nonnegativity:            </pre></html>", false)));
+        deconvTab.add((restart = new MyBoolean(         "<html><pre>Start from last result:           </pre></html>", false)));
 
         //Creation of DECONVOLUTION TAB
         deconvGlob.add(deconvTab, BorderLayout.NORTH);
@@ -518,10 +387,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
         bdecTab.add((nbAlphaCoef = createChoiceList("<html><pre>N\u03B1:                          </pre></html>", nAlphaOptions)));
         bdecTab.add((nbBetaCoef = createChoiceList( "<html><pre>N\u03B2:                          </pre></html>", nBetaOptions)));
-        bdecTab.add((grtolDefocus = new myDouble(   "<html><pre>Grtol defocus:               </pre></html>", 0.001)));
-        bdecTab.add((grtolPhase = new myDouble(     "<html><pre>Grtol phase:                 </pre></html>", 0.001)));
-        bdecTab.add((grtolModulus = new myDouble(   "<html><pre>Grtol modulus:               </pre></html>", 0.001)));
-        bdecTab.add((bDecTotalIteration = new myDouble("<html><pre>Number of total iterations:  </pre></html>", 2)));
+        bdecTab.add((grtolDefocus = new MyDouble(   "<html><pre>Grtol defocus:               </pre></html>", 0.001)));
+        bdecTab.add((grtolPhase = new MyDouble(     "<html><pre>Grtol phase:                 </pre></html>", 0.001)));
+        bdecTab.add((grtolModulus = new MyDouble(   "<html><pre>Grtol modulus:               </pre></html>", 0.001)));
+        bdecTab.add((bDecTotalIteration = new MyDouble("<html><pre>Number of total iterations:  </pre></html>", 2)));
         bdecTab.add((psfShow2 = new JButton(        "Show PSF"))); //Already created in psf tab
         bdecTab.add((showPhase = new JButton(       "Show phase of the pupil")));
         bdecTab.add((showModulus = new JButton(     "Show modulus of the pupil")));
@@ -701,14 +570,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
                 shape = Shape.make(width, height, sizeZ);
             }
 
-            // Guessing the canal
-            String canalToUse = canalImage.getValue();
-            int numCanal = -1;
-            for (int ii = 0; ii < imgSeq.getSizeC(); ii++) {
-                if (canalToUse.equals(imgSeq.getChannelName(ii))) {
-                    numCanal = ii;
-                }
-            }
+            int numCanal = getNumCanal(imgSeq);
 
             DoubleArray imgArray, psfArray;
             if (zeroPadding.getValue() < 0.0) {
@@ -1002,8 +864,27 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
        
     //    DoubleArray weight = createWeight(...).toDouble();
         /* PSF0 Sequence */
-        Sequence WeightSequence = new Sequence();
-        WeightSequence.setName("Weight");
+
+        Sequence img = getSequence(image);
+        if (img == null) {
+            new AnnounceFrame("No image was chosen");
+            return;
+        }
+        Shape myShape; 
+        if (img.getSizeZ() == 1) { //2D
+            myShape = Shape.make(img.getSizeX(), img.getSizeY());
+        } else {    //3D
+            myShape = Shape.make(img.getSizeX(), img.getSizeY(), img.getSizeZ());
+        }
+        width = img.getSizeX();
+        height = img.getSizeY();
+        sizeZ = img.getSizeZ();
+        
+        int numCanal = getNumCanal(img);
+        DoubleArray input = (DoubleArray) IcyBufferedImageUtils.imageToArray(img, myShape, numCanal);
+        double[] inputData = createWeight(input).toDouble().flatten();
+        Sequence WeightSequence = IcyBufferedImageUtils.arrayToSequence(inputData, false, img.getSizeX(), img.getSizeY(), img.getSizeZ());
+        addSequence(WeightSequence);
         // To be continued
     }
     
@@ -1017,10 +898,10 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
      * @param seq
      * @return
      */
-    private myMetaData getMetaData(Sequence seq){
+    private MyMetadata getMetaData(Sequence seq){
         OMEXMLMetadata metDat = seq.getMetadata();
         if (meta == null) {
-            meta = new myMetaData();
+            meta = new MyMetadata();
             if (metDat.getInstrumentCount() > 0) {
                 try {
                     meta.na      = metDat.getObjectiveLensNA(0, 0);
@@ -1056,7 +937,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     /**
      * This function update all the names of the available sequences contains 
-     * in the myComboBox AND that have been added to the update list
+     * in the MyComboBox AND that have been added to the update list
      */
     private void update(){
         seqList = getSequencesName();
