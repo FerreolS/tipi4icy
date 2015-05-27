@@ -22,6 +22,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+import ome.xml.model.primitives.PositiveFloat;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.Double1D;
@@ -176,7 +177,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         }
         return null;
     }
-    
+
     // Guessing the canal
     private int getNumCanal(Sequence imgSeq) {
         String canalToUse = canalImage.getValue();
@@ -187,7 +188,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         }
         return -1;
     }
-    
+
     private void throwError(String s){
         throw new IllegalArgumentException(s);
     }
@@ -262,8 +263,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         psfPannel.add((lambda = createDouble( "<html><pre>\u03BB(nm):     </pre></html>", 542, 1E-9)));     //Here we give the the multiplication factor, the result will be multiply by this factor
         psfPannel.add((nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 256)));
         psfPannel.add((nz = createDouble(     "<html><pre>Nz:        </pre></html>", 128)));
-        psfPannel.add((dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 64.5, 1E-9)));
-        psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160, 1E-9)));
+        psfPannel.add((dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 64.5)));
+        psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160)));
         psfPannel.add((showPSF = new JButton("Show PSF")));
 
         psf.addActionListener(new ActionListener() {
@@ -343,7 +344,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         noise.setVisible(false);
         deadPixel.setVisible(false);
         varianceTab.add((showWeight = new JButton("Show weight map")));	
-        
+
         showWeight.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -790,8 +791,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         double ns = 0;
         double zdepth = 0;
         int use_depth_scaling = 0;
-        pupil = new MicroscopyModelPSF1D(na.getValue(), lambda.getValue(), ni.getValue(), ns, zdepth, dxy.getValue(),
-                dz.getValue(), (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue(), use_depth_scaling);
+        pupil = new MicroscopyModelPSF1D(na.getValue(), lambda.getValue(), ni.getValue(), ns, zdepth, dxy.getValue()*1E-9,
+                dz.getValue()*1E-9, (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue(), use_depth_scaling);
     }
 
     private void PSF0Clicked()
@@ -861,8 +862,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
 
     private void showWeightClicked()
     {
-       
-    //    DoubleArray weight = createWeight(...).toDouble();
+
+        //    DoubleArray weight = createWeight(...).toDouble();
         /* PSF0 Sequence */
 
         Sequence img = getSequence(image);
@@ -879,7 +880,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         width = img.getSizeX();
         height = img.getSizeY();
         sizeZ = img.getSizeZ();
-        
+
         int numCanal = getNumCanal(img);
         DoubleArray input = (DoubleArray) IcyBufferedImageUtils.imageToArray(img, myShape, numCanal);
         double[] inputData = createWeight(input).toDouble().flatten();
@@ -887,7 +888,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         addSequence(WeightSequence);
         // To be continued
     }
-    
+
     /**
      * Here we get the informations given by the users but not all.
      * In fact we trust only a few data that we know that are given by Icy.
@@ -919,8 +920,8 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         //If no instrument found, at least we have the right image size
         meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
         meta.nz      = seq.getSizeZ();
-        meta.dxy     = seq.getPixelSizeX()*1000;
-        meta.dz      = seq.getPixelSizeZ()*1000;
+        meta.dxy     = seq.getPixelSizeX()*1E3;
+        meta.dz      = seq.getPixelSizeZ()*1E3;
         meta.na      = na.getValue();
         meta.lambda  = lambda.getValue(false);
         meta.ni      = ni.getValue();
@@ -932,6 +933,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private void setMetaData(Sequence seqOld, Sequence seqNew) {
         OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(seqOld.getMetadata());
         //newMetdat.setImageDescription("MyDescription", 0);
+        newMetdat.setPixelsPhysicalSizeX(new PositiveFloat(dxy.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeY(new PositiveFloat(dxy.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeZ(new PositiveFloat(dz.getValue()*1E-3), 0);
         seqNew.setMetaData(newMetdat);
     }
 
