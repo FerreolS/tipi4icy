@@ -13,6 +13,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -90,8 +91,9 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private String[] canalImageOptions = new String[]{"None"}; 
     private MyMetadata meta = null;     //The image metadata that we will move from one image to another
     private JButton showPSF, psfShow2, showWeight, showModulus, showPhase;
+    private JLabel resultCostData, resultCostPrior, resultDephoc, resultPhase, resultModulus;
 
-    private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob; 
+    private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob, resultGlob; 
     private boolean canRunBdec = true;      //In the case where a psf is given we will not allow to run bdec
     private JTabbedPane tabbedPane;
 
@@ -431,6 +433,25 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         tabbedPane.addTab("BDec", null, bdecGlob,    "All the options for the blind deconvolution");
 
         /****************************************************/
+        /**                    RESULT TAB                  **/
+        /****************************************************/
+        //Creation of the inside of BDec TAB
+        String empty = "                    ";
+        resultGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
+        JPanel resultTab = new JPanel(false);
+        resultTab.setLayout(new BoxLayout(resultTab, BoxLayout.Y_AXIS));
+        resultTab.add((resultCostData = new JLabel(     "<html><pre>"+empty+"No results yet   </pre></html>")));
+        resultTab.add((resultCostPrior = new JLabel(    "<html><pre>"+empty+"No results yet   </pre></html>")));
+        resultTab.add((resultDephoc = new JLabel(       "<html><pre>"+empty+"No results yet   </pre></html>")));
+        if (debug) {
+            resultTab.add((resultModulus = new JLabel(      "<html><pre>"+empty+"No results yet   </pre></html>")));
+            resultTab.add((resultPhase = new JLabel(        "<html><pre>"+empty+"No results yet   </pre></html>")));
+        }
+
+        resultGlob.add(resultTab, BorderLayout.NORTH);
+        tabbedPane.addTab("Results", null, resultGlob,    "Results of the deconvolution");
+
+        /****************************************************/
         /**                      ToolTips                  **/
         /****************************************************/
         image.setToolTipText(ToolTipText.sequenceImage);
@@ -739,6 +760,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
      */
     private void setResult(ReconstructionJob tvDec){
         try{
+            //Here we will update the sequence
             if (sequence == null || (sequence != null && sequence.isEmpty())) {
                 sequence = new Sequence();
                 setMetaData(getSequence(image), sequence);
@@ -756,6 +778,15 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             sequence.endUpdate();
             sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
             update();
+            //Then we will update the result tab pannel
+            String empty = "      ";
+            resultCostData.setText( "<html><pre>"+empty+"FCostData  "+tvDec.getCost()                       +"</pre></html>");
+            resultCostPrior.setText("<html><pre>"+empty+"FCostPrior "+tvDec.getCost()                       +"</pre></html>");
+            resultDephoc.setText(   "<html><pre>"+empty+"Dephocus   "+Arrays.toString(pupil.getDefocus())   +"</pre></html>");
+            if (debug) {
+                resultModulus.setText(  "<html><pre>"+empty+"Modulus    "+pupil.getRho()[0]                     +"</pre></html>");
+                resultPhase.setText(    "<html><pre>"+empty+"Phase      "+pupil.getPhi()[0]                     +"</pre></html>");
+            }
         } catch (NullPointerException e) {
             //Here in case of brutal stop the sequence can become null but it's not important as it's an emergency stop
             //So we do nothing
@@ -906,8 +937,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             if (metDat.getInstrumentCount() > 0) {
                 try {
                     meta.na      = metDat.getObjectiveLensNA(0, 0);
-                    meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E9;  //FIXME In doubt I suppose it will give the size in meters
-                    //data.ni      = metDat.getObjectiveImmersion(0, 0).getValue().doubleValue(); //STRANGE why a string
+                    meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
                 } catch(Exception e){
                     System.out.println("Failed to get some metadatas, will use default values for na, lambda");
                 }
