@@ -85,7 +85,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
     private MyComboBox image, canalImage, psf, weightsMethod, weights, deadPixel, nbAlphaCoef, nbBetaCoef;
     private MyBoolean deadPixGiven, restart, positivity;
     private String[] seqList;           //Global list given to all ComboBox that should show the actual image
-    private final String[] weightOptions = new String[]{"None","Inverse variance map","Variance map","Computed variance"}; 
+    private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"}; 
     private final String[] nAlphaOptions = new String[]{"1","8","19","34","53","76","103","134","169"}; 
     private final String[] nBetaOptions = new String[]{"1","4","11","22","37","56","79","106","137","172"}; 
     private String[] canalImageOptions = new String[]{"None"}; 
@@ -388,12 +388,12 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
         bdecGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel bdecTab = new JPanel(false);
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
-        bdecTab.add((nbAlphaCoef = createChoiceList("<html><pre>N\u03B1:                          </pre></html>", nAlphaOptions)));
-        bdecTab.add((nbBetaCoef = createChoiceList( "<html><pre>N\u03B2:                          </pre></html>", nBetaOptions)));
-        bdecTab.add((grtolDefocus = new MyDouble(   "<html><pre>Grtol defocus:               </pre></html>", 0.001)));
-        bdecTab.add((grtolPhase = new MyDouble(     "<html><pre>Grtol phase:                 </pre></html>", 0.001)));
-        bdecTab.add((grtolModulus = new MyDouble(   "<html><pre>Grtol modulus:               </pre></html>", 0.001)));
-        bdecTab.add((bDecTotalIteration = new MyDouble("<html><pre>Number of total iterations:  </pre></html>", 2)));
+        bdecTab.add((nbAlphaCoef = createChoiceList(    "<html><pre>N\u03B1:                          </pre></html>", nAlphaOptions)));
+        bdecTab.add((nbBetaCoef = createChoiceList(     "<html><pre>N\u03B2:                          </pre></html>", nBetaOptions)));
+        bdecTab.add((grtolDefocus = new MyDouble(       "<html><pre>Grtol defocus:               </pre></html>", 0.001)));
+        bdecTab.add((grtolPhase = new MyDouble(         "<html><pre>Grtol phase:                 </pre></html>", 0.001)));
+        bdecTab.add((grtolModulus = new MyDouble(       "<html><pre>Grtol modulus:               </pre></html>", 0.001)));
+        bdecTab.add((bDecTotalIteration = new MyDouble( "<html><pre>Number of loops:             </pre></html>", 2)));
         bdecTab.add((psfShow2 = new JButton(        "Show PSF"))); //Already created in psf tab
         bdecTab.add((showPhase = new JButton(       "Show phase of the pupil")));
         bdecTab.add((showModulus = new JButton(     "Show modulus of the pupil")));
@@ -782,7 +782,7 @@ public class MitivGlobalDeconv extends EzPlug implements GlobalSequenceListener,
             String empty = "      ";
             resultCostData.setText( "<html><pre>"+empty+"FCostData  "+tvDec.getCost()                       +"</pre></html>");
             resultCostPrior.setText("<html><pre>"+empty+"FCostPrior "+tvDec.getCost()                       +"</pre></html>");
-            resultDephoc.setText(   "<html><pre>"+empty+"Dephocus   "+Arrays.toString(pupil.getDefocus())   +"</pre></html>");
+            resultDephoc.setText(   "<html><pre>"+empty+"Dephocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())   +"</pre></html>");
             if (debug) {
                 resultModulus.setText(  "<html><pre>"+empty+"Modulus    "+pupil.getRho()[0]                     +"</pre></html>");
                 resultPhase.setText(    "<html><pre>"+empty+"Phase      "+pupil.getPhi()[0]                     +"</pre></html>");
