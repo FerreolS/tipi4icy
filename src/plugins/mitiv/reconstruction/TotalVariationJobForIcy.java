@@ -42,6 +42,7 @@ import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.linalg.shaped.ShapedLinearOperator;
 import mitiv.optim.ArmijoLineSearch;
+import mitiv.optim.BLMVM;
 import mitiv.optim.BoundProjector;
 import mitiv.optim.LBFGS;
 import mitiv.optim.LineSearch;
@@ -274,6 +275,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         LineSearch lineSearch = null;
         LBFGS lbfgs = null;
         VMLMB vmlmb = null;
+        BLMVM blmvm = null;
         NonLinearConjugateGradient nlcg = null;
         BoundProjector projector = null;
         int bounded = 0;
@@ -312,10 +314,14 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
                 projector = new SimpleBounds(resultSpace, lowerBound, upperBound);
             }
             int m = (limitedMemorySize > 1 ? limitedMemorySize : 5);
-            vmlmb = new VMLMB(resultSpace, projector, m, lineSearch);
-            vmlmb.setAbsoluteTolerance(gatol);
-            vmlmb.setRelativeTolerance(grtol);
-            minimizer = vmlmb;
+            //vmlmb = new VMLMB(resultSpace, projector, m, lineSearch);
+            //vmlmb.setAbsoluteTolerance(gatol);
+            //vmlmb.setRelativeTolerance(grtol);
+            //minimizer = vmlmb;
+            blmvm = new BLMVM(resultSpace, projector, m);
+            blmvm.setAbsoluteTolerance(gatol);
+            blmvm.setRelativeTolerance(grtol);
+            minimizer = blmvm;
             projector.projectVariables(x);
         }
         timer.stop();
