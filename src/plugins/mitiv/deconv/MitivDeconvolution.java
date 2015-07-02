@@ -64,7 +64,7 @@ import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
  * @author light
  *
  */
-public class MitivTotalVariation extends EzPlug implements Block, EzStoppable, SequenceListener, EzVarListener<String> {
+public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, SequenceListener, EzVarListener<String> {
 
     /****************************************************/
     /**                 VIEWER UPDATE                  **/

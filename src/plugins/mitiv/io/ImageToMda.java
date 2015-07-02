@@ -80,7 +80,6 @@ public class ImageToMda extends EzPlug{
                 if (newValue != null && text.getValue() != null) {
                     text.setValue(new File(newValue.getFilename()+".mda"));
                 }
-
             }
         });
     }

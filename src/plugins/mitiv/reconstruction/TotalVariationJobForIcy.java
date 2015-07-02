@@ -302,7 +302,6 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
             }
         } else {
             /* Some bounds have been specified. */
-            lineSearch = new ArmijoLineSearch(0.5, 1e-4);
             if (bounded == 1) {
                 /* Only a lower bound has been specified. */
                 projector = new SimpleLowerBound(resultSpace, lowerBound);
