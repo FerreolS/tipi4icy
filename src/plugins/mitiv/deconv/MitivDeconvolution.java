@@ -103,33 +103,33 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
     private ReconstructionThreadToken token;
     ReconstructionThread thread;
 
-    private EzVarSequence sequencePsf = new EzVarSequence("Input PSF");
-    private EzVarSequence sequenceImg = new EzVarSequence("Input Image");
-    private EzVarSequence output = new EzVarSequence("Output"); //In headLess mode only
+    private EzVarSequence sequencePsf;
+    private EzVarSequence sequenceImg;
+    private EzVarSequence output;
     //private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted?", psfSplitted);
-    private EzVarDouble eZmu = new EzVarDouble("Regularization level", 0, Double.MAX_VALUE, 0.1);
-    private EzVarDouble eZepsilon = new EzVarDouble("Threshold level", 0, Double.MAX_VALUE, 1);
-    private EzVarDouble eZgrtol = new EzVarDouble("grtol", 0, 1, 0.1);
-    private EzVarInteger eZcoef = new EzVarInteger("Number of lines to add (padding)", 1, 10000, 1);
-    private EzVarInteger eZmaxIter = new EzVarInteger("Max Iterations", -1, Integer.MAX_VALUE, 1);
-    private EzVarBoolean eZpositivity = new EzVarBoolean("Enforce nonnegativity", false);
-    private EzVarBoolean eZrestart = new EzVarBoolean("Restart with previous result", false);
+    private EzVarDouble eZmu;
+    private EzVarDouble eZepsilon;
+    private EzVarDouble eZgrtol;
+    private EzVarInteger eZcoef;
+    private EzVarInteger eZmaxIter;
+    private EzVarBoolean eZpositivity;
+    private EzVarBoolean eZrestart;
 
-    private String weightOption1 = new String("None");
-    private String weightOption2 = new String("Personnalized weightMap");
-    private String weightOption3 = new String("Variance map");
-    private String weightOption4 = new String("Computed Variance");
+    private String weightOption1;
+    private String weightOption2;
+    private String weightOption3;
+    private String weightOption4;
 
-    private EzVarText options = new EzVarText("Options", new String[] { weightOption1, weightOption2, weightOption3, weightOption4}, 0, false);
-    private EzVarSequence weightMap = new EzVarSequence("Weight Map");
-    private EzVarSequence varianceMap = new EzVarSequence("Variance Map");
-    private EzVarBoolean showPixMap = new EzVarBoolean("Pixel Map ?", false);
-    private EzVarSequence deadPixel = new EzVarSequence("Dead pixel map");
-    private EzVarDouble alpha = new EzVarDouble("Gain e-/lvl");
-    private EzVarDouble beta = new EzVarDouble("Readout noise e-/pxl");
-    private EzGroup groupRegularization = new EzGroup("Regularization", eZmu, eZepsilon);
-    private EzGroup groupWeighting = new EzGroup("Weighting", options, weightMap, varianceMap, alpha, beta, showPixMap, deadPixel);
-    private EzGroup groupConvergence = new EzGroup("Convergence settings", eZgrtol, eZmaxIter);
+    private EzVarText options;
+    private EzVarSequence weightMap;
+    private EzVarSequence varianceMap;
+    private EzVarBoolean showPixMap;
+    private EzVarSequence deadPixel;
+    private EzVarDouble alpha;
+    private EzVarDouble beta;
+    private EzGroup groupRegularization;
+    private EzGroup groupWeighting;
+    private EzGroup groupConvergence;
 
     IcyBufferedImage img;
     IcyBufferedImage psf;
@@ -147,6 +147,35 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
     /****************************************************/
     @Override
     protected void initialize() {
+
+        sequencePsf = new EzVarSequence("Input PSF");
+        sequenceImg = new EzVarSequence("Input Image");
+        output = new EzVarSequence("Output"); //In headLess mode only
+        //private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted?", psfSplitted);
+        eZmu = new EzVarDouble("Regularization level", 0, Double.MAX_VALUE, 0.1);
+        eZepsilon = new EzVarDouble("Threshold level", 0, Double.MAX_VALUE, 1);
+        eZgrtol = new EzVarDouble("grtol", 0, 1, 0.1);
+        eZcoef = new EzVarInteger("Number of lines to add (padding)", 1, 10000, 1);
+        eZmaxIter = new EzVarInteger("Max Iterations", -1, Integer.MAX_VALUE, 1);
+        eZpositivity = new EzVarBoolean("Enforce nonnegativity", false);
+        eZrestart = new EzVarBoolean("Restart with previous result", false);
+
+        weightOption1 = new String("None");
+        weightOption2 = new String("Personnalized weightMap");
+        weightOption3 = new String("Variance map");
+        weightOption4 = new String("Computed Variance");
+
+        options = new EzVarText("Options", new String[] { weightOption1, weightOption2, weightOption3, weightOption4}, 0, false);
+        weightMap = new EzVarSequence("Weight Map");
+        varianceMap = new EzVarSequence("Variance Map");
+        showPixMap = new EzVarBoolean("Pixel Map ?", false);
+        deadPixel = new EzVarSequence("Dead pixel map");
+        alpha = new EzVarDouble("Gain e-/lvl");
+        beta = new EzVarDouble("Readout noise e-/pxl");
+        groupRegularization = new EzGroup("Regularization", eZmu, eZepsilon);
+        groupWeighting = new EzGroup("Weighting", options, weightMap, varianceMap, alpha, beta, showPixMap, deadPixel);
+        groupConvergence = new EzGroup("Convergence settings", eZgrtol, eZmaxIter);
+
         //Settings all initials values
         eZmu.setValue(mu);
         eZepsilon.setValue(epsilon);
@@ -290,7 +319,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
                     lowerBound = tvDec.getLowerBound();
                     DoubleArray myArray = (DoubleArray)tvDec.getResult();
                     myArray.map(new DoubleFunction() {
-                        
+
                         @Override
                         public double apply(double arg) {
                             if (arg >= lowerBound) {
@@ -344,7 +373,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
                     lowerBound = tvDec.getLowerBound();
                     DoubleArray myArray = tvDec.getData();
                     myArray.map(new DoubleFunction() {
-                        
+
                         @Override
                         public double apply(double arg) {
                             if (arg >= lowerBound) {
