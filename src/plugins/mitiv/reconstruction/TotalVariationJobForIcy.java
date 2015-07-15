@@ -347,7 +347,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
                 }
             } else {
                 //To see the reason: got to TiPi abstract class ReverseCommunicationOptimizer
-                System.err.println("TotalVariationJobForIcy error/warning: "+task+" reason: "+minimizer.getReason());
+                System.err.println("TotalVariationJobForIcy error/warning: "+task+" reason: "+minimizer.getErrorMessage());
                 break;
             }
             if (synchronizer != null) {
