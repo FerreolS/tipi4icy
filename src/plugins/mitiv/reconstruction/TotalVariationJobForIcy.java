@@ -312,7 +312,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
                 /* Both a lower and an upper bounds have been specified. */
                 projector = new SimpleBounds(resultSpace, lowerBound, upperBound);
             }
-            int m = (limitedMemorySize > 1 ? limitedMemorySize : 5);
+            int m = (limitedMemorySize > 1 ? limitedMemorySize : 3);
             //vmlmb = new VMLMB(resultSpace, projector, m, lineSearch);
             //vmlmb.setAbsoluteTolerance(gatol);
             //vmlmb.setRelativeTolerance(grtol);
