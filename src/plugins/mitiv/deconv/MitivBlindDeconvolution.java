@@ -79,11 +79,11 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private MyDouble dxy, dz, nxy, nz, na, lambda, ni;    //PSF
     private MicroscopyModelPSF1D pupil;
     private boolean psfInitFlag = false;
-    private MyDouble mu, epsilon, grtol, nbIteration, zeroPadding;          //Deconvolution
+    private MyDouble mu, epsilon, nbIteration, zeroPadding;          //Deconvolution
     private MyDouble gain,noise;                          //VARIANCE
     private MyDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration;          //BDec
-    private MyComboBox image, canalImage, psf, weightsMethod, weights, deadPixel, nbAlphaCoef, nbBetaCoef;
-    private MyBoolean deadPixGiven, restart, positivity;
+    private MyComboBox image, canalImage, psf, restart, weightsMethod, weights, deadPixel, nbAlphaCoef, nbBetaCoef;
+    private MyBoolean deadPixGiven, positivity;
     private String[] seqList;           //Global list given to all ComboBox that should show the actual image
     private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"}; 
     private final String[] nAlphaOptions = new String[]{"1","8","19","34","53","76","103","134","169"}; 
@@ -96,9 +96,12 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob, resultGlob; 
     private boolean canRunBdec = true;      //In the case where a psf is given we will not allow to run bdec
     private JTabbedPane tabbedPane;
+    
+    private double grtol = 0.0;
 
     private Shape shape;
     boolean run = true;
+    boolean runBdec;
 
     /*********************************/
     /**            Job              **/
@@ -370,11 +373,10 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
         deconvTab.add((mu = new MyDouble(               "<html><pre>Regularization level:             </pre></html>", 5E-4)));
         deconvTab.add((epsilon = new MyDouble(          "<html><pre>Threshold level:                  </pre></html>", 1E-2)));
-        deconvTab.add((grtol = new MyDouble(            "<html><pre>Grtol:                            </pre></html>", 1E-4)));
         deconvTab.add((zeroPadding = new MyDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
         deconvTab.add((nbIteration = new MyDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
         deconvTab.add((positivity = new MyBoolean(      "<html><pre>Enforce nonnegativity:            </pre></html>", false)));
-        deconvTab.add((restart = new MyBoolean(         "<html><pre>Start from last result:           </pre></html>", false)));
+        deconvTab.add((restart = createChoiceList(         "<html><pre>Start from last result:           </pre></html>", seqList)));
 
         //Creation of DECONVOLUTION TAB
         deconvGlob.add(deconvTab, BorderLayout.NORTH);
@@ -473,7 +475,6 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         noise.setToolTipText(ToolTipText.doubleNoise);
         mu.setToolTipText(ToolTipText.doubleMu);
         epsilon.setToolTipText(ToolTipText.doubleEpsilon);
-        grtol.setToolTipText(ToolTipText.doubleGrtoll);
         nbIteration.setToolTipText(ToolTipText.doubleMaxIter);
         zeroPadding.setToolTipText(ToolTipText.doublePadding);
 
@@ -491,6 +492,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         listChoiceList.add(psf);
         listChoiceList.add(weights);
         listChoiceList.add(deadPixel);
+        listChoiceList.add(restart);
         //Add the tabbed pane to this panel.
         tabbedPane.addChangeListener(new ChangeListener() {
             //This is the part where we disable the run button if we are not in the good tab (bdec or deconv)
@@ -507,14 +509,19 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         getUI().setRunButtonEnabled(false); //Disable start button if we are not on bdec or deconv tab
         addComponent(tabbedPane);
 
-        token = new ReconstructionThreadToken(new double[]{mu.getValue(),epsilon.getValue(),0.0,grtol.getValue()});
+        token = new ReconstructionThreadToken(new double[]{mu.getValue(),epsilon.getValue(),0.0,grtol});
         thread = new ReconstructionThread(token);
         thread.start();
     }
 
     public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
-        if (tvDec != null &&  restart.getValue()) {
-            tvDec.setResult(tvDec.getResult());
+        if (tvDec != null &&  restart.getValue() != "None") {
+            Sequence restartSeq = getSequence(restart);
+            if (restartSeq != null) {
+                DoubleArray tmpDoubleArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(restartSeq,0);
+                tvDec.setResult(tmpDoubleArray);
+            }
+            
         } else {
             tvDec = new TotalVariationJobForIcy(token);
             tvDec.setResult(null);
@@ -528,7 +535,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         tvDec.setPositivity(positivity.getValue());
         tvDec.setRegularizationWeight(mu.getValue());
         tvDec.setRegularizationThreshold(epsilon.getValue());
-        tvDec.setRelativeTolerance(grtol.getValue());
+        tvDec.setRelativeTolerance(grtol);
         tvDec.setMaximumIterations((int)nbIteration.getValue());
         tvDec.setOutputShape(shape);
         token.start();
@@ -599,7 +606,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 throwError("Padding value cannot be inferior to the image size");
             }
             double coef = (width + zeroPadding.getValue())/width;
-            boolean runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
+            runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
             // If no PSF is loaded -> creation of a PSF
             if (psfSeq == null) {
                 psf0Init();
@@ -668,7 +675,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                         System.out.println("Defocus estimation");
                         System.out.println("------------------");
                     }
-                    PSFEstimation.setRelativeTolerance(grtol.getValue());
+                    PSFEstimation.setRelativeTolerance(grtol);
                     PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
 
                     /* Phase estimation */
@@ -779,18 +786,21 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
             update();
             //Then we will update the result tab pannel
-            String empty = "      ";
-            resultCostData.setText( "<html><pre>"+empty+"FCostData  "+tvDec.getCost()                       +"</pre></html>");
-            resultCostPrior.setText("<html><pre>"+empty+"FCostPrior "+tvDec.getCost()                       +"</pre></html>");
-            resultDephoc.setText(   "<html><pre>"+empty+"Dephocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())   +"</pre></html>");
-            if (debug) {
-                resultModulus.setText(  "<html><pre>"+empty+"Modulus    "+pupil.getRho()[0]                     +"</pre></html>");
-                resultPhase.setText(    "<html><pre>"+empty+"Phase      "+pupil.getPhi()[0]                     +"</pre></html>");
+            if (runBdec) {
+                String empty = "      ";
+                resultCostData.setText( "<html><pre>"+empty+"FCostData  "+tvDec.getCost()                       +"</pre></html>");
+                resultCostPrior.setText("<html><pre>"+empty+"FCostPrior "+tvDec.getCost()                       +"</pre></html>");
+                resultDephoc.setText(   "<html><pre>"+empty+"Dephocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())   +"</pre></html>");
+                if (debug) {
+                    resultModulus.setText(  "<html><pre>"+empty+"Modulus    "+pupil.getRho()[0]                     +"</pre></html>");
+                    resultPhase.setText(    "<html><pre>"+empty+"Phase      "+pupil.getPhi()[0]                     +"</pre></html>");
+                }
             }
         } catch (NullPointerException e) {
             //Here in case of brutal stop the sequence can become null but it's not important as it's an emergency stop
             //So we do nothing
             System.out.println("INFO: Emergency stop detected in setResult");
+            e.printStackTrace();
         }
     }
 
