@@ -313,7 +313,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         varianceTab.add((weights = createChoiceList(        "<html><pre>Map:      </pre></html>", seqList)));
         varianceTab.add((gain = createDouble(               "<html><pre>Gain:             </pre></html>", 1.0)));
         varianceTab.add((noise = createDouble(              "<html><pre>Readout Noise:    </pre></html>", 1.0)));
-        varianceTab.add((deadPixGiven = new MyBoolean(      "<html><pre>Dead Pixel Map?  </pre></html>", false)));
+        varianceTab.add((deadPixGiven = new MyBoolean(      "<html><pre>Data Map?        </pre></html>", false)));
         varianceTab.add((deadPixel = createChoiceList(      "<html><pre>Map: </pre></html>", seqList)));
 
         weightsMethod.addActionListener(new ActionListener() {
