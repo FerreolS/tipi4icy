@@ -128,8 +128,8 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
                 deltaX, deltaY, zdepth, use_depth_scaling);
         addEzComponent(parameterGroup);
         
-        addEzComponent(rho);
-        addEzComponent(phi);
+        //addEzComponent(rho);
+        //addEzComponent(phi);
         /* Details button */
         EzButton detailsButton = new EzButton("Help", new ActionListener()
         {
