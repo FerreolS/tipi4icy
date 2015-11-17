@@ -41,7 +41,6 @@ import mitiv.linalg.LinearOperator;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.linalg.shaped.ShapedLinearOperator;
-import mitiv.optim.ArmijoLineSearch;
 import mitiv.optim.BLMVM;
 import mitiv.optim.BoundProjector;
 import mitiv.optim.LBFGS;
@@ -53,7 +52,6 @@ import mitiv.optim.ReverseCommunicationOptimizer;
 import mitiv.optim.SimpleBounds;
 import mitiv.optim.SimpleLowerBound;
 import mitiv.optim.SimpleUpperBound;
-import mitiv.optim.VMLMB;
 import mitiv.utils.Timer;
 import mitiv.utils.reconstruction.ReconstructionThreadToken;
 
@@ -274,7 +272,6 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         timer.start();
         LineSearch lineSearch = null;
         LBFGS lbfgs = null;
-        VMLMB vmlmb = null;
         BLMVM blmvm = null;
         NonLinearConjugateGradient nlcg = null;
         BoundProjector projector = null;
