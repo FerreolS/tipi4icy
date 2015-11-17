@@ -23,7 +23,6 @@ import javax.swing.JTabbedPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import ome.xml.model.primitives.PositiveFloat;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.Double1D;
@@ -517,11 +516,16 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
         if (tvDec != null &&  restart.getValue() != "None") {
             Sequence restartSeq = getSequence(restart);
+            // We verify that the previous result is conform to our expectations: !Null and same dim as input
             if (restartSeq != null) {
                 DoubleArray tmpDoubleArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(restartSeq,0);
+                for (int i = 0; i < imgArray.getOrder(); i++) {
+                    if (imgArray.getOrder() != tmpDoubleArray.getOrder() || imgArray.getDimension(i) != tmpDoubleArray.getDimension(i)) {
+                        throwError("The previous result does not have the same dimensions as the input image");
+                    }
+                }
                 tvDec.setResult(tmpDoubleArray);
             }
-            
         } else {
             tvDec = new TotalVariationJobForIcy(token);
             tvDec.setResult(null);
@@ -947,7 +951,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             if (metDat.getInstrumentCount() > 0) {
                 try {
                     meta.na      = metDat.getObjectiveLensNA(0, 0);
-                    meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
+                    //meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
                 } catch(Exception e){
                     System.out.println("Failed to get some metadatas, will use default values for na, lambda");
                 }
@@ -973,9 +977,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private void setMetaData(Sequence seqOld, Sequence seqNew) {
         OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(seqOld.getMetadata());
         //newMetdat.setImageDescription("MyDescription", 0);
-        newMetdat.setPixelsPhysicalSizeX(new PositiveFloat(dxy.getValue()*1E-3), 0);
-        newMetdat.setPixelsPhysicalSizeY(new PositiveFloat(dxy.getValue()*1E-3), 0);
-        newMetdat.setPixelsPhysicalSizeZ(new PositiveFloat(dz.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz.getValue()*1E-3), 0);
         seqNew.setMetaData(newMetdat);
     }
 
