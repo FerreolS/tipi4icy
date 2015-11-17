@@ -324,10 +324,10 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
                     tvDec.setPositivity(eZpositivity.getValue());
                     // We verify that the bounds are respected for previous input
                     lowerBound = tvDec.getLowerBound();
-                    IcyBufferedImageUtils.imageToArray(seqResTmp, 0);
-                    DoubleArray myArray = (DoubleArray)tvDec.getResult();
+                    DoubleArray psfArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(seqPsfTmp, 0);
+                    DoubleArray myArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(seqResTmp, 0);
+                    //DoubleArray myArray = (DoubleArray)tvDec.getResult();
                     myArray.map(new DoubleFunction() {
-
                         @Override
                         public double apply(double arg) {
                             if (arg >= lowerBound) {
@@ -337,6 +337,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
                             }
                         }
                     });
+                    tvDec.setPsf(psfArray);
+                    tvDec.setResult(myArray);
                     token.start();  //By default wait for the end of the job
                     computeNew = true;
                 } else {
