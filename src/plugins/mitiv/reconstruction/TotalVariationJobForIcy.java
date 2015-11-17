@@ -31,16 +31,14 @@ import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.cost.CompositeDifferentiableCostFunction;
+import mitiv.cost.DifferentiableCostFunction;
 import mitiv.cost.HyperbolicTotalVariation;
-import mitiv.cost.QuadraticCost;
-import mitiv.deconv.WeightedConvolutionOperator;
+import mitiv.deconv.WeightedConvolutionCost;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionSynchronizer;
 import mitiv.invpb.ReconstructionViewer;
-import mitiv.linalg.LinearOperator;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
-import mitiv.linalg.shaped.ShapedLinearOperator;
 import mitiv.optim.BLMVM;
 import mitiv.optim.BoundProjector;
 import mitiv.optim.LBFGS;
@@ -240,8 +238,6 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
 
         DoubleShapedVectorSpace dataSpace = new DoubleShapedVectorSpace(dataShape);
         DoubleShapedVectorSpace resultSpace = new DoubleShapedVectorSpace(resultShape);
-        LinearOperator W = null;
-        DoubleShapedVector y = dataSpace.create(data);
         DoubleShapedVector x = null;
         if (result != null) {
             x = resultSpace.create(result);
@@ -251,16 +247,14 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         result = ArrayFactory.wrap(x.getData(), resultShape);
 
         // Build convolution operator.
-        ShapedLinearOperator H = null;
-        // FIXME: add a method for that
-        WeightedConvolutionOperator A = WeightedConvolutionOperator.build(resultSpace, dataSpace);
-        A.setPSF(psf);
-        A.setWeights(weight);
-        H = A;
-        // Build the cost functions
-        QuadraticCost fdata = new QuadraticCost(H, y, W);
-        HyperbolicTotalVariation fprior = new HyperbolicTotalVariation(resultSpace, epsilon);
+        DifferentiableCostFunction fdata;
+        WeightedConvolutionCost weightedCost = WeightedConvolutionCost.build(resultSpace, dataSpace);
+        weightedCost.setPSF(psf);
+        weightedCost.setWeightsAndData(weight, data);
+        fdata = weightedCost;
 
+        // Build the cost functions
+        HyperbolicTotalVariation fprior = new HyperbolicTotalVariation(resultSpace, epsilon);
         CompositeDifferentiableCostFunction cost = new CompositeDifferentiableCostFunction(1.0, fdata, mu, fprior);
         fcost = 0.0;
         gcost = resultSpace.create();
