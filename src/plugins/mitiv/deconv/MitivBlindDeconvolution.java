@@ -76,6 +76,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     /***************************************************/
     private ArrayList<MyComboBox> listChoiceList = new ArrayList<MyComboBox>(); //Contain all the list that will be updated
     private MyDouble dxy, dz, nxy, nz, na, lambda, ni;    //PSF
+    private MyDouble ns;
+    private MyDouble zdepth;
+    private boolean use_depth_scaling = false;
     private MicroscopyModelPSF1D pupil;
     private boolean psfInitFlag = false;
     private MyDouble mu, epsilon, nbIteration, zeroPadding;          //Deconvolution
@@ -270,6 +273,11 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         psfPannel.add((dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 64.5)));
         psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160)));
         psfPannel.add((showPSF = new JButton("Show PSF")));
+       
+        ns.setValue(0.0);
+        zdepth.setValue(0.);
+
+
 
         psf.addActionListener(new ActionListener() {
             @Override
@@ -833,10 +841,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private void psf0Init()
     {
 
-        double ns = 0;
-        double zdepth = 0;
-        int use_depth_scaling = 0;
-        pupil = new MicroscopyModelPSF1D(na.getValue(), lambda.getValue(), ni.getValue(), ns, zdepth, dxy.getValue()*1E-9,
+        pupil = new MicroscopyModelPSF1D(na.getValue(), lambda.getValue(), ni.getValue(), ns.getValue(), zdepth.getValue(), dxy.getValue()*1E-9,
                 dz.getValue()*1E-9, (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue(), use_depth_scaling);
     }
 

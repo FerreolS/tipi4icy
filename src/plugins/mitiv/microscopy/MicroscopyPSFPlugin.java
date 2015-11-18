@@ -60,7 +60,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
     EzVarInteger Ny;
     EzVarInteger Nz;
     EzVarInteger NZernike;
-    EzVarInteger use_depth_scaling;
+    EzVarBoolean use_depth_scaling;
     EzVarDouble NA;
     EzVarDouble lambda;
     EzVarDouble ni;
@@ -99,7 +99,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
         beta = new EzVarDoubleArrayNative("\u03B2 : Zernike coefficients of the phase",
                 new double[][] { new double[] { 2.2, 4.4, 6.6 }, new double[] { 1.1, 3.3, 5.5 } }, false);
         zdepth = new EzVarDouble("zd : Depth of a light located in the specimen layer (\u03BCm)");
-        use_depth_scaling = new EzVarInteger("PSF are centered on the plan with maximum strehl");
+        use_depth_scaling = new EzVarBoolean("PSF are centered on the plan with maximum strehl",false);
         rho = new EzVarBoolean("Show modulus of the pupil", false);
         phi = new EzVarBoolean("Show phi", false);
         psi = new EzVarBoolean("Show psi", false);
@@ -120,7 +120,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
         alpha.setValue(new double[] {0.});
         beta.setValue(new double[] {1.});
         zdepth.setValue(0.);
-        use_depth_scaling.setValue(0);
+        use_depth_scaling.setValue(false);
 
         /* Add to the interface */
         EzGroup parameterGroup = new EzGroup("Enter Widefield Microscope settings", 
@@ -153,8 +153,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
                 zdepth.getValue()*1e-6, dxy.getValue()*1e-9, dz.getValue()*1e-6, Nx.getValue(), Ny.getValue(),
                 Nz.getValue(), use_depth_scaling.getValue());
 
-        pupil.computePSF(alpha.getValue(), beta.getValue(),
-               deltaX.getValue(), deltaY.getValue(), zdepth.getValue()*1e-6);
+        pupil.computePSF();
         /*
         pupil.setDefocus(new double[] = {};);
         pupil.setPhi(alpha.getValue());
