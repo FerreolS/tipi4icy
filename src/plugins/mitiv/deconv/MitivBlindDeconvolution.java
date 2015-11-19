@@ -93,7 +93,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private String[] canalImageOptions = new String[]{"None"}; 
     private MyMetadata meta = null;     //The image metadata that we will move from one image to another
     private JButton showPSF, psfShow2, showWeight, showModulus, showPhase;
-    private JLabel resultCostData, resultCostPrior, resultDephoc, resultPhase, resultModulus;
+    private JLabel resultCostData, resultCostPrior, resultDefocus, resultPhase, resultModulus;
 
     private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob, resultGlob; 
     private boolean canRunBdec = true;      //In the case where a psf is given we will not allow to run bdec
@@ -114,8 +114,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = false;      //Show psf steps 
-    private boolean verbose = true;     //show some values, need debug to true
+    private boolean debug = true;      //Show psf steps 
+    private boolean verbose = false;     //show some values, need debug to true
 
     //Global variables for the algorithms
     TotalVariationJobForIcy tvDec;
@@ -451,7 +451,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         resultTab.setLayout(new BoxLayout(resultTab, BoxLayout.Y_AXIS));
         resultTab.add((resultCostData = new JLabel(     "<html><pre>"+empty+"No results yet   </pre></html>")));
         resultTab.add((resultCostPrior = new JLabel(    "<html><pre>"+empty+"No results yet   </pre></html>")));
-        resultTab.add((resultDephoc = new JLabel(       "<html><pre>"+empty+"No results yet   </pre></html>")));
+        resultTab.add((resultDefocus = new JLabel(       "<html><pre>"+empty+"No results yet   </pre></html>")));
         if (debug) {
             resultTab.add((resultModulus = new JLabel(      "<html><pre>"+empty+"No results yet   </pre></html>")));
             resultTab.add((resultPhase = new JLabel(        "<html><pre>"+empty+"No results yet   </pre></html>")));
@@ -669,7 +669,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 PSFEstimationInit();
                 PSFEstimation.setWeight(weight);
                 PSFEstimation.setData(imgArray);
-                PSFEstimation.enablePositivity(positivity.getValue());
+                PSFEstimation.enablePositivity(false);
 
                 for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
                     /* OBJET ESTIMATION (by the current PSF) */
@@ -803,7 +803,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 String empty = "      ";
                 resultCostData.setText( "<html><pre>"+empty+"FCostData  "+tvDec.getCost()                       +"</pre></html>");
                 resultCostPrior.setText("<html><pre>"+empty+"FCostPrior "+tvDec.getCost()                       +"</pre></html>");
-                resultDephoc.setText(   "<html><pre>"+empty+"Dephocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())   +"</pre></html>");
+                resultDefocus.setText(   "<html><pre>"+empty+"Defocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())   +"</pre></html>");
                 if (debug) {
                     resultModulus.setText(  "<html><pre>"+empty+"Modulus    "+pupil.getRho()[0]                     +"</pre></html>");
                     resultPhase.setText(    "<html><pre>"+empty+"Phase      "+pupil.getPhi()[0]                     +"</pre></html>");
