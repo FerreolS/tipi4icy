@@ -274,8 +274,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160)));
         psfPannel.add((showPSF = new JButton("Show PSF")));
        
-        ns.setValue(0.0);
-        zdepth.setValue(0.);
+        ns =createDouble(     "<html><pre>ns:        </pre></html>", 0.0);
+        zdepth = createDouble(     "<html><pre>ns:        </pre></html>", 0.0);
 
 
 
@@ -644,11 +644,11 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             width = FFTUtils.bestDimension((int)(width*coef));
             height = FFTUtils.bestDimension((int)(height*coef));
             sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
-            if (shape.rank() == 2) {
-                shape = Shape.make(width, height);
-            } else {
+      //      if (shape.rank() == 2) {
+       //         shape = Shape.make(width, height);
+      //      } else {
                 shape = Shape.make(width, height, sizeZ);
-            }
+       //     }
             /*---------------------------------------*/
             /*            OPTIMISATION               */
             /*---------------------------------------*/
@@ -680,6 +680,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
                     PSFEstimation.setPupil(pupil);
                     PSFEstimation.setPsf(tvDec.getData());
+                    PSFEstimation.setObj(tvDec.getResult());
 
                     /* Defocus estimation */
                     if (debug && verbose) {

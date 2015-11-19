@@ -51,7 +51,7 @@ import plugins.adufour.ezplug.EzVarInteger;
 /**
  * Microscopy PSF
  * 
- * @author Oui oui
+ * @author Ferréol Soulez
  *
  */
 public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
@@ -330,7 +330,7 @@ public class MicroscopyPSFPlugin extends EzPlug implements EzStoppable
      * @return Number of zernike modes
      * 
      */
-    public double getJ() {
+    public double getZN() {
         return NZernike.getValue();
     }
 
