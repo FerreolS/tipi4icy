@@ -557,7 +557,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     @Override
     protected void execute() {
         try {
-            if (debug && verbose) {
+            if (debug) {
                 System.out.println("-------------IMAGE-------------------");
                 System.out.println("File: "+image.getValue());              //Used
                 System.out.println("Canal: "+canalImage.getValue());
@@ -624,17 +624,11 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 psf0Init();
                 pupil.computePSF();
                 psfInitFlag = true;
-                if (shape.rank() == 2) {
-                    psfArray =  Double2D.wrap(MathUtils.uint16(MathUtils.fftShift1D(pupil.getPSF(), width, height)) , shape);
-                } else {
-                    psfArray =  Double3D.wrap(MathUtils.uint16(MathUtils.fftShift3D(pupil.getPSF(), width, height, sizeZ)) , shape);
-                }
+                
+                    psfArray =  Double3D.wrap(MathUtils.fftShift3D(pupil.getPSF(), width, height, sizeZ) , shape);
             } else {
-                if (shape.rank() == 2) {
-                    psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight()), numCanal);
-                } else {
                     psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight(), psfSeq.getSizeZ()), numCanal);
-                }
+                
             }
 
             imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, shape, numCanal);
@@ -679,8 +673,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
 
                     PSFEstimation.setPupil(pupil);
-                    PSFEstimation.setPsf(tvDec.getData());
-                    PSFEstimation.setObj(tvDec.getResult());
+                 //   PSFEstimation.setPsf(tvDec.getData());
+                 PSFEstimation.setObj(tvDec.getResult());
 
                     /* Defocus estimation */
                     if (debug && verbose) {
@@ -689,7 +683,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                         System.out.println("------------------");
                     }
                     PSFEstimation.setRelativeTolerance(grtol);
-                    PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
+                 PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
 
                     /* Phase estimation */
                     if (debug && verbose) {
@@ -697,7 +691,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                         System.out.println("------------------");
                     }
                     PSFEstimation.setResult(null);
-                    PSFEstimation.fitPSF(alphaVector, PSF_Estimation.ALPHA);
+                  PSFEstimation.fitPSF(alphaVector, PSF_Estimation.ALPHA);
 
                     /* Modulus estimation */
                     if (debug && verbose) {
@@ -866,7 +860,6 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                     MathUtils.getArray(PSF_shift, (int)nxy.getValue(), (int)nxy.getValue(), k)));
         }
         addSequence(PSF0Sequence);
-        psfInitFlag = true;
     }
 
     private void phaseClicked()
@@ -905,8 +898,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
     private void PSFEstimationInit()
     {
-        PSFEstimation.setRegularizationWeight(mu.getValue());   //mu
-        PSFEstimation.setRegularizationThreshold(epsilon.getValue()); //epsilon
+        //PSFEstimation.setRegularizationWeight(mu.getValue());   //mu
+       // PSFEstimation.setRegularizationThreshold(epsilon.getValue()); //epsilon
         PSFEstimation.setAbsoluteTolerance(0.0);        //gatol
         PSFEstimation.setMaximumIterations(10);         //max iter
     }
@@ -934,10 +927,15 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
         int numCanal = getNumCanal(img);
         DoubleArray input = (DoubleArray) IcyBufferedImageUtils.imageToArray(img, myShape, numCanal);
-        double[] inputData = createWeight(input).toDouble().flatten();
-        Sequence WeightSequence = IcyBufferedImageUtils.arrayToSequence(inputData, false, img.getSizeX(), img.getSizeY(), img.getSizeZ());
+        Sequence WeightSequence = new Sequence();
+        WeightSequence.setName("Weight");
+        double[] wght = createWeight(input).toDouble().flatten();
+        for (int k = 0; k < (int)nz.getValue(); k++)
+        {
+        	WeightSequence.setImage(0, k, new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(),
+                    MathUtils.getArray(wght, (int)nxy.getValue(), (int)nxy.getValue(), k)));
+        }
         addSequence(WeightSequence);
-        // To be continued
     }
 
     /**
