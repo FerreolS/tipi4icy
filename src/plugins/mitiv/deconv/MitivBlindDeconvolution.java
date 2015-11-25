@@ -26,7 +26,6 @@ import javax.swing.event.ChangeListener;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.Double1D;
-import mitiv.array.Double2D;
 import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
@@ -36,7 +35,7 @@ import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.WeightGenerator;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
-import mitiv.microscopy.MicroscopyModelPSF1D;
+import mitiv.microscopy.WideFieldModel;
 import mitiv.microscopy.PSF_Estimation;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.MathUtils;
@@ -79,13 +78,13 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private MyDouble ns;
     private MyDouble zdepth;
     private boolean use_depth_scaling = false;
-    private MicroscopyModelPSF1D pupil;
-    private boolean psfInitFlag = false;
+    private WideFieldModel pupil=null;
+   // private boolean psfInitFlag = false;
     private MyDouble mu, epsilon, nbIteration, zeroPadding;          //Deconvolution
     private MyDouble gain,noise;                          //VARIANCE
-    private MyDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration;          //BDec
+    private MyDouble grtolPhase, grtolModulus, grtolDefocus, bDecTotalIteration,DefocusMaxIter,PhaseMaxIter,ModulusMaxIter;          //BDec
     private MyComboBox image, canalImage, psf, restart, weightsMethod, weights, deadPixel, nbAlphaCoef, nbBetaCoef;
-    private MyBoolean deadPixGiven, positivity;
+    private MyBoolean deadPixGiven, positivity, resetPSF;
     private String[] seqList;           //Global list given to all ComboBox that should show the actual image
     private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"}; 
     private final String[] nAlphaOptions = new String[]{"1","8","19","34","53","76","103","134","169"}; 
@@ -100,6 +99,12 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private JTabbedPane tabbedPane;
     
     private double grtol = 0.0;
+    private int nbAlpha=0, nbBeta=1;
+    
+
+    DoubleShapedVectorSpace defocuSpace = null, alphaSpace=null, betaSpace=null;
+    DoubleShapedVector defocusVector = null, alphaVector = null, betaVector =null;
+    
 
     private Shape shape;
     boolean run = true;
@@ -123,6 +128,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     //Global variable for the deconvolution
     Sequence sequence; //The reference to the sequence we use to plot 
     int width, height, sizeZ;
+    
     //Update all sequence with the new sequence remove
     private void updateAllList(){
         for (int i = 0; i < listChoiceList.size(); i++) {
@@ -226,6 +232,11 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         imagePan.setLayout(new BoxLayout(imagePan, BoxLayout.Y_AXIS));
         imagePan.add((image = createChoiceList(     "<html><pre>Sequence: </pre></html>", seqList)));
         imagePan.add((canalImage = createChoiceList("<html><pre>Canal:    </pre></html>", canalImageOptions)));
+
+        nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 0);
+        nz = createDouble(     "<html><pre>Nz:        </pre></html>",0);
+        dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 0);
+        dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 0);
         image.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -233,7 +244,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 if (seq == null) {
                     canalImageOptions = new String[]{"None"};
                 } else {
-                    //Update channel availables in the image
+                    //Update channel available in the image
                     int nbChan = seq.getSizeC();
                     canalImageOptions = new String[nbChan];
                     for (int i = 0; i < nbChan; i++) {
@@ -249,10 +260,13 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                     na.setValue(     meta.na);
                     lambda.setValue( meta.lambda);
                     ni.setValue(     meta.ni);
+                    imagePan.add(nxy);
+                    imagePan.add(nz);
+                      imagePan.add(dxy);
+                      imagePan.add(dz);
                 }
             }
         });
-
         //Creation of IMAGE TAB
         imageGlob.add(imagePan, BorderLayout.NORTH);
         tabbedPane.addTab("FILE", null, imageGlob, "Selecting input data");
@@ -268,10 +282,6 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         psfPannel.add((na = createDouble(     "<html><pre>NA:        </pre></html>", 1.4)));
         psfPannel.add((ni = createDouble(     "<html><pre>ni:        </pre></html>", 1.518)));
         psfPannel.add((lambda = createDouble( "<html><pre>\u03BB(nm):     </pre></html>", 542, 1E-9)));     //Here we give the the multiplication factor, the result will be multiply by this factor
-        psfPannel.add((nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 256)));
-        psfPannel.add((nz = createDouble(     "<html><pre>Nz:        </pre></html>", 128)));
-        psfPannel.add((dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 64.5)));
-        psfPannel.add((dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160)));
         psfPannel.add((showPSF = new JButton("Show PSF")));
        
         ns =createDouble(     "<html><pre>ns:        </pre></html>", 0.0);
@@ -286,10 +296,6 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 na.setVisible(canRunBdec);                  // AND if we can run BDEC we can show the options of bdec
                 ni.setVisible(canRunBdec);
                 lambda.setVisible(canRunBdec);
-                nxy.setVisible(canRunBdec);
-                nz.setVisible(canRunBdec);
-                dxy.setVisible(canRunBdec);
-                dz.setVisible(canRunBdec);
                 showPSF.setVisible(canRunBdec);
             }
         });
@@ -380,9 +386,10 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         deconvTab.setLayout(new BoxLayout(deconvTab, BoxLayout.Y_AXIS));
         deconvTab.add((mu = new MyDouble(               "<html><pre>Regularization level:             </pre></html>", 5E-4)));
         deconvTab.add((epsilon = new MyDouble(          "<html><pre>Threshold level:                  </pre></html>", 1E-2)));
-        deconvTab.add((zeroPadding = new MyDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
+      //  deconvTab.add((zeroPadding = new MyDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0)));
+        zeroPadding = new MyDouble(      "<html><pre>Number of lines to add (padding): </pre></html>", 0);
         deconvTab.add((nbIteration = new MyDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
-        deconvTab.add((positivity = new MyBoolean(      "<html><pre>Enforce nonnegativity:            </pre></html>", false)));
+        deconvTab.add((positivity = new MyBoolean(      "<html><pre>Enforce nonnegativity:            </pre></html>", true)));
         deconvTab.add((restart = createChoiceList(         "<html><pre>Start from last result:           </pre></html>", seqList)));
 
         //Creation of DECONVOLUTION TAB
@@ -397,12 +404,16 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         bdecGlob = new JPanel(new BorderLayout()); //Border layout to be sure that the images are stacked to the up
         JPanel bdecTab = new JPanel(false);
         bdecTab.setLayout(new BoxLayout(bdecTab, BoxLayout.Y_AXIS));
-        bdecTab.add((nbAlphaCoef = createChoiceList(    "<html><pre>N\u03B1:                          </pre></html>", nAlphaOptions)));
-        bdecTab.add((nbBetaCoef = createChoiceList(     "<html><pre>N\u03B2:                          </pre></html>", nBetaOptions)));
-        bdecTab.add((grtolDefocus = new MyDouble(       "<html><pre>Grtol defocus:               </pre></html>", 0.001)));
+        bdecTab.add((nbAlphaCoef = createChoiceList(    "<html><pre>Number of phase coefs N\u03B1:                          </pre></html>", nAlphaOptions)));
+        bdecTab.add((nbBetaCoef = createChoiceList(     "<html><pre>Number of modulus coefs N\u03B2:                          </pre></html>", nBetaOptions)));    
+        bdecTab.add((resetPSF = new MyBoolean(      "<html><pre>Reset PSF:            </pre></html>", true)));
+        bdecTab.add((DefocusMaxIter = new MyDouble(       "<html><pre>Max. nb. of iterations for defocus:               </pre></html>", 0)));
+        bdecTab.add((PhaseMaxIter = new MyDouble(         "<html><pre>Max. nb. of iterations for  phase:                 </pre></html>", 0)));
+        bdecTab.add((ModulusMaxIter = new MyDouble(       "<html><pre>Max. nb. of iterations for  modulus:               </pre></html>", 0)));
+/*        bdecTab.add((grtolDefocus = new MyDouble(       "<html><pre>Grtol defocus:               </pre></html>", 0.001)));
         bdecTab.add((grtolPhase = new MyDouble(         "<html><pre>Grtol phase:                 </pre></html>", 0.001)));
-        bdecTab.add((grtolModulus = new MyDouble(       "<html><pre>Grtol modulus:               </pre></html>", 0.001)));
-        bdecTab.add((bDecTotalIteration = new MyDouble( "<html><pre>Number of loops:             </pre></html>", 2)));
+        bdecTab.add((grtolModulus = new MyDouble(       "<html><pre>Grtol modulus:               </pre></html>", 0.001)));*/
+        bdecTab.add((bDecTotalIteration = new MyDouble( "<html><pre>Number of loops:             </pre></html>", 1)));
         bdecTab.add((psfShow2 = new JButton(        "Show PSF"))); //Already created in psf tab
         bdecTab.add((showPhase = new JButton(       "Show phase of the pupil")));
         bdecTab.add((showModulus = new JButton(     "Show modulus of the pupil")));
@@ -439,7 +450,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         });
         //Creation of BDec TAB
         bdecGlob.add(bdecTab, BorderLayout.NORTH);
-        tabbedPane.addTab("BDec", null, bdecGlob,    "All the options for the blind deconvolution");
+        tabbedPane.addTab("BDec", null, bdecGlob,    "Options for the blind deconvolution");
 
         /****************************************************/
         /**                    RESULT TAB                  **/
@@ -483,13 +494,13 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         mu.setToolTipText(ToolTipText.doubleMu);
         epsilon.setToolTipText(ToolTipText.doubleEpsilon);
         nbIteration.setToolTipText(ToolTipText.doubleMaxIter);
-        zeroPadding.setToolTipText(ToolTipText.doublePadding);
+   //     zeroPadding.setToolTipText(ToolTipText.doublePadding);
 
         nbAlphaCoef.setToolTipText(ToolTipText.doubleNalpha);
         nbBetaCoef.setToolTipText(ToolTipText.doubleNbeta);
-        grtolPhase.setToolTipText(ToolTipText.doubleGrtolPhase);
-        grtolModulus.setToolTipText(ToolTipText.doubleGrtolModulus);
-        grtolDefocus.setToolTipText(ToolTipText.doubleGrtolDefocus);
+  //      grtolPhase.setToolTipText(ToolTipText.doubleGrtolPhase);
+  //      grtolModulus.setToolTipText(ToolTipText.doubleGrtolModulus);
+   //     grtolDefocus.setToolTipText(ToolTipText.doubleGrtolDefocus);
         bDecTotalIteration.setToolTipText(ToolTipText.doubleBDecTotalIteration);
 
         restart.setToolTipText(ToolTipText.booleanRestart);
@@ -522,7 +533,18 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     }
 
     public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
-        if (tvDec != null &&  restart.getValue() != "None") {
+        if (tvDec == null) {
+            tvDec = new TotalVariationJobForIcy(token);
+            tvDec.setResult(null);
+        }
+        tvDec.setAbsoluteTolerance(0.0);
+        tvDec.setWeight(weight);
+        tvDec.setData(imgArray);
+        tvDec.setPsf(psfArray);
+        tvDec.setViewer(new tvViewer());
+        thread.setJob(tvDec);
+        
+        if (restart.getValue() != "None") {
             Sequence restartSeq = getSequence(restart);
             // We verify that the previous result is conform to our expectations: !Null and same dim as input
             if (restartSeq != null) {
@@ -534,15 +556,6 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 }
                 tvDec.setResult(tmpDoubleArray);
             }
-        } else {
-            tvDec = new TotalVariationJobForIcy(token);
-            tvDec.setResult(null);
-            tvDec.setAbsoluteTolerance(0.0);
-            tvDec.setWeight(weight);
-            tvDec.setData(imgArray);
-            tvDec.setPsf(psfArray);
-            tvDec.setViewer(new tvViewer());
-            thread.setJob(tvDec);
         }
         tvDec.setPositivity(positivity.getValue());
         tvDec.setRegularizationWeight(mu.getValue());
@@ -583,9 +596,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 System.out.println("--------------BDEC------------------");
                 System.out.println("nbIter: "+nbIteration.getValue());
                 System.out.println("zeroPad: "+zeroPadding.getValue());
-                System.out.println("nbIterZern: "+grtolPhase.getValue());
+                /*System.out.println("nbIterZern: "+grtolPhase.getValue());
                 System.out.println("module: "+grtolModulus.getValue());
-                System.out.println("defoc: "+grtolDefocus.getValue());
+                System.out.println("defoc: "+grtolDefocus.getValue());*/
                 System.out.println("Number of total iterations: "+bDecTotalIteration.getValue());
                 System.out.println("");
             }
@@ -605,25 +618,20 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             width = img.getWidth();
             height = img.getHeight();
             sizeZ = imgSeq.getSizeZ();
-            if (sizeZ == 1) { //2D
-                shape = Shape.make(width, height);
-            } else {    //3D
+            if (sizeZ == 1) {
+            	throwError("Input data must be 3D");
+            	} 
+            
                 shape = Shape.make(width, height, sizeZ);
-            }
+           
 
             int numCanal = getNumCanal(imgSeq);
 
             DoubleArray imgArray, psfArray;
-            if (zeroPadding.getValue() < 0.0) {
-                throwError("Padding value cannot be inferior to the image size");
-            }
-            double coef = (width + zeroPadding.getValue())/width;
             runBdec = (tabbedPane.getSelectedComponent() == bdecGlob); //If the BDEC panel is selected we the blind deconvolution
             // If no PSF is loaded -> creation of a PSF
             if (psfSeq == null) {
                 psf0Init();
-                pupil.computePSF();
-                psfInitFlag = true;
                 
                     psfArray =  Double3D.wrap(MathUtils.fftShift3D(pupil.getPSF(), width, height, sizeZ) , shape);
             } else {
@@ -635,35 +643,63 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
             DoubleArray weight = createWeight(imgArray).toDouble();
             //BEWARE here we change the value to match the new padded image size
-            width = FFTUtils.bestDimension((int)(width*coef));
+            // FIXME must pad every input 
+            if (zeroPadding.getValue() < 0.0) {
+                throwError("Padding value cannot be negative");
+            }
+            /*double coef = (width + zeroPadding.getValue())/width;
+             width = FFTUtils.bestDimension((int)(width*coef));
             height = FFTUtils.bestDimension((int)(height*coef));
-            sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
-      //      if (shape.rank() == 2) {
-       //         shape = Shape.make(width, height);
-      //      } else {
-                shape = Shape.make(width, height, sizeZ);
-       //     }
+            sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));*/
+                shape = Shape.make(width, height, sizeZ);	
             /*---------------------------------------*/
             /*            OPTIMISATION               */
             /*---------------------------------------*/
 
             if (runBdec) {
-                double[] alpha = new double[Integer.parseInt(nbAlphaCoef.getValue())];
-                double[] beta = new double[Integer.parseInt(nbBetaCoef.getValue())];
-                beta[0] = 1;
-                double[] defocus = {ni.getValue()/lambda.getValue(), 0., 0.};
-                DoubleShapedVectorSpace defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
-                DoubleShapedVector defocusVector = defocuSpace.wrap(defocus);
-                DoubleShapedVectorSpace alphaSpace = new DoubleShapedVectorSpace(new int[]{alpha.length});
-                DoubleShapedVector alphaVector = alphaSpace.create();
-                DoubleShapedVectorSpace betaSpace = new DoubleShapedVectorSpace(new int[]{beta.length});
-                DoubleShapedVector betaVector = betaSpace.wrap(beta);
-
+            	if (Integer.parseInt(nbAlphaCoef.getValue()) != nbAlpha){
+            		nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
+            		alphaSpace = new DoubleShapedVectorSpace(new int[]{nbAlpha});
+                    alphaVector = alphaSpace.create();
+            	}
+            	if (Integer.parseInt(nbBetaCoef.getValue()) != nbBeta){
+            		nbBeta = Integer.parseInt(nbBetaCoef.getValue());
+            		double[] beta = new double[nbBeta];
+            		beta[0] = 1;
+            		betaSpace = new DoubleShapedVectorSpace(new int[]{beta.length});
+            		betaVector = betaSpace.wrap(beta);
+            		}
+            	if(resetPSF.getValue())
+            	{
+            		 defocuSpace = null;
+            		 defocusVector= null;
+            		 alphaSpace = null;
+            		 alphaVector = null;
+            		 betaSpace = null;
+            		 betaVector = null;
+            	}
+            	if (defocuSpace==null){
+                    double[] defocus = {ni.getValue()/lambda.getValue(), 0., 0.};
+                    defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
+                    defocusVector = defocuSpace.wrap(defocus);
+            	}
+            	if (alphaSpace==null){
+            		alphaSpace = new DoubleShapedVectorSpace(new int[]{nbAlpha});
+                    alphaVector = alphaSpace.create();
+            	}
+            	if (betaSpace==null){
+            		double[] beta = new double[Integer.parseInt(nbBetaCoef.getValue())];
+            		beta[0] = 1;
+            		betaSpace = new DoubleShapedVectorSpace(new int[]{beta.length});
+            		betaVector = betaSpace.wrap(beta);
+            	}
+                
                 PSFEstimation = new PSF_Estimation();
-                PSFEstimationInit();
                 PSFEstimation.setWeight(weight);
                 PSFEstimation.setData(imgArray);
+                
                 PSFEstimation.enablePositivity(false);
+                PSFEstimation.setAbsoluteTolerance(0.0);
 
                 for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
                     /* OBJET ESTIMATION (by the current PSF) */
@@ -673,37 +709,48 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
 
                     PSFEstimation.setPupil(pupil);
-                 //   PSFEstimation.setPsf(tvDec.getData());
-                 PSFEstimation.setObj(tvDec.getResult());
+                    //   PSFEstimation.setPsf(tvDec.getData());
+                    PSFEstimation.setObj(tvDec.getResult());
 
                     /* Defocus estimation */
-                    if (debug && verbose) {
+                    if (DefocusMaxIter.getValue()!=0){
+                    	if (debug && verbose) {
                         System.out.println("------------------");
                         System.out.println("Defocus estimation");
                         System.out.println("------------------");
                     }
-                    PSFEstimation.setRelativeTolerance(grtol);
-                 PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
-
+                    PSFEstimation.setRelativeTolerance(0.);
+                    PSFEstimation.setMaximumIterations((int)DefocusMaxIter.getValue());
+                    PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
+                    }
+                    
                     /* Phase estimation */
+                    if(PhaseMaxIter.getValue()!=0){
                     if (debug && verbose) {
                         System.out.println("Phase estimation");
                         System.out.println("------------------");
                     }
-                    PSFEstimation.setResult(null);
+                    PSFEstimation.setResult(null);                    
+                    PSFEstimation.setMaximumIterations((int)PhaseMaxIter.getValue());
                   PSFEstimation.fitPSF(alphaVector, PSF_Estimation.ALPHA);
-
+                    }
+                    
+                    
                     /* Modulus estimation */
+                    if(ModulusMaxIter.getValue() !=0){
                     if (debug && verbose) {
                         System.out.println("Modulus estimation");
                         System.out.println("------------------");
                     }
-                    PSFEstimation.setResult(null);
+                    PSFEstimation.setResult(null);           
+                    PSFEstimation.setMaximumIterations((int)ModulusMaxIter.getValue());
                     PSFEstimation.fitPSF(betaVector, PSF_Estimation.BETA);
-                    MathUtils.normalise(betaVector.getData());
+                   // MathUtils.normalise(betaVector.getData());
+                    }
                     if (debug) {
                         showResult(i);
                     }
+                    
                     //If we want a emergency stop
                     if (!run) {
                         return;
@@ -836,18 +883,16 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private void psf0Init()
     {
 
-        pupil = new MicroscopyModelPSF1D(na.getValue(), lambda.getValue(), ni.getValue(), ns.getValue(), zdepth.getValue(), dxy.getValue()*1E-9,
+        pupil = new WideFieldModel(na.getValue(), lambda.getValue(), ni.getValue(), ns.getValue(), zdepth.getValue(), dxy.getValue()*1E-9,
                 dz.getValue()*1E-9, (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue(), use_depth_scaling);
-    }
+    }	
 
     private void PSF0Clicked()
     {
         /* PSF0 initialisation */
-        if(!psfInitFlag)
+        if(pupil==null)
         {
             psf0Init();
-            pupil.computePSF();
-            psfInitFlag = true;
         }
 
         /* PSF0 Sequence */
@@ -859,17 +904,16 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             PSF0Sequence.setImage(0, k, new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(),
                     MathUtils.getArray(PSF_shift, (int)nxy.getValue(), (int)nxy.getValue(), k)));
         }
+        setMetaData(PSF0Sequence) ;
         addSequence(PSF0Sequence);
     }
 
     private void phaseClicked()
     {
-        /* PSF0 initialisation */
-        if(!psfInitFlag)
+        /* PSF0 initialisation */ 
+    	if(pupil==null)
         {
             psf0Init();
-            pupil.computePSF();
-            psfInitFlag = true;
         }
         /* Phase Sequence */
         Sequence phaseSequence = new Sequence();
@@ -881,12 +925,10 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
     private void modulusClicked()
     {
-        /* PSF0 initialisation */
-        if(!psfInitFlag)
+        /* PSF0 initialisation */ 
+    	if(pupil==null)
         {
             psf0Init();
-            pupil.computePSF();
-            psfInitFlag = true;
         }
         /* Modulus Sequence */
         Sequence modulusSequence = new Sequence();
@@ -895,15 +937,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         modulusSequence.addImage(new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(), modulus_shift));
         addSequence(modulusSequence);
     }
-
-    private void PSFEstimationInit()
-    {
-        //PSFEstimation.setRegularizationWeight(mu.getValue());   //mu
-       // PSFEstimation.setRegularizationThreshold(epsilon.getValue()); //epsilon
-        PSFEstimation.setAbsoluteTolerance(0.0);        //gatol
-        PSFEstimation.setMaximumIterations(10);         //max iter
-    }
-
+    
     private void showWeightClicked()
     {
 
@@ -987,6 +1021,18 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         seqNew.setMetaData(newMetdat);
     }
 
+
+    //Copy the input metadata to the output. We may want to change some with our values
+    //So it should be done here
+    private void setMetaData(Sequence seqNew) {
+        OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata();
+        //newMetdat.setImageDescription("MyDescription", 0);
+        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz.getValue()*1E-3), 0);
+        seqNew.setMetaData(newMetdat);
+    }
+    
     /**
      * This function update all the names of the available sequences contains 
      * in the MyComboBox AND that have been added to the update list
