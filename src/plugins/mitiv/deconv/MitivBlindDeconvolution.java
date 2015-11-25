@@ -233,10 +233,16 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         imagePan.add((image = createChoiceList(     "<html><pre>Sequence: </pre></html>", seqList)));
         imagePan.add((canalImage = createChoiceList("<html><pre>Canal:    </pre></html>", canalImageOptions)));
 
-        nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 0);
-        nz = createDouble(     "<html><pre>Nz:        </pre></html>",0);
-        dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 0);
-        dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 0);
+        nxy = createDouble(    "<html><pre>Nxy:       </pre></html>", 512);
+        nz = createDouble(     "<html><pre>Nz:        </pre></html>",128);
+        dxy = createDouble(    "<html><pre>dxy(nm):   </pre></html>", 64);
+        dz = createDouble(     "<html><pre>dz(nm):    </pre></html>", 160);
+
+        imagePan.add(nxy);
+        imagePan.add(nz);
+          imagePan.add(dxy);
+          imagePan.add(dz);
+          
         image.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -252,6 +258,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                     }
                     canalImage.updateData(canalImageOptions);
                     //Update PSF metadata
+                    if(seq.getSizeX() != seq.getSizeY()){
+                        throwError("Height and width of the image must be equal ");
+                    }
                     meta = getMetaData(seq);
                     dxy.setValue(    meta.dxy);
                     dz.setValue(     meta.dz);
@@ -260,10 +269,6 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                     na.setValue(     meta.na);
                     lambda.setValue( meta.lambda);
                     ni.setValue(     meta.ni);
-                    imagePan.add(nxy);
-                    imagePan.add(nz);
-                      imagePan.add(dxy);
-                      imagePan.add(dz);
                 }
             }
         });
@@ -897,7 +902,6 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
         /* PSF0 Sequence */
         Sequence PSF0Sequence = new Sequence();
-        PSF0Sequence.setName("PSF");
         double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue());
         for (int k = 0; k < (int)nz.getValue(); k++)
         {
@@ -905,6 +909,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                     MathUtils.getArray(PSF_shift, (int)nxy.getValue(), (int)nxy.getValue(), k)));
         }
         setMetaData(PSF0Sequence) ;
+        PSF0Sequence.setName("PSF");
         addSequence(PSF0Sequence);
     }
 
