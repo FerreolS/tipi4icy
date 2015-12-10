@@ -510,7 +510,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         } finally {
             sequence.endUpdate();
         }
-        sequence.setName("TV mu="+mu+" Epsilon="+epsilon+" Iteration="+tvDec.getIterations()+" grToll= "+tvDec.getRelativeTolerance());
+        sequence.setName("TV mu="+mu+" Epsilon="+epsilon+" Iteration="+tvDec.getIterations());
     }
 
     //When the plugin is closed we try to close/stop everything
