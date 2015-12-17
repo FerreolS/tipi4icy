@@ -433,7 +433,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         String newValue = options.getValue();
         ShapedArray array;
         ShapedArray deadPixMap = null;
-        if (showPixMap.getValue() && deadPixel.getValue().getFirstNonNullImage() != null) {
+        if (showPixMap.getValue() && deadPixel.getValue() != null && deadPixel.getValue().getFirstNonNullImage() != null) {
             deadPixMap = weightMapToArray(deadPixel);
         }
         if (newValue == weightOption1) {//No options
