@@ -155,7 +155,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         //private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted?", psfSplitted);
         eZmu = new EzVarDouble("Regularization level", 0, Double.MAX_VALUE, 0.1);
         eZepsilon = new EzVarDouble("Threshold level", 0, Double.MAX_VALUE, 1);
-        eZcoef = new EzVarInteger("Number of lines to add (padding)", 1, 10000, 1);
+        eZcoef = new EzVarInteger("Number of lines to add (padding)", 0, 10000, 1);
         eZmaxIter = new EzVarInteger("Max Iterations", -1, Integer.MAX_VALUE, 1);
         eZpositivity = new EzVarBoolean("Enforce nonnegativity", false);
 
