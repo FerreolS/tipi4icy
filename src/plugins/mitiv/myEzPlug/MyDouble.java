@@ -55,4 +55,8 @@ public class MyDouble extends JPanel{
     public void setValue(double value){
         field.setText(String.valueOf(value));
     }
+
+    public void addActionListener(ActionListener l){
+        field.addActionListener(l);
+    }
 }
