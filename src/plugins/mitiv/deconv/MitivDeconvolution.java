@@ -277,8 +277,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         if (grtol < 0 || grtol >= 1) {
             message("grtol canno't be lower than 0 or greater than 1");
         }
-        if (coef < 1 || coef > 3) {
-            message("The Padding can not be lower than 1 or have a value greater than 3");
+        if (coef < 0 || coef > 3) {
+            message("The Padding can not be lower than 0 or have a value greater than 3");
         }
         if (maxIter < -1)  {
             maxIter = -1;
