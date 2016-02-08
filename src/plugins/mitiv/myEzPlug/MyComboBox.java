@@ -23,12 +23,10 @@ public class MyComboBox extends JPanel{
         add(jcb);
     }
 
-    public void updateData(String[] newInputs){
-        for (int i = 0; i < newInputs.length; i++) {
-            jcb.removeAllItems();
-            for (int j = 0; j < newInputs.length; j++) {
-                jcb.addItem(newInputs[j]);
-            }
+    public void updateData(String[] newInputs){             //FIXME Pushing pixel exception try using swing: SwingUtilities.invokeLater
+        jcb.removeAllItems();
+        for (int j = 0; j < newInputs.length; j++) {
+            jcb.addItem(newInputs[j]);
         }
     }
 
