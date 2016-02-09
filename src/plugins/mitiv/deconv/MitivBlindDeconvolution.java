@@ -4,6 +4,7 @@ import icy.gui.frame.progress.AnnounceFrame;
 import icy.gui.main.GlobalSequenceListener;
 import icy.image.IcyBufferedImage;
 import icy.main.Icy;
+import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
 import icy.util.OMEUtil;
 
@@ -23,6 +24,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+import loci.common.services.ServiceException;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.Double1D;
@@ -90,7 +92,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private final String[] nBetaOptions = new String[]{"1","4","11","22","37","56","79","106","137","172"}; 
     private String[] canalImageOptions = new String[]{"None"}; 
     private MyMetadata meta = null;     //The image metadata that we will move from one image to another
-    private JButton showPSF, psfShow2, showWeight, showModulus, showPhase;
+    private JButton saveMetaData, showPSF, psfShow2, showWeight, showModulus, showPhase;
     private JLabel resultCostPrior, resultDefocus, resultPhase, resultModulus;
 
     private JPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob, resultGlob; 
@@ -241,6 +243,18 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         imagePan.add(nz);
         imagePan.add(dxy);
         imagePan.add(dz);
+        
+        imagePan.add((saveMetaData = new JButton("Save metadata")));
+        
+        saveMetaData.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (debug) {
+                    System.out.println("Saving metadata");
+                    updateMetaData();
+                }
+            }
+        });
 
         dxy.addActionListener(new ActionListener() {
             @Override
@@ -867,7 +881,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 sequence.setImage(0,j, new IcyBufferedImage(width, height, temp));
             }
             sequence.endUpdate();
-            sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations()+" grToll: "+tvDec.getRelativeTolerance());
+            sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations());
             update();
             //Then we will update the result tab pannel
             if (runBdec) {
@@ -1061,6 +1075,20 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
         newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz.getValue()*1E-3), 0);
         seqNew.setMetaData(newMetdat);
+    }
+    
+    private void updateMetaData() {
+        Sequence seq = getSequence(image);
+        try {
+            OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
+            newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
+            newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
+            newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz.getValue()*1E-3), 0);
+            seq.setMetaData((OMEXMLMetadataImpl) newMetdat);
+        } catch (ServiceException e) {
+            e.printStackTrace();
+        }
+        
     }
 
     /**
