@@ -64,7 +64,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     /***************************************************/
     /**               Viewer Update result            **/
     /***************************************************/
-    public class tvViewer implements ReconstructionViewer{
+    public class TvViewer implements ReconstructionViewer{
         @Override
         public void display(ReconstructionJob job) {
             setResult(job);
@@ -580,7 +580,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         tvDec.setWeight(weight);
         tvDec.setData(imgArray);
         tvDec.setPsf(psfArray);
-        tvDec.setViewer(new tvViewer());
+        tvDec.setViewer(new TvViewer());
         thread.setJob(tvDec);
 
         if (restart.getValue() != "None") {

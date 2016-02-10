@@ -239,6 +239,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         DoubleShapedVectorSpace dataSpace = new DoubleShapedVectorSpace(dataShape);
         DoubleShapedVectorSpace resultSpace = new DoubleShapedVectorSpace(resultShape);
         DoubleShapedVector x = null;
+        
         if (result != null) {
             x = resultSpace.create(result);
         } else {
@@ -246,13 +247,14 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         }
         result = ArrayFactory.wrap(x.getData(), resultShape);
 
+        
         // Build convolution operator.
         DifferentiableCostFunction fdata;
         WeightedConvolutionCost weightedCost = WeightedConvolutionCost.build(resultSpace, dataSpace);
         weightedCost.setPSF(psf);
         weightedCost.setWeightsAndData(weight, data);
         fdata = weightedCost;
-
+        
         // Build the cost functions
         HyperbolicTotalVariation fprior = new HyperbolicTotalVariation(resultSpace, epsilon);
         CompositeDifferentiableCostFunction cost = new CompositeDifferentiableCostFunction(1.0, fdata, mu, fprior);
