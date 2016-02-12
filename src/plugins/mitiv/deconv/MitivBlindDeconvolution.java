@@ -205,8 +205,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         return -1;
     }
 
-    private void throwError(String s){
-        throw new IllegalArgumentException(s);
+    private void throwError(String s){          // FIXME Just show a error message..
+        new AnnounceFrame(s);
+        //throw new IllegalArgumentException(s);
     }
     @Override
     public void clean() {
@@ -319,6 +320,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                     //Update PSF metadata
                     if(seq.getSizeX() != seq.getSizeY()){
                         throwError("Height and width of the image must be equal ");
+                        return;
                     }
                     meta = getMetaData(seq);
                     dxy.setValue(    meta.dxy);
@@ -413,6 +415,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                     noise.setVisible(true);
                 } else {
                     throwError("Invalid argument passed to weight method");
+                    return;
                 }
             }
         });
@@ -620,6 +623,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                 for (int i = 0; i < imgArray.getOrder(); i++) {
                     if (imgArray.getOrder() != tmpDoubleArray.getOrder() || imgArray.getDimension(i) != tmpDoubleArray.getDimension(i)) {
                         throwError("The previous result does not have the same dimensions as the input image");
+                        return;
                     }
                 }
                 tvDec.setResult(tmpDoubleArray);
@@ -682,6 +686,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             if (imgSeq == null)
             {
                 throwError("An image/sequence of images should be given");
+                return;
             }
 
             //ArrayList<IcyBufferedImage> listImg = imgSeq.getAllImage();
@@ -697,12 +702,15 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             sizeZPad  = FFTUtils.bestDimension((int)(sizeZ + zeroPaddingz.getValue()));
             if (sizeZ == 1) {
                 throwError("Input data must be 3D");
+                return;
             } 
             if (zeroPaddingxy.getValue() < 0.0) {
                 throwError("Padding value cannot be negative");
+                return;
             }
             if (zeroPaddingz.getValue() < 0.0) {
                 throwError("Padding value cannot be negative");
+                return;
             }
             //double coef = (width + zeroPadding.getValue())/width;
 
@@ -976,7 +984,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private void buildpupil()
     {
         pupil = new WideFieldModel(na.getValue(), lambda.getValue(), ni.getValue(), ns.getValue(), zdepth.getValue(), dxy.getValue()*1E-9,
-                dz.getValue()*1E-9, (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue(), use_depth_scaling);
+                dz.getValue()*1E-9, (int)widthPad, (int)widthPad, (int)sizeZPad, use_depth_scaling);
     }	
 
     private void psfClicked()
@@ -989,11 +997,11 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
         /* PSF0 Sequence */
         Sequence PSF0Sequence = new Sequence();
-        double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), (int)nxy.getValue(), (int)nxy.getValue(), (int)nz.getValue());
+        double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), (int)widthPad, (int)widthPad, (int)sizeZPad);
         for (int k = 0; k < (int)nz.getValue(); k++)
         {
-            PSF0Sequence.setImage(0, k, new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(),
-                    MathUtils.getArray(PSF_shift, (int)nxy.getValue(), (int)nxy.getValue(), k)));
+            PSF0Sequence.setImage(0, k, new IcyBufferedImage((int)widthPad, (int)widthPad,
+                    MathUtils.getArray(PSF_shift, (int)widthPad, (int)widthPad, k)));
         }
         setMetaData(PSF0Sequence) ;
         PSF0Sequence.setName("PSF");
@@ -1010,8 +1018,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         /* Phase Sequence */
         Sequence phaseSequence = new Sequence();
         phaseSequence.setName("Phase of the pupil");
-        double[] phase_shift = MathUtils.fftShift1D(pupil.getPhi(), (int)nxy.getValue(), (int)nxy.getValue());
-        phaseSequence.addImage(new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(), phase_shift));
+        double[] phase_shift = MathUtils.fftShift1D(pupil.getPhi(), (int)widthPad, (int)widthPad);
+        phaseSequence.addImage(new IcyBufferedImage((int)widthPad, (int)widthPad, phase_shift));
         addSequence(phaseSequence);
     }
 
@@ -1025,8 +1033,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         /* Modulus Sequence */
         Sequence modulusSequence = new Sequence();
         modulusSequence.setName("Modulus of the pupil");
-        double[] modulus_shift = MathUtils.fftShift1D(pupil.getRho(), (int)nxy.getValue(), (int)nxy.getValue());
-        modulusSequence.addImage(new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(), modulus_shift));
+        double[] modulus_shift = MathUtils.fftShift1D(pupil.getRho(), (int)widthPad, (int)widthPad);
+        modulusSequence.addImage(new IcyBufferedImage((int)widthPad, (int)widthPad, modulus_shift));
         addSequence(modulusSequence);
     }
 
@@ -1058,8 +1066,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         double[] wght = createWeight(input).toDouble().flatten();
         for (int k = 0; k < (int)nz.getValue(); k++)
         {
-            WeightSequence.setImage(0, k, new IcyBufferedImage((int)nxy.getValue(), (int)nxy.getValue(),
-                    MathUtils.getArray(wght, (int)nxy.getValue(), (int)nxy.getValue(), k)));
+            WeightSequence.setImage(0, k, new IcyBufferedImage((int)widthPad, (int)widthPad,
+                    MathUtils.getArray(wght, (int)widthPad, (int)widthPad, k)));
         }
         addSequence(WeightSequence);
     }
