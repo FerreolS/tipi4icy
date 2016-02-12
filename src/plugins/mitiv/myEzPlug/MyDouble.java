@@ -51,6 +51,10 @@ public class MyDouble extends JPanel{
     public double getValue(){
         return getValue(true);
     }
+    
+    public void setEditable(boolean editable){
+        field.setEditable(editable);
+    }
 
     public void setValue(double value){
         field.setText(String.valueOf(value));
