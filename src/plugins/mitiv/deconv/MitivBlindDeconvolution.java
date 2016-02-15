@@ -234,6 +234,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         seqList = getSequencesName();
         tabbedPane = new JTabbedPane();
 
+        width = 512;
+        height = 512;
+        sizeZ = 128;
         /****************************************************/
         /**                    IMAGE TAB                   **/
         /****************************************************/
@@ -243,8 +246,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         imagePan.setLayout(new BoxLayout(imagePan, BoxLayout.Y_AXIS));
         imagePan.add((image = createChoiceList(     "<html><pre>Sequence: </pre></html>", seqList)));
         imagePan.add((canalImage = createChoiceList("<html><pre>Canal:    </pre></html>", canalImageOptions)));
-        nxy = createDouble(             "<html><pre>Nxy:        </pre></html>", 512);
-        nz = createDouble(              "<html><pre>Nz:         </pre></html>",128);
+        nxy = createDouble(             "<html><pre>Nxy:        </pre></html>", width);
+        nz = createDouble(              "<html><pre>Nz:         </pre></html>",sizeZ);
         resultPad = new JLabel(         "<html><pre>Output: <font color=\"red\">"+(int)nxy.getValue()+"x"+(int)nxy.getValue()+"x"+(int)nz.getValue()+"</font></pre></html>");
         dxy = createDouble(             "<html><pre>dxy(nm):    </pre></html>", 64);
         dz = createDouble(              "<html><pre>dz(nm):     </pre></html>", 160);
@@ -325,7 +328,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
                     } else {
                         nxy.setValue(seq.getSizeX());
                     }
-                    
+
                     dxy.setValue(    meta.dxy);
                     dz.setValue(     meta.dz);
                     nz.setValue(     meta.nz);
@@ -354,7 +357,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         psfPannel.add((lambda = createDouble( "<html><pre>\u03BB(nm):     </pre></html>", 542, 1E-9)));     //Here we give the the multiplication factor, the result will be multiply by this factor
         psfPannel.add((showPSF = new JButton("Show PSF")));
 
-        ns =createDouble(     "<html><pre>ns:        </pre></html>", 0.0);
+        ns = createDouble(     "<html><pre>ns:        </pre></html>", 0.0);
         zdepth = createDouble(     "<html><pre>ns:        </pre></html>", 0.0);
 
 
@@ -461,7 +464,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         deconvTab.add((nbIteration = new MyDouble(      "<html><pre>Number of iterations:             </pre></html>", 50)));
         deconvTab.add((positivity = new MyBoolean(      "<html><pre>Enforce nonnegativity:            </pre></html>", true)));
         deconvTab.add((crop = new MyBoolean(            "<html><pre>Crop output to match input:       </pre></html>", false)));
-        deconvTab.add((restart = createChoiceList(      "<html><pre>Start from last result:           </pre></html>", seqList)));
+        deconvTab.add((restart = createChoiceList(      "<html><pre>Starting point:                   </pre></html>", seqList)));
 
         //Creation of DECONVOLUTION TAB
         deconvGlob.add(deconvTab, BorderLayout.NORTH);
@@ -608,7 +611,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
         launchDeconvolution(imgArray, psfArray, weight, true);
     }
-    
+
     public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight, boolean cleanPrevResult){
         if (tvDec == null) {
             tvDec = new TotalVariationJobForIcy(token);
@@ -625,7 +628,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             Sequence restartSeq = getSequence(restart);
             // We verify that the previous result is conform to our expectations: !Null and same dim as input
             if (restartSeq != null) {
-                ShapedArray tmpDoubleArray = IcyBufferedImageUtils.imageToArray(restartSeq, 0);
+                int numCanal = getNumCanal(restartSeq);
+                ShapedArray tmpDoubleArray = IcyBufferedImageUtils.imageToArray(restartSeq, numCanal);
                 if (tmpDoubleArray.getOrder() != 3 && tmpDoubleArray.getDimension(0) != width 
                         && tmpDoubleArray.getDimension(1) != height && tmpDoubleArray.getDimension(2) != sizeZ) {
                     throwError("The previous result does not have the same dimensions as the input image");
@@ -704,7 +708,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             sizeZ = imgSeq.getSizeZ();
             int xySize = (width > height ? width : height);
             xyPad  = FFTUtils.bestDimension((int)(xySize + zeroPaddingxy.getValue()));
-            sizeZPad  = FFTUtils.bestDimension((int)(sizeZ + zeroPaddingz.getValue()));
+            sizeZPad = FFTUtils.bestDimension((int)(sizeZ + zeroPaddingz.getValue()));
             if (sizeZ == 1) {
                 throwError("Input data must be 3D");
                 return;
@@ -746,7 +750,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             //BEWARE here we change the value to match the new padded image size
             // FIXME we pad every input so for nown we use xxxPad
 
-          
+
             /*---------------------------------------*/
             /*            OPTIMISATION               */
             /*---------------------------------------*/
@@ -988,6 +992,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
     private void buildpupil()
     {
+        int xySize = (width > height ? width : height);
+        xyPad  = FFTUtils.bestDimension((int)(xySize + zeroPaddingxy.getValue()));
+        sizeZPad  = FFTUtils.bestDimension((int)(sizeZ + zeroPaddingz.getValue()));
         pupil = new WideFieldModel(na.getValue(), lambda.getValue(), ni.getValue(), ns.getValue(), zdepth.getValue(), dxy.getValue()*1E-9,
                 dz.getValue()*1E-9, xyPad, xyPad, sizeZPad, use_depth_scaling);
     }	
@@ -1051,7 +1058,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
         Sequence img = getSequence(image);
         if (img == null) {
-            new AnnounceFrame("No image was chosen");
+            new AnnounceFrame("No input found");
             return;
         }
         Shape myShape; 
@@ -1140,15 +1147,21 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
     private void updateMetaData() {
         Sequence seq = getSequence(image);
-        try {
-            OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
-            newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
-            newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
-            newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz.getValue()*1E-3), 0);
-            seq.setMetaData((OMEXMLMetadataImpl) newMetdat);
-        } catch (ServiceException e) {
-            e.printStackTrace();
+        if (seq != null) {
+            try {
+                OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
+                newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
+                newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy.getValue()*1E-3), 0);
+                newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz.getValue()*1E-3), 0);
+                seq.setMetaData((OMEXMLMetadataImpl) newMetdat);
+            } catch (ServiceException e) {
+                e.printStackTrace();
+            }
+        } else {
+            new AnnounceFrame("Nothing to save");
         }
+        
+
 
     }
 
@@ -1184,7 +1197,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         }
         run = false;
     }
-    
+
     //Debug function Will have to be deleted in the future 
     @SuppressWarnings("unused")
     private void addImage(double[] in, String name, int width, int height, int sizeZ){
