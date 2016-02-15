@@ -41,11 +41,16 @@ public class MyDouble extends JPanel{
     }
 
     public double getValue(boolean withMult){
-        if (withMult) {
-            return mult*Double.valueOf(field.getText());
-        } else {
-            return Double.valueOf(field.getText());
+        try {
+            if (withMult) {
+                return mult*Double.valueOf(field.getText());
+            } else {
+                return Double.valueOf(field.getText());
+            }
+        }catch(Exception e2) {
+            field.setText("0.0");
         }
+        return 0.0;
     }
 
     public double getValue(){
