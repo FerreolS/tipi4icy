@@ -608,11 +608,11 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         thread.start();
     }
 
-    public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
-        launchDeconvolution(imgArray, psfArray, weight, true);
+    public boolean launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
+        return launchDeconvolution(imgArray, psfArray, weight, true, false);
     }
 
-    public void launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight, boolean cleanPrevResult){
+    public boolean launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight, boolean cleanPrevResult, boolean ignoreRestart){
         if (tvDec == null) {
             tvDec = new TotalVariationJobForIcy(token);
             tvDec.setResult(null);
@@ -623,23 +623,27 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         tvDec.setPsf(psfArray);
         tvDec.setViewer(new TvViewer());
         thread.setJob(tvDec);
-
-        if (restart.getValue() != "None") {
+        if (!ignoreRestart && restart.getValue() != "None") {
             Sequence restartSeq = getSequence(restart);
             // We verify that the previous result is conform to our expectations: !Null and same dim as input
             if (restartSeq != null) {
                 int numCanal = getNumCanal(restartSeq);
                 ShapedArray tmpDoubleArray = IcyBufferedImageUtils.imageToArray(restartSeq, numCanal);
-                if (tmpDoubleArray.getOrder() != 3 && tmpDoubleArray.getDimension(0) != width 
-                        && tmpDoubleArray.getDimension(1) != height && tmpDoubleArray.getDimension(2) != sizeZ) {
+                boolean sameAsOrigin = tmpDoubleArray.getRank() == 3 && tmpDoubleArray.getDimension(0) == width 
+                        && tmpDoubleArray.getDimension(1) == height && tmpDoubleArray.getDimension(2) == sizeZ;
+                boolean sameAsPrevious = tmpDoubleArray.getRank() == 3 && tmpDoubleArray.getDimension(0) == xyPad 
+                        && tmpDoubleArray.getDimension(1) == xyPad && tmpDoubleArray.getDimension(2) == sizeZPad;
+                if (!(sameAsOrigin || sameAsPrevious)) {
                     throwError("The previous result does not have the same dimensions as the input image");
-                    return;
+                    return false;
                 }
                 tmpDoubleArray = ArrayUtils.pad(tmpDoubleArray, shapePad);
                 tvDec.setResult(tmpDoubleArray);
             }
         } else if(cleanPrevResult){
             tvDec.setResult(null);
+        } else {
+            tvDec.setResult(tvDec.getResult());
         }
         tvDec.setPositivity(positivity.getValue());
         tvDec.setRegularizationWeight(mu.getValue());
@@ -649,6 +653,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         tvDec.setOutputShape(shapePad);
         token.start();
         setResult(tvDec);
+        return true;
     }
 
     @Override
@@ -802,7 +807,10 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
                 for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
                     /* OBJET ESTIMATION (by the current PSF) */
-                    launchDeconvolution(imgArray, psfArray, weight, false);
+                    // If first iteration we use given result, after we continue with our previous result (i == 0)
+                    if (!launchDeconvolution(imgArray, psfArray, weight, false, !(i == 0))) {
+                        return;
+                    }
                     /* PSF ESTIMATION (by the current objet) */
                     PSFEstimation.setPupil(pupil);
                     //   PSFEstimation.setPsf(tvDec.getData());
