@@ -29,6 +29,7 @@ import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double1D;
+import mitiv.array.Double2D;
 import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
@@ -738,7 +739,8 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             // If no PSF is loaded -> creation of a PSF
             if (psfSeq == null) {
                 buildpupil();
-                psfArray =  Double3D.wrap(MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad) , shapePad);
+                //psfArray =  Double3D.wrap(MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad) , shapePad);
+                psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), shapePad));
             } else {
                 psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight(), psfSeq.getSizeZ()), numCanal);
             }
@@ -984,7 +986,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
     private void showResult(int num)
     {
         Sequence psf3DSequence = new Sequence();
-        double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
+        DoubleArray psf = Double3D.wrap(pupil.getPSF(), shapePad);
+        double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
+        //double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
         psf3DSequence.setName("PSF Estimated - " + num);
         for (int k = 0; k < sizeZPad; k++)
         {
@@ -1017,7 +1021,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
         /* PSF0 Sequence */
         Sequence PSF0Sequence = new Sequence();
-        double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
+        DoubleArray psf = Double3D.wrap(pupil.getPSF(), shapePad);
+        double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
+        //double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
         for (int k = 0; k < sizeZPad; k++)
         {
             PSF0Sequence.setImage(0, k, new IcyBufferedImage(xyPad, xyPad,
@@ -1038,7 +1044,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         /* Phase Sequence */
         Sequence phaseSequence = new Sequence();
         phaseSequence.setName("Phase of the pupil");
-        double[] phase_shift = MathUtils.fftShift1D(pupil.getPhi(), xyPad, xyPad);
+        DoubleArray psf = Double2D.wrap(pupil.getPhi(), Shape.make(xyPad, xyPad));
+        double[] phase_shift = ArrayUtils.roll(psf).toDouble().flatten();
+        //double[] phase_shift = MathUtils.fftShift1D(pupil.getPhi(), xyPad, xyPad);
         phaseSequence.addImage(new IcyBufferedImage(xyPad, xyPad, phase_shift));
         addSequence(phaseSequence);
     }
@@ -1053,7 +1061,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         /* Modulus Sequence */
         Sequence modulusSequence = new Sequence();
         modulusSequence.setName("Modulus of the pupil");
-        double[] modulus_shift = MathUtils.fftShift1D(pupil.getRho(), xyPad, xyPad);
+        DoubleArray psf = Double2D.wrap(pupil.getRho(), Shape.make(xyPad, xyPad));
+        double[] modulus_shift = ArrayUtils.roll(psf).toDouble().flatten();
+        //double[] modulus_shift = MathUtils.fftShift1D(pupil.getRho(), xyPad, xyPad);
         modulusSequence.addImage(new IcyBufferedImage(xyPad, xyPad, modulus_shift));
         addSequence(modulusSequence);
     }
