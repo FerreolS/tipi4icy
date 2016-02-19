@@ -37,15 +37,22 @@ import javax.swing.JTextPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+import mitiv.array.ArrayUtils;
+import mitiv.array.DoubleArray;
+import mitiv.base.Shape;
+import mitiv.deconv.ConvolutionOperator;
+import mitiv.linalg.LinearOperator;
 import mitiv.linalg.shaped.DoubleShapedVector;
+import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import mitiv.linalg.shaped.RealComplexFFT;
 import mitiv.utils.MathUtils;
 import icy.sequence.Sequence;
 import icy.sequence.SequenceEvent;
 import icy.sequence.SequenceListener;
 import icy.gui.frame.GenericFrame;
 import icy.image.IcyBufferedImage;
-import icy.type.collection.array.Array1DUtil;
 import plugins.adufour.ezplug.*;
+import plugins.mitiv.io.IcyBufferedImageUtils;
 
 /**
  * A demo plugin used to create blurred for a presentation.
@@ -89,7 +96,7 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
     public static final int SOBEL = 5;
     public static final int KIRSH = 6;
     public static final int DISK = 7;
-    
+
 
     @Override
     protected void initialize()
@@ -112,7 +119,7 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
         super.addEzComponent(noise);
         super.addComponent(slider);
         super.addComponent(label);
-        
+
         EzButton detailsButton = new EzButton("Help", new ActionListener()
         {
             @Override
@@ -130,34 +137,45 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
         if (myseq != null) {
             myseq.close();
         }
-        
+
         Sequence seqImg = EzVarSequenceImage.getValue();
         Sequence seqPSF = EzVarSequencePSF.getValue();
 
         int w = seqImg.getSizeX();
         int h = seqImg.getSizeY();
         int d = seqImg.getSizeZ();
-
-        double[] x = new double[w*h*d];
-        double[] psf = new double[w*h*d];
-        for(int k = 0; k < d; k++)
-        {
-            Array1DUtil.arrayToDoubleArray(seqImg.getDataXY(0, k, 0), 0, x, k*w*h, w*h, seqImg.isSignedDataType());
-            Array1DUtil.arrayToDoubleArray(seqPSF.getDataXY(0, k, 0), 0, psf, k*w*h, w*h, seqImg.isSignedDataType());
+        
+        Shape myShape;
+        if (d != 1) {
+            myShape = Shape.make(w, h, d);
+        } else {
+            myShape = Shape.make(w, h);
         }
         
-            double[] psf_shift= MathUtils.fftShift3D(psf, w, h, d);
-            DoubleShapedVector y = MathUtils.convolution(x, psf_shift, w, h, d);
-            
-            Sequence seqY = new Sequence();
-            seqY.setName("Y");
-            for(int k = 0; k < d; k++)
-            {
-                seqY.addImage(new IcyBufferedImage(w, h, MathUtils.getArray(y.getData(), w, h, k)));
-            }
-            addSequence(seqY);
+        DoubleArray imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(seqImg, myShape, 0);
+        DoubleArray psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(seqPSF, myShape, 0);
+        
+        DoubleArray psfArrayRoll = ArrayUtils.roll(psfArray).toDouble();
+
+        DoubleShapedVectorSpace space = new DoubleShapedVectorSpace(myShape);
+        DoubleShapedVector hVector = space.create(psfArrayRoll);
+        DoubleShapedVector xVector = space.create(imgArray);
+
+        /* Convolve x by the psf h */
+        RealComplexFFT FFT = new RealComplexFFT(space);
+        ConvolutionOperator H = new ConvolutionOperator(FFT, hVector);
+        DoubleShapedVector y = space.create();
+        H.apply(xVector, y, LinearOperator.DIRECT);
+        
+        Sequence seqY = new Sequence();
+        seqY.setName("Y");
+        for(int k = 0; k < d; k++)
+        {
+            seqY.addImage(new IcyBufferedImage(w, h, MathUtils.getArray(y.getData(), w, h, k)));
+        }
+        addSequence(seqY);
     }
-    
+
     /**
      * Action performed when the user clicks on the details button
      */
