@@ -12,7 +12,6 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -624,6 +623,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         tvDec.setPsf(psfArray);
         tvDec.setViewer(new TvViewer());
         thread.setJob(tvDec);
+        // If We are at step 0 and a previous result was given, we give the result
+        // Else if explicitly asked we clean 
+        // Else we use previous result
         if (!ignoreRestart && restart.getValue() != "None") {
             Sequence restartSeq = getSequence(restart);
             // We verify that the previous result is conform to our expectations: !Null and same dim as input
@@ -707,10 +709,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
             //ArrayList<IcyBufferedImage> listImg = imgSeq.getAllImage();
 
-            BufferedImage img = imgSeq.getFirstNonNullImage();
             // Set the informations about the input
-            width = img.getWidth();
-            height = img.getHeight();
+            width = imgSeq.getSizeX();
+            height= imgSeq.getSizeY();
             sizeZ = imgSeq.getSizeZ();
             int xySize = (width > height ? width : height);
             xyPad  = FFTUtils.bestDimension((int)(xySize + zeroPaddingxy.getValue()));
@@ -729,7 +730,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
             }
             //double coef = (width + zeroPadding.getValue())/width;
 
-            shapePad = Shape.make(xyPad, xyPad, sizeZPad);    
+            shapePad = Shape.make(xyPad, xyPad, sizeZPad);
             shape    = Shape.make(width, height, sizeZ);
 
             int numCanal = getNumCanal(imgSeq);
@@ -1076,7 +1077,7 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
 
         Sequence img = getSequence(image);
         if (img == null) {
-            new AnnounceFrame("No input found");
+            new AnnounceFrame("No image input found");
             return;
         }
         Shape myShape; 
@@ -1094,10 +1095,14 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         Sequence WeightSequence = new Sequence();
         WeightSequence.setName("Weight");
         double[] wght = createWeight(input).toDouble().flatten();
-        for (int k = 0; k < sizeZPad; k++)
+        if (wght.length != width*height*sizeZ) {
+            new AnnounceFrame("Invalid weight size");
+            return;
+        }
+        for (int k = 0; k < sizeZ; k++)
         {
-            WeightSequence.setImage(0, k, new IcyBufferedImage(xyPad, xyPad,
-                    MathUtils.getArray(wght, xyPad, xyPad, k)));
+            WeightSequence.setImage(0, k, new IcyBufferedImage(width, height,
+                    MathUtils.getArray(wght, width, height, k)));
         }
         addSequence(WeightSequence);
     }
