@@ -598,8 +598,9 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
     //The input variable for the protocol
     @Override
     public void declareInput(VarList inputMap) {
-        inputMap.add("psf", sequencePsf.getVariable());
+        initialize();
         inputMap.add("image", sequenceImg.getVariable());
+        inputMap.add("psf", sequencePsf.getVariable());
         inputMap.add("mu", eZmu.getVariable());
         inputMap.add("epsilon", eZepsilon.getVariable());
         inputMap.add("maxIter", eZmaxIter.getVariable());
