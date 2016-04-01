@@ -226,17 +226,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        imagePan.add(image);
-        imagePan.add(canalImage);
-        imagePan.add(nxy);
-        imagePan.add(nz);
-        imagePan.add(zeroPaddingxy);
-        imagePan.add(zeroPaddingz);
-        imagePan.add(resultPad);
-        imagePan.add(dxy);
-        imagePan.add(dz);
-        imagePan.add(saveMetaData);
-
         resultPad.setValue(width+"x"+height+"x"+sizeZ); // FIXME fft best dims ?
 
         dxy.addVarChangeListener(new EzVarListener<Double>() {
@@ -295,11 +284,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
 
         });
-        //Creation of IMAGE TAB
-        imageGlob.add(imagePan);
-        tabbedPane.add(imageGlob);
-
-
 
         /****************************************************/
         /**                    PSF TAB                     **/
@@ -326,18 +310,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         ns = new EzVarDouble("ns:");        //FIXME thefuck ? never used
         zdepth = new EzVarDouble("ns:");    //FIXME thefuck ? never used
-
         // Note The listener of PSF is after BDEC tab
-
-        psfPannel.add(psf);
-        psfPannel.add(na);
-        psfPannel.add(ni);
-        psfPannel.add(lambda);     //Here we give the the multiplication factor, the result will be multiply by this factor
-        psfPannel.add(showPSF);
-
-        //Creation of IMAGE TAB
-        psfGlob.add(psfPannel);
-        tabbedPane.add(psfGlob);
 
         /****************************************************/
         /**                 VARIANCE TAB                   **/
@@ -396,17 +369,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });	
 
-        varianceTab.add(weightsMethod);
-        varianceTab.add(weights);
-        varianceTab.add(gain);
-        varianceTab.add(noise);
-        varianceTab.add(deadPixGiven);
-        varianceTab.add(deadPixel);
-        varianceTab.add(showWeight);
-        //Creation of VARIANCE TAB
-        varianceGlob.add(varianceTab);
-        tabbedPane.add(varianceGlob);
-
         /****************************************************/
         /**                    DECONV TAB                  **/
         /****************************************************/
@@ -440,21 +402,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         });
 
         EzGroup groupStop1 = new EzGroup("Emergency STOP", stopDec);
-
-        deconvTab.add(mu);
-        deconvTab.add(epsilon);
-        deconvTab.add(nbIteration);
-        deconvTab.add(positivity);
-        deconvTab.add(crop);
-        deconvTab.add(restart);
-        deconvTab.add(docDec);
-        deconvTab.add(startDec);
-        deconvTab.add(groupStop1);
-        //Creation of DECONVOLUTION TAB
-        deconvGlob.add(deconvTab);
-        tabbedPane.add(deconvGlob);
-
-
+        
         /****************************************************/
         /**                      BDEC TAB                  **/
         /****************************************************/
@@ -518,26 +466,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 stopExecution();
             }
         });
-        show.setFoldedState(true);
 
         EzGroup groupStop2 = new EzGroup("Emergency STOP", stopBlind);
-
-        bdecTab.add(nbAlphaCoef);
-        bdecTab.add(nbBetaCoef);
-        bdecTab.add(resetPSF);
-        bdecTab.add(DefocusMaxIter);
-        bdecTab.add(PhaseMaxIter);
-        bdecTab.add(ModulusMaxIter);
-        bdecTab.add(bDecTotalIteration);
-
-        bdecTab.add(show);
-        bdecTab.add(docBlind);
-        bdecTab.add(startBlind);
-        bdecTab.add(groupStop2);
-
-        //Creation of BDec TAB
-        bdecGlob.add(bdecTab);
-        tabbedPane.add(bdecGlob);
 
         // This is the PSF button action listener, we needed startBlind to be initialized
         psf.addVarChangeListener(new EzVarListener<Sequence>() {
@@ -568,13 +498,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         resultDefocus = new EzVarText(       "Defocus");
         resultModulus = new EzVarText(   "Modulus");
         resultPhase = new EzVarText(     "Phase");
-        resultTab.add(resultCostPrior);
-        resultTab.add(resultDefocus);
-        resultTab.add(resultModulus);
-        resultTab.add(resultPhase);
-
-        resultGlob.add(resultTab);
-        tabbedPane.add(resultGlob);
 
         /****************************************************/
         /**                      ToolTips                  **/
@@ -613,9 +536,88 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         positivity.setToolTipText(ToolTipText.booleanPositivity);
         crop.setToolTipText(ToolTipText.booleanCrop);
         resultTab.setToolTipText(ToolTipText.textOutput);
+        
+        /******** Adding ********/
+        
+        /**** IMAGE ****/
+        imagePan.add(image);
+        imagePan.add(canalImage);
+        imagePan.add(nxy);
+        imagePan.add(nz);
+        imagePan.add(zeroPaddingxy);
+        imagePan.add(zeroPaddingz);
+        imagePan.add(resultPad);
+        imagePan.add(dxy);
+        imagePan.add(dz);
+        imagePan.add(saveMetaData);
+        
+        imageGlob.add(imagePan);
+        tabbedPane.add(imageGlob);
+        
+        /**** PSF ****/
+        psfPannel.add(psf);
+        psfPannel.add(na);
+        psfPannel.add(ni);
+        psfPannel.add(lambda);     //Here we give the the multiplication factor, the result will be multiply by this factor
+        psfPannel.add(showPSF);
+
+        psfGlob.add(psfPannel);
+        tabbedPane.add(psfGlob);
+        
+        /**** Variance ****/
+        varianceTab.add(weightsMethod);
+        varianceTab.add(weights);
+        varianceTab.add(gain);
+        varianceTab.add(noise);
+        varianceTab.add(deadPixGiven);
+        varianceTab.add(deadPixel);
+        varianceTab.add(showWeight);
+        //Creation of VARIANCE TAB
+        varianceGlob.add(varianceTab);
+        tabbedPane.add(varianceGlob);
+        
+        /**** Deconv ****/
+        deconvTab.add(mu);
+        deconvTab.add(epsilon);
+        deconvTab.add(nbIteration);
+        deconvTab.add(positivity);
+        deconvTab.add(crop);
+        deconvTab.add(restart);
+        deconvTab.add(docDec);
+        deconvTab.add(startDec);
+        deconvTab.add(groupStop1);
+        //Creation of DECONVOLUTION TAB
+        deconvGlob.add(deconvTab);
+        tabbedPane.add(deconvGlob);
+        
+        /**** BDec ****/
+        bdecTab.add(nbAlphaCoef);
+        bdecTab.add(nbBetaCoef);
+        bdecTab.add(resetPSF);
+        bdecTab.add(DefocusMaxIter);
+        bdecTab.add(PhaseMaxIter);
+        bdecTab.add(ModulusMaxIter);
+        bdecTab.add(bDecTotalIteration);
+        bdecTab.add(show);
+        bdecTab.add(docBlind);
+        bdecTab.add(startBlind);
+        bdecTab.add(groupStop2);
+        //Creation of BDec TAB
+        bdecGlob.add(bdecTab);
+        tabbedPane.add(bdecGlob);
+        
+        /**** Result ****/
+        resultTab.add(resultCostPrior);
+        resultTab.add(resultDefocus);
+        resultTab.add(resultModulus);
+        resultTab.add(resultPhase);
+        resultGlob.add(resultTab);
+        tabbedPane.add(resultGlob);
 
         // getUI().setRunButtonEnabled(false); //Disable start button if we are not on bdec or deconv tab // TODO What do we do with that
         addEzComponent(tabbedPane);
+        // Must be added to global panel first 
+        show.setFoldedState(true);
 
         setDefaultValue();
         if (isHeadLess()) {
