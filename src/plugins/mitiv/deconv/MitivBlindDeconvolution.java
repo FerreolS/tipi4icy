@@ -1010,6 +1010,9 @@ public class MitivBlindDeconvolution extends EzPlug implements GlobalSequenceLis
         sizeZPad  = FFTUtils.bestDimension((int)(sizeZ + zeroPaddingz.getValue()));
         pupil = new WideFieldModel(na.getValue(), lambda.getValue(), ni.getValue(), ns.getValue(), zdepth.getValue(), dxy.getValue()*1E-9,
                 dz.getValue()*1E-9, xyPad, xyPad, sizeZPad, use_depth_scaling);
+        if (shapePad == null) {
+            shapePad = Shape.make(xyPad, xyPad, sizeZPad);
+        }
     }	
 
     private void psfClicked()
