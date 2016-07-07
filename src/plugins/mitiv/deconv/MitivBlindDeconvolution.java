@@ -57,8 +57,7 @@ import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
 /**
  * MiTivGlobalDeconv is a blind deconvolution tool built on the same basis than
  * MiTivTotalVariation. The blind deconvolution process is trying to guess the PSF 
- * and then the it is a standard deconvolution. By iterating on the result we can affine 
- * the PSF until the result is good enough for the user.
+ * and then the it is a standard deconvolution. 
  * 
  * @author light
  *
@@ -78,9 +77,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /***************************************************/
     /**                  All variables                **/
     /***************************************************/
-    private EzVarDouble dxy, dz, na, lambda, ni, ns, zdepth;    //PSF
+    private EzVarDouble dxy, dz, na, lambda, ni;
     private EzVarInteger nxy, nz, nbIteration, bDecTotalIteration,DefocusMaxIter,PhaseMaxIter,ModulusMaxIter, zeroPaddingxy, zeroPaddingz;
-    private boolean use_depth_scaling = false;
     private WideFieldModel pupil=null;
     // private boolean psfInitFlag = false;
     private EzVarDouble mu, epsilon, gain, noise;          //Deconvolution                         //VARIANCE
@@ -123,7 +121,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /**            DEBUG            **/
     /*********************************/
     private boolean debug = true;      //Show psf steps 
-    private boolean verbose = false;     //show some values, need debug to true
+    private boolean verbose = true;     //show some values, need debug to true
 
     //Global variables for the algorithms
     TotalVariationJobForIcy tvDec;
@@ -308,8 +306,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        ns = new EzVarDouble("ns:");        //FIXME thefuck ? never used
-        zdepth = new EzVarDouble("ns:");    //FIXME thefuck ? never used
         // Note The listener of PSF is after BDEC tab
 
         /****************************************************/
@@ -811,7 +807,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     betaVector = null;
                 }
                 if (defocuSpace==null){
-                    double[] defocus = {ni.getValue()/lambda.getValue()*1E-9, 0., 0.};
+                    double[] defocus = {ni.getValue()/(lambda.getValue()*1E-9), 0., 0.}; 
                     defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
                     defocusVector = defocuSpace.wrap(defocus);
                 }
@@ -1040,8 +1036,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         int xySize = (width > height ? width : height);
         xyPad  = FFTUtils.bestDimension((int)(xySize + zeroPaddingxy.getValue()));
         sizeZPad  = FFTUtils.bestDimension((int)(sizeZ + zeroPaddingz.getValue()));
-        pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), ns.getValue(), zdepth.getValue(), dxy.getValue()*1E-9,
-                dz.getValue()*1E-9, xyPad, xyPad, sizeZPad, use_depth_scaling);
+        pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy.getValue()*1E-9,
+                dz.getValue()*1E-9, xyPad, xyPad, sizeZPad);
     }	
 
     private void psfClicked()
