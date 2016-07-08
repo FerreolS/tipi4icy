@@ -296,14 +296,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         });
 
-        /****************************************************/
-        /**                    PSF TAB                     **/
-        /****************************************************/
-        //Creation of the inside of PSF TAB
-    //    psfGlob = new EzPanel("PSF"); //Border layout to be sure that the images are stacked to the up
-    //    EzPanel psfPannel = new EzPanel("PSFPanel");
-
-        psf = new EzVarSequence("Load PSF:");
         na = new EzVarDouble("NA:");
         ni = new EzVarDouble("ni:");
         lambda = new EzVarDouble( "\u03BB(nm):");
@@ -478,25 +470,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         EzGroup groupStop2 = new EzGroup("Emergency STOP", stopBlind);
 
-        // This is the PSF button action listener, we needed startBlind to be initialized
-        psf.addVarChangeListener(new EzVarListener<Sequence>() {
-            @Override
-            public void variableChanged(EzVar<Sequence> source, Sequence newValue) {
-                canRunBdec = (psf.getValue() == null); // If no psf given, we can run bdec tab, else we disable the run button in bdec tab
-                na.setVisible(canRunBdec);                  // AND if we can run BDEC we can show the options of bdec
-                ni.setVisible(canRunBdec);
-                lambda.setVisible(canRunBdec);
-                showPSF.setVisible(canRunBdec);
-                startBlind.setEnabled(canRunBdec);
-                if (canRunBdec) {
-                    docBlind.setText("BlindDeconvolution use the parameters from previous tab to compute the PSF");
-                } else {
-                    docBlind.setText("BlindDeconvolution cannot be run with a PSF");
-                }
-            }
-        });
-        psf.setNoSequenceSelection();
-
+     
 
         /****************************************************/
         /**                    RESULT TAB                  **/
@@ -512,7 +486,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /**                      ToolTips                  **/
         /****************************************************/
         image.setToolTipText(ToolTipText.sequenceImage);
-        psf.setToolTipText(ToolTipText.sequencePSF);
         weights.setToolTipText(ToolTipText.sequenceWeigth);
         weightsMethod.setToolTipText(ToolTipText.sequenceWeigth);
         deadPixel.setToolTipText(ToolTipText.sequencePixel);
@@ -559,24 +532,14 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         imagePan.add(na);
         imagePan.add(ni);
-        imagePan.add(lambda);     //Here we give the the multiplication factor, the result will be multiply by this factor
+        imagePan.add(lambda);     
 
         imagePan.add(saveMetaData);
         imagePan.add(showPSF);
         
         imageGlob.add(imagePan);
         tabbedPane.add(imageGlob);
-        
-//        /**** PSF ****/
-//        psfPannel.add(psf);
-//        psfPannel.add(na);
-//        psfPannel.add(ni);
-//        psfPannel.add(lambda);     //Here we give the the multiplication factor, the result will be multiply by this factor
-//        psfPannel.add(showPSF);
-//
-//        psfGlob.add(psfPannel);
-//        tabbedPane.add(psfGlob);
-//        
+  
         /**** Variance ****/
         varianceTab.add(weightsMethod);
         varianceTab.add(weights);
