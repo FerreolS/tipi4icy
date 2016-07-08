@@ -300,8 +300,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /**                    PSF TAB                     **/
         /****************************************************/
         //Creation of the inside of PSF TAB
-        psfGlob = new EzPanel("PSF"); //Border layout to be sure that the images are stacked to the up
-        EzPanel psfPannel = new EzPanel("PSFPanel");
+    //    psfGlob = new EzPanel("PSF"); //Border layout to be sure that the images are stacked to the up
+    //    EzPanel psfPannel = new EzPanel("PSFPanel");
 
         psf = new EzVarSequence("Load PSF:");
         na = new EzVarDouble("NA:");
@@ -555,21 +555,28 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         imagePan.add(outputSize);
         imagePan.add(dxy);
         imagePan.add(dz);
+        
+
+        imagePan.add(na);
+        imagePan.add(ni);
+        imagePan.add(lambda);     //Here we give the the multiplication factor, the result will be multiply by this factor
+
         imagePan.add(saveMetaData);
+        imagePan.add(showPSF);
         
         imageGlob.add(imagePan);
         tabbedPane.add(imageGlob);
         
-        /**** PSF ****/
-        psfPannel.add(psf);
-        psfPannel.add(na);
-        psfPannel.add(ni);
-        psfPannel.add(lambda);     //Here we give the the multiplication factor, the result will be multiply by this factor
-        psfPannel.add(showPSF);
-
-        psfGlob.add(psfPannel);
-        tabbedPane.add(psfGlob);
-        
+//        /**** PSF ****/
+//        psfPannel.add(psf);
+//        psfPannel.add(na);
+//        psfPannel.add(ni);
+//        psfPannel.add(lambda);     //Here we give the the multiplication factor, the result will be multiply by this factor
+//        psfPannel.add(showPSF);
+//
+//        psfGlob.add(psfPannel);
+//        tabbedPane.add(psfGlob);
+//        
         /**** Variance ****/
         varianceTab.add(weightsMethod);
         varianceTab.add(weights);
