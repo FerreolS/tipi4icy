@@ -57,8 +57,7 @@ import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
 /**
  * MiTivGlobalDeconv is a blind deconvolution tool built on the same basis than
  * MiTivTotalVariation. The blind deconvolution process is trying to guess the PSF 
- * and then the it is a standard deconvolution. By iterating on the result we can affine 
- * the PSF until the result is good enough for the user.
+ * and then the it is a standard deconvolution. 
  * 
  * @author light
  *
@@ -78,13 +77,12 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /***************************************************/
     /**                  All variables                **/
     /***************************************************/
-    private EzVarDouble dxy, dz, na, lambda, ni, ns, zdepth;    //PSF
-    private EzVarInteger nxy, nz, nbIteration, bDecTotalIteration,DefocusMaxIter,PhaseMaxIter,ModulusMaxIter, zeroPaddingxy, zeroPaddingz;
-    private boolean use_depth_scaling = false;
+    private EzVarDouble dxy, dz, na, lambda, ni;
+    private EzVarInteger  nbIteration, bDecTotalIteration,DefocusMaxIter,PhaseMaxIter,ModulusMaxIter, paddingSizeXY, paddingSizeZ;
     private WideFieldModel pupil=null;
     // private boolean psfInitFlag = false;
-    private EzVarDouble mu, epsilon, gain, noise;          //Deconvolution                         //VARIANCE
-    private EzVarSequence image, psf, restart, weights, deadPixel, outputHeadlessImage, outputHeadlessPSF;
+    private EzVarDouble mu, epsilon, gain, noise;         
+    private EzVarSequence image, restart, weights, deadPixel, outputHeadlessImage, outputHeadlessPSF;
     private EzVarText weightsMethod,  nbAlphaCoef, nbBetaCoef;
     private EzVarChannel canalImage;
     private EzVarBoolean deadPixGiven, positivity, crop, resetPSF;
@@ -94,22 +92,26 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private MyMetadata meta = null;     //The image metadata that we will move from one image to another
     private EzButton saveMetaData, showPSF, psfShow2, showWeight, showModulus, showPhase;
     private EzButton startDec, startBlind, stopDec, stopBlind;
-    private EzVarText resultPad, resultCostPrior, resultDefocus, resultPhase, resultModulus;
+    private EzVarText imageSize, outputSize, resultCostPrior, resultDefocus, resultPhase, resultModulus;
     private EzLabel docDec, docBlind;
 
-    private EzPanel psfGlob, imageGlob, varianceGlob, deconvGlob, bdecGlob, resultGlob; 
-    private boolean canRunBdec = true;      //In the case where a psf is given we will not allow to run bdec
+    private EzPanel  imageGlob, varianceGlob, deconvGlob, bdecGlob, resultGlob; 
     private EzTabs tabbedPane;
 
     private double grtol = 0.0;
     private int nbAlpha=0, nbBeta=1;
+
+    private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence sizes 
+    private Shape imageShape;
+    private  int Nxy=512, Nz=128;			 // Output (padded sequence size)
+    private Shape outputShape;
+    private  int xPad, yPad, zPad;    // Pad size
 
 
     DoubleShapedVectorSpace defocuSpace = null, alphaSpace=null, betaSpace=null;
     DoubleShapedVector defocusVector = null, alphaVector = null, betaVector =null;
 
 
-    private Shape shape, shapePad;
     boolean run = true;
     boolean runBdec;
 
@@ -123,14 +125,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /**            DEBUG            **/
     /*********************************/
     private boolean debug = true;      //Show psf steps 
-    private boolean verbose = false;     //show some values, need debug to true
+    private boolean verbose = true;     //show some values, need debug to true
 
     //Global variables for the algorithms
     TotalVariationJobForIcy tvDec;
     PSF_Estimation PSFEstimation;
     //Global variable for the deconvolution
     Sequence sequence; //The reference to the sequence we use to plot 
-    int width, height, sizeZ, xyPad, sizeZPad;
 
 
     /*********************************/
@@ -149,26 +150,36 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         }
     }
 
-    protected void updateOutputPad() {
-        int xy = FFTUtils.bestDimension((int)(nxy.getValue() + zeroPaddingxy.getValue()));
-        int z = FFTUtils.bestDimension((int)(nz.getValue() + zeroPaddingz.getValue()));
-        //String text = "<html><font color=red>"+xy+"x"+xy+"x"+z+"</font></html>";
-        String text = xy+"x"+xy+"x"+z;
-        resultPad.setValue(text);
-
+    protected void updateOutputSize() {
+        String text = Nxy+"x"+Nxy+"x"+Nz;
+        outputSize.setValue(text);
+    }
+    
+    protected void updateImageSize() {
+        String text = sizeX+"x"+sizeY+"x"+sizeZ;
+        imageSize.setValue(text);
+    }
+    
+    
+    protected void updatePaddedSize() {
+    	int sizeXY = Math.max(sizeX, sizeY);
+        Nxy = FFTUtils.bestDimension((int)(sizeXY + paddingSizeXY.getValue()));
+        Nz= FFTUtils.bestDimension((int)( sizeZ + paddingSizeZ.getValue()));
+        outputShape = Shape.make(Nxy, Nxy, Nz);
     }
 
     private void setDefaultValue() {
-        nxy.setValue(512);
-        nz.setValue(128);
         dxy.setValue(64.);
         dz.setValue(128.);
         na.setValue(1.4);
         ni.setValue(1.518);
         lambda.setValue(542.);
-        mu.setValue(0.5);
+        gain.setValue(1.);
+        noise.setValue(5.);
+        weightsMethod.setValue( weightOptions[3]);
+        mu.setValue(0.1);
         epsilon.setValue(0.01);
-        nbIteration.setValue(50);
+        nbIteration.setValue(10);
         bDecTotalIteration.setValue(1);
         resultCostPrior.setValue(   "No results yet");
         resultDefocus.setValue(     "No results yet");
@@ -176,9 +187,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         resultPhase.setValue(       "No results yet");
 
         if (!isHeadLess()) {
-            nxy.setEnabled(false);
-            nz.setEnabled(false);
-            resultPad.setEnabled(false);
+            outputSize.setEnabled(false);
+            imageSize.setEnabled(false);
             resultCostPrior.setEnabled(false);
             resultDefocus.setEnabled(false);
             resultModulus.setEnabled(false);
@@ -197,10 +207,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         }
         tabbedPane = new EzTabs("BlindTabs", TabPlacement.TOP);
 
-        width = 512;
-        height = 512;
-        sizeZ = 128;
-        shapePad = Shape.make(width, height, sizeZ); // FIXME fft best dims ?
         /****************************************************/
         /**                    IMAGE TAB                   **/
         /****************************************************/
@@ -209,13 +215,12 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         EzPanel imagePan = new EzPanel("FILEPanel");
         image = new EzVarSequence("Sequence:");
         canalImage = new EzVarChannel("Canal:", image.getVariable(), true);
-        nxy = new EzVarInteger("Nxy:");
-        nz = new EzVarInteger("Nz:");
-        resultPad = new EzVarText("Output:");
+        imageSize = new EzVarText("Image size:");
+        outputSize = new EzVarText("Output size:");
         dxy = new EzVarDouble("dxy(nm):");
         dz = new EzVarDouble("dz(nm):");
-        zeroPaddingxy = new EzVarInteger("padding xy:");
-        zeroPaddingz = new EzVarInteger("padding z :");
+        paddingSizeXY = new EzVarInteger("padding xy:");
+        paddingSizeZ = new EzVarInteger("padding z :");
         saveMetaData = new EzButton("Save metadata", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -225,9 +230,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 }
             }
         });
-
-        resultPad.setValue(width+"x"+height+"x"+sizeZ); // FIXME fft best dims ?
-
+        
+        updatePaddedSize();
+        updateOutputSize();   
+        updateImageSize();
         dxy.addVarChangeListener(new EzVarListener<Double>() {
             @Override
             public void variableChanged(EzVar<Double> source, Double newValue) {
@@ -241,11 +247,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
             @Override
             public void variableChanged(EzVar<Integer> source, Integer newValue) {
-                updateOutputPad();
+                updatePaddedSize();
+                updateImageSize();
+                updateOutputSize();  
             }
         };
-        zeroPaddingxy.addVarChangeListener(zeroPadActionListener);
-        zeroPaddingz.addVarChangeListener(zeroPadActionListener);
+        paddingSizeXY.addVarChangeListener(zeroPadActionListener);
+        paddingSizeZ.addVarChangeListener(zeroPadActionListener);
 
         dz.addVarChangeListener(new EzVarListener<Double>() {
             @Override
@@ -261,38 +269,33 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             @Override
             public void variableChanged(EzVar<Sequence> source,
                     Sequence newValue) {
+                if (debug) {
+                    System.out.println("Seq ch..."+image.getValue());
+                }
                 Sequence seq = image.getValue();
                 if (seq != null) {
                     meta = getMetaData(seq);
-                    //Update PSF metadata
-                    if(seq.getSizeX() <= seq.getSizeY()){
-                        //throwError("Height and width of the image must be equal ");
-                        nxy.setValue(seq.getSizeY());
-                    } else {
-                        nxy.setValue(seq.getSizeX());
-                    }
-
+                    sizeX = seq.getSizeX();
+                    sizeY = seq.getSizeY();
+                    sizeZ = seq.getSizeZ();
                     dxy.setValue(    meta.dxy);
                     dz.setValue(     meta.dz);
-                    nz.setValue(     meta.nz);
                     na.setValue(     meta.na);
                     lambda.setValue( meta.lambda);
                     ni.setValue(     meta.ni);
+                    updatePaddedSize();
+                    updateOutputSize();
+                    updateImageSize();
 
-                    updateOutputPad();
+                    imageShape    = Shape.make(sizeX, sizeY, sizeZ);
+                    if (debug) {
+                        System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
+                    }
                 }
             }
 
         });
 
-        /****************************************************/
-        /**                    PSF TAB                     **/
-        /****************************************************/
-        //Creation of the inside of PSF TAB
-        psfGlob = new EzPanel("PSF"); //Border layout to be sure that the images are stacked to the up
-        EzPanel psfPannel = new EzPanel("PSFPanel");
-
-        psf = new EzVarSequence("Load PSF:");
         na = new EzVarDouble("NA:");
         ni = new EzVarDouble("ni:");
         lambda = new EzVarDouble( "\u03BB(nm):");
@@ -308,8 +311,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        ns = new EzVarDouble("ns:");        //FIXME thefuck ? never used
-        zdepth = new EzVarDouble("ns:");    //FIXME thefuck ? never used
         // Note The listener of PSF is after BDEC tab
 
         /****************************************************/
@@ -469,25 +470,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         EzGroup groupStop2 = new EzGroup("Emergency STOP", stopBlind);
 
-        // This is the PSF button action listener, we needed startBlind to be initialized
-        psf.addVarChangeListener(new EzVarListener<Sequence>() {
-            @Override
-            public void variableChanged(EzVar<Sequence> source, Sequence newValue) {
-                canRunBdec = (psf.getValue() == null); // If no psf given, we can run bdec tab, else we disable the run button in bdec tab
-                na.setVisible(canRunBdec);                  // AND if we can run BDEC we can show the options of bdec
-                ni.setVisible(canRunBdec);
-                lambda.setVisible(canRunBdec);
-                showPSF.setVisible(canRunBdec);
-                startBlind.setEnabled(canRunBdec);
-                if (canRunBdec) {
-                    docBlind.setText("BlindDeconvolution use the parameters from previous tab to compute the PSF");
-                } else {
-                    docBlind.setText("BlindDeconvolution cannot be run with a PSF");
-                }
-            }
-        });
-        psf.setNoSequenceSelection();
-
+     
 
         /****************************************************/
         /**                    RESULT TAB                  **/
@@ -503,7 +486,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /**                      ToolTips                  **/
         /****************************************************/
         image.setToolTipText(ToolTipText.sequenceImage);
-        psf.setToolTipText(ToolTipText.sequencePSF);
         weights.setToolTipText(ToolTipText.sequenceWeigth);
         weightsMethod.setToolTipText(ToolTipText.sequenceWeigth);
         deadPixel.setToolTipText(ToolTipText.sequencePixel);
@@ -512,8 +494,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         dxy.setToolTipText(ToolTipText.doubleDxy);
         dz.setToolTipText(ToolTipText.doubleDz);
-        nxy.setToolTipText(ToolTipText.doubleNxy);
-        nz.setToolTipText(ToolTipText.doubleNz);
         na.setToolTipText(ToolTipText.doubleNa);
         lambda.setToolTipText(ToolTipText.doubleLambda);
         ni.setToolTipText(ToolTipText.doubleNi);
@@ -522,8 +502,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         mu.setToolTipText(ToolTipText.doubleMu);
         epsilon.setToolTipText(ToolTipText.doubleEpsilon);
         nbIteration.setToolTipText(ToolTipText.doubleMaxIter);
-        zeroPaddingxy.setToolTipText(ToolTipText.doublePadding);
-        zeroPaddingz.setToolTipText(ToolTipText.doublePadding);
+        paddingSizeXY.setToolTipText(ToolTipText.doublePadding);
+        paddingSizeZ.setToolTipText(ToolTipText.doublePadding);
 
         nbAlphaCoef.setToolTipText(ToolTipText.doubleNalpha);
         nbBetaCoef.setToolTipText(ToolTipText.doubleNbeta);
@@ -542,28 +522,24 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /**** IMAGE ****/
         imagePan.add(image);
         imagePan.add(canalImage);
-        imagePan.add(nxy);
-        imagePan.add(nz);
-        imagePan.add(zeroPaddingxy);
-        imagePan.add(zeroPaddingz);
-        imagePan.add(resultPad);
+        imagePan.add(imageSize);
+        imagePan.add(paddingSizeXY);
+        imagePan.add(paddingSizeZ);
+        imagePan.add(outputSize);
         imagePan.add(dxy);
         imagePan.add(dz);
+        
+
+        imagePan.add(na);
+        imagePan.add(ni);
+        imagePan.add(lambda);     
+
         imagePan.add(saveMetaData);
+        imagePan.add(showPSF);
         
         imageGlob.add(imagePan);
         tabbedPane.add(imageGlob);
-        
-        /**** PSF ****/
-        psfPannel.add(psf);
-        psfPannel.add(na);
-        psfPannel.add(ni);
-        psfPannel.add(lambda);     //Here we give the the multiplication factor, the result will be multiply by this factor
-        psfPannel.add(showPSF);
-
-        psfGlob.add(psfPannel);
-        tabbedPane.add(psfGlob);
-        
+  
         /**** Variance ****/
         varianceTab.add(weightsMethod);
         varianceTab.add(weights);
@@ -654,15 +630,15 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             if (restartSeq != null) {
                 int numCanal = canalImage.getValue();
                 ShapedArray tmpDoubleArray = IcyBufferedImageUtils.imageToArray(restartSeq, numCanal);
-                boolean sameAsOrigin = tmpDoubleArray.getRank() == 3 && tmpDoubleArray.getDimension(0) == width 
-                        && tmpDoubleArray.getDimension(1) == height && tmpDoubleArray.getDimension(2) == sizeZ;
-                boolean sameAsPrevious = tmpDoubleArray.getRank() == 3 && tmpDoubleArray.getDimension(0) == xyPad 
-                        && tmpDoubleArray.getDimension(1) == xyPad && tmpDoubleArray.getDimension(2) == sizeZPad;
+                boolean sameAsOrigin = tmpDoubleArray.getRank() == 3 && tmpDoubleArray.getDimension(0) == sizeX 
+                        && tmpDoubleArray.getDimension(1) == sizeY && tmpDoubleArray.getDimension(2) == sizeZ;
+                boolean sameAsPrevious = tmpDoubleArray.getRank() == 3 && tmpDoubleArray.getDimension(0) == Nxy 
+                        && tmpDoubleArray.getDimension(1) == Nxy && tmpDoubleArray.getDimension(2) == Nz;
                 if (!(sameAsOrigin || sameAsPrevious)) {
                     throwError("The previous result does not have the same dimensions as the input image");
                     return false;
                 }
-                tmpDoubleArray = ArrayUtils.pad(tmpDoubleArray, shapePad);
+                tmpDoubleArray = ArrayUtils.pad(tmpDoubleArray, outputShape);
                 tvDec.setResult(tmpDoubleArray);
             }
         } else if(cleanPrevResult){
@@ -675,7 +651,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         tvDec.setRegularizationThreshold(epsilon.getValue());
         tvDec.setRelativeTolerance(grtol);
         tvDec.setMaximumIterations(nbIteration.getValue());
-        tvDec.setOutputShape(shapePad);
+        tvDec.setOutputShape(outputShape);
         token.start();
         setResult(tvDec);
         return true;
@@ -688,16 +664,17 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     protected void launch(boolean runDeconv) {
         try {
+        	
             if (debug) {
                 System.out.println("-------------IMAGE-------------------");
                 System.out.println("File: "+image.getValue());              //Used
                 System.out.println("Canal: "+canalImage.getValue());
                 System.out.println("--------------PSF------------------");
-                System.out.println("PSF: "+psf.getValue());                 //Used
+       //         System.out.println("PSF: "+psf.getValue());                 //Used
                 System.out.println("dxy: "+dxy.getValue()*1E-9);
                 System.out.println("dz: "+dz.getValue()*1E-9);
-                System.out.println("nxy: "+nxy.getValue());
-                System.out.println("nz: "+nz.getValue());
+                System.out.println("Nxy: "+Nxy);
+                System.out.println("Nx: "+Nz);
                 System.out.println("NA: "+na.getValue());
                 System.out.println("\u03BB: "+lambda.getValue()*1E-9);
                 System.out.println("ni: "+ni.getValue());
@@ -707,14 +684,14 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 System.out.println("Noise: "+noise.getValue());
                 System.out.println("deadPix: "+deadPixel.getValue());
                 System.out.println("--------------DECONV------------------");
-                System.out.println("zeroPad xy: "+zeroPaddingxy.getValue());
-                System.out.println("zeroPad z: "+zeroPaddingz.getValue());
+                System.out.println("zeroPad xy: "+paddingSizeXY.getValue());
+                System.out.println("zeroPad z: "+paddingSizeZ.getValue());
                 System.out.println("nbIter: "+nbIteration.getValue());
                 System.out.println("Restart: "+restart.getValue());
                 System.out.println("Positivity: "+positivity.getValue());
                 System.out.println("--------------BDEC------------------");
                 System.out.println("nbIter: "+nbIteration.getValue());
-                System.out.println("zeroPad: "+zeroPaddingxy.getValue());
+                System.out.println("zeroPad: "+paddingSizeXY.getValue());
                 /*System.out.println("nbIterZern: "+grtolPhase.getValue());
                 System.out.println("module: "+grtolModulus.getValue());
                 System.out.println("defoc: "+grtolDefocus.getValue());*/
@@ -726,7 +703,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
             // Preparing parameters and testing input
             Sequence imgSeq = image.getValue();
-            Sequence psfSeq = psf.getValue();
             if (imgSeq == null)
             {
                 throwError("An image/sequence of images should be given");
@@ -736,48 +712,35 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             //ArrayList<IcyBufferedImage> listImg = imgSeq.getAllImage();
 
             // Set the informations about the input
-            width = imgSeq.getSizeX();
-            height= imgSeq.getSizeY();
-            sizeZ = imgSeq.getSizeZ();
-            int xySize = (width > height ? width : height);
-            xyPad  = FFTUtils.bestDimension((int)(xySize + zeroPaddingxy.getValue()));
-            sizeZPad = FFTUtils.bestDimension((int)(sizeZ + zeroPaddingz.getValue()));
             if (sizeZ == 1) {
                 throwError("Input data must be 3D");
                 return;
             } 
-            if (zeroPaddingxy.getValue() < 0.0) {
+            if (paddingSizeXY.getValue() < 0.0) {
                 throwError("Padding value cannot be negative");
                 return;
             }
-            if (zeroPaddingz.getValue() < 0.0) {
+            if (paddingSizeZ.getValue() < 0.0) {
                 throwError("Padding value cannot be negative");
                 return;
             }
             //double coef = (width + zeroPadding.getValue())/width;
 
-            shapePad = Shape.make(xyPad, xyPad, sizeZPad);
-            shape    = Shape.make(width, height, sizeZ);
 
             int numCanal = canalImage.getValue();
 
             DoubleArray imgArray, psfArray;
             runBdec = !runDeconv;
-            // If no PSF is loaded -> creation of a PSF
-            if (psfSeq == null) {
-                buildpupil();
-                psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), shapePad));
-            } else {
-                psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, Shape.make(psfSeq.getWidth(), psfSeq.getHeight(), psfSeq.getSizeZ()), numCanal);
-            }
+            
+           
 
-            imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, shape, numCanal);
+            imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, numCanal);
 
             DoubleArray weight = createWeight(imgArray).toDouble();
 
-            psfArray = (DoubleArray) ArrayUtils.pad(psfArray, shapePad);
-            imgArray = (DoubleArray) ArrayUtils.pad(imgArray, shapePad);
-            weight   = (DoubleArray) ArrayUtils.pad(weight  , shapePad);
+            
+            imgArray = (DoubleArray) ArrayUtils.pad(imgArray, outputShape);
+            weight   = (DoubleArray) ArrayUtils.pad(weight  , outputShape);
 
             // addImage(imgArray.flatten(), "Debug", widthPad, heightPad, sizeZPad);
             // BEWARE here we change the value to match the new padded image size
@@ -811,7 +774,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     betaVector = null;
                 }
                 if (defocuSpace==null){
-                    double[] defocus = {ni.getValue()/lambda.getValue()*1E-9, 0., 0.};
+                    double[] defocus = {ni.getValue()/(lambda.getValue()*1E-9), 0., 0.}; 
                     defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
                     defocusVector = defocuSpace.wrap(defocus);
                 }
@@ -834,6 +797,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 PSFEstimation.setAbsoluteTolerance(0.0);
 
                 for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
+                     psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
                     /* OBJET ESTIMATION (by the current PSF) */
                     // If first iteration we use given result, after we continue with our previous result (i == 0)
                     if (!launchDeconvolution(imgArray, psfArray, weight, false, !(i == 0))) {
@@ -889,6 +853,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     }
                 }
             } else {
+            	 buildpupil();
+                 psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
                 launchDeconvolution(imgArray, psfArray, weight);
             }
             sequence = null; //In any cases the next image will be in a new sequence
@@ -924,7 +890,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         //We check the values given
         if (weightsMethod.getValue() == weightOptions[0]) { //None
             //we create an array of 1, that correspond to the image
-            double[] weight = new double[width*height*sizeZ];
+            double[] weight = new double[sizeX*sizeY*sizeZ];
             for (int i = 0; i < weight.length; i++) {
                 weight[i] = 1;
             }
@@ -966,29 +932,29 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             sequence.beginUpdate();
             if (crop.getValue()) {
 
-                ShapedArray croppedArray = ArrayUtils.crop(tvDec.getResult(), shape);
+                ShapedArray croppedArray = ArrayUtils.crop(tvDec.getResult(), imageShape);
                 double[] in = croppedArray.toDouble().flatten();
                 for (int j = 0; j < sizeZ; j++) {
-                    double[] temp = new double[width*height];
-                    for (int i = 0; i < width*height; i++) {
-                        temp[i] = in[i+j*width*height];
+                    double[] temp = new double[sizeX*sizeY];
+                    for (int i = 0; i < sizeX*sizeY; i++) {
+                        temp[i] = in[i+j*sizeX*sizeY];
                     }
-                    sequence.setImage(0,j, new IcyBufferedImage(width, height, temp));
+                    sequence.setImage(0,j, new IcyBufferedImage(sizeX, sizeY, temp));
                 }
             } else {
                 double[] in = tvDec.getResult().toDouble().flatten();
-                for (int j = 0; j < sizeZPad; j++) {
-                    double[] temp = new double[xyPad*xyPad];
-                    for (int i = 0; i < xyPad*xyPad; i++) {
-                        temp[i] = in[i+j*xyPad*xyPad];
+                for (int j = 0; j < Nz; j++) {
+                    double[] temp = new double[Nxy*Nxy];
+                    for (int i = 0; i < Nxy*Nxy; i++) {
+                        temp[i] = in[i+j*Nxy*Nxy];
                     }
-                    sequence.setImage(0,j, new IcyBufferedImage(xyPad, xyPad, temp));
+                    sequence.setImage(0,j, new IcyBufferedImage(Nxy, Nxy, temp));
                 }
             }
 
             sequence.endUpdate();
             sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations());
-            //Then we will update the result tab pannel
+            //Then we will update the result tab panel
             if (runBdec) {
                 // FIXME uncomment
                 resultCostPrior.setValue("Cost "+tvDec.getCost()                       );
@@ -1014,14 +980,14 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void showResult(int num)
     {
         Sequence psf3DSequence = new Sequence();
-        DoubleArray psf = Double3D.wrap(pupil.getPSF(), shapePad);
+        DoubleArray psf = Double3D.wrap(pupil.getPSF(), outputShape);
         double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
         //double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
         psf3DSequence.setName("PSF Estimated - " + num);
-        for (int k = 0; k < sizeZPad; k++)
+        for (int k = 0; k < Nz; k++)
         {
-            psf3DSequence.setImage(0, k, new IcyBufferedImage(xyPad, xyPad,
-                    MathUtils.getArray(PSF_shift, xyPad, xyPad, k)));
+            psf3DSequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
+                    MathUtils.getArray(PSF_shift, Nxy, Nxy, k)));
         }
         if (isHeadLess()) {
             outputHeadlessPSF.setValue(psf3DSequence);
@@ -1037,11 +1003,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private void buildpupil()
     {
-        int xySize = (width > height ? width : height);
-        xyPad  = FFTUtils.bestDimension((int)(xySize + zeroPaddingxy.getValue()));
-        sizeZPad  = FFTUtils.bestDimension((int)(sizeZ + zeroPaddingz.getValue()));
-        pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), ns.getValue(), zdepth.getValue(), dxy.getValue()*1E-9,
-                dz.getValue()*1E-9, xyPad, xyPad, sizeZPad, use_depth_scaling);
+        pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy.getValue()*1E-9,
+                dz.getValue()*1E-9, Nxy, Nxy, Nz);
     }	
 
     private void psfClicked()
@@ -1054,13 +1017,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         /* PSF0 Sequence */
         Sequence PSF0Sequence = new Sequence();
-        DoubleArray psf = Double3D.wrap(pupil.getPSF(), shapePad);
+        DoubleArray psf = Double3D.wrap(pupil.getPSF(), outputShape);
         double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
         //double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
-        for (int k = 0; k < sizeZPad; k++)
+        for (int k = 0; k < Nz; k++)
         {
-            PSF0Sequence.setImage(0, k, new IcyBufferedImage(xyPad, xyPad,
-                    MathUtils.getArray(PSF_shift, xyPad, xyPad, k)));
+            PSF0Sequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
+                    MathUtils.getArray(PSF_shift, Nxy, Nxy, k)));
         }
         setMetaData(PSF0Sequence) ;
         PSF0Sequence.setName("PSF");
@@ -1077,10 +1040,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /* Phase Sequence */
         Sequence phaseSequence = new Sequence();
         phaseSequence.setName("Phase of the pupil");
-        DoubleArray psf = Double2D.wrap(pupil.getPhi(), Shape.make(xyPad, xyPad));
+        DoubleArray psf = Double2D.wrap(pupil.getPhi(), Shape.make(Nxy, Nxy));
         double[] phase_shift = ArrayUtils.roll(psf).toDouble().flatten();
         //double[] phase_shift = MathUtils.fftShift1D(pupil.getPhi(), xyPad, xyPad);
-        phaseSequence.addImage(new IcyBufferedImage(xyPad, xyPad, phase_shift));
+        phaseSequence.addImage(new IcyBufferedImage(Nxy, Nxy, phase_shift));
         addSequence(phaseSequence);
     }
 
@@ -1094,10 +1057,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /* Modulus Sequence */
         Sequence modulusSequence = new Sequence();
         modulusSequence.setName("Modulus of the pupil");
-        DoubleArray psf = Double2D.wrap(pupil.getRho(), Shape.make(xyPad, xyPad));
+        DoubleArray psf = Double2D.wrap(pupil.getRho(), Shape.make(Nxy, Nxy));
         double[] modulus_shift = ArrayUtils.roll(psf).toDouble().flatten();
         //double[] modulus_shift = MathUtils.fftShift1D(pupil.getRho(), xyPad, xyPad);
-        modulusSequence.addImage(new IcyBufferedImage(xyPad, xyPad, modulus_shift));
+        modulusSequence.addImage(new IcyBufferedImage(Nxy, Nxy, modulus_shift));
         addSequence(modulusSequence);
     }
 
@@ -1106,35 +1069,27 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         //    DoubleArray weight = createWeight(...).toDouble();
         /* PSF0 Sequence */
-
+//  FIXME fix the weightsize
         Sequence img = image.getValue();
         if (img == null) {
             new AnnounceFrame("No image input found");
             return;
         }
-        Shape myShape; 
-        if (img.getSizeZ() == 1) { //2D
-            myShape = Shape.make(img.getSizeX(), img.getSizeY());
-        } else {    //3D
-            myShape = Shape.make(img.getSizeX(), img.getSizeY(), img.getSizeZ());
-        }
-        width = img.getSizeX();
-        height = img.getSizeY();
-        sizeZ = img.getSizeZ();
+        Shape myShape=Shape.make(sizeX, sizeY);
 
         int numCanal = canalImage.getValue();
         DoubleArray input = (DoubleArray) IcyBufferedImageUtils.imageToArray(img, myShape, numCanal);
         Sequence WeightSequence = new Sequence();
         WeightSequence.setName("Weight");
         double[] wght = createWeight(input).toDouble().flatten();
-        if (wght.length != width*height*sizeZ) {
+        if (wght.length != sizeX*sizeY*sizeZ) {
             new AnnounceFrame("Invalid weight size");
             return;
         }
         for (int k = 0; k < sizeZ; k++)
         {
-            WeightSequence.setImage(0, k, new IcyBufferedImage(width, height,
-                    MathUtils.getArray(wght, width, height, k)));
+            WeightSequence.setImage(0, k, new IcyBufferedImage(sizeX, sizeY,
+                    MathUtils.getArray(wght, sizeX, sizeY, k)));
         }
         addSequence(WeightSequence);
     }
