@@ -130,8 +130,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = true;      // Show psf steps 
-    private boolean verbose = true;    // Show some values, need debug to true
+    private boolean debug = false;      // Show psf steps 
+    private boolean verbose = false;    // Show some values, need debug to true
 
     // Global variables for the algorithms
     TotalVariationJobForIcy tvDec;
@@ -139,8 +139,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     //Global variable for the deconvolution
     Sequence sequence; //The reference to the sequence we use to plot 
 	private boolean guessModulus;
-    // Global variable for the deconvolution
-    Sequence sequence; 	   // The reference to the sequence we use to plot
     Sequence lastSequence; // Just a reference to know the last result
 
 
@@ -179,31 +177,24 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     }
 
     private void setDefaultValue() {
-        dxy.setValue(64.);
-        dz.setValue(128.);
-        na.setValue(1.4);
-        ni.setValue(1.518);
-        lambda.setValue(542.);
-        gain.setValue(1.);
-        noise.setValue(5.);
         weightsMethod.setValue( weightOptions[3]);
-        mu.setValue(0.1);
-        epsilon.setValue(0.01);
-        nbIteration.setValue(10);
-        bDecTotalIteration.setValue(1);
         radial.setValue(false);
+        if(debug){
         resultCostPrior.setValue(   "No results yet");
         resultDefocus.setValue(     "No results yet");
         resultModulus.setValue(     "No results yet");
         resultPhase.setValue(       "No results yet");
+        }
 
         if (!isHeadLess()) {
             outputSize.setEnabled(false);
             imageSize.setEnabled(false);
+            if(debug){
             resultCostPrior.setEnabled(false);
             resultDefocus.setEnabled(false);
             resultModulus.setEnabled(false);
             resultPhase.setEnabled(false);
+        }
         }
     }
 
@@ -228,10 +219,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         canalImage = new EzVarChannel("Canal:", image.getVariable(), true);
         imageSize = new EzVarText("Image size:");
         outputSize = new EzVarText("Output size:");
-        dxy = new EzVarDouble("dxy(nm):");
-        dz = new EzVarDouble("dz(nm):");
-        paddingSizeXY = new EzVarInteger("padding xy:");
-        paddingSizeZ = new EzVarInteger("padding z :");
+        dxy = new EzVarDouble("dxy(nm):",64.5,0., Double.MAX_VALUE,1.);
+        dz = new EzVarDouble("dz(nm):",128.,0., Double.MAX_VALUE,1.);
+        paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
+        paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
         saveMetaData = new EzButton("Save metadata", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -311,9 +302,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         });
         image.setNoSequenceSelection();
 
-        na = new EzVarDouble("NA:");
-        ni = new EzVarDouble("ni:");
-        lambda = new EzVarDouble( "\u03BB(nm):");
+        na = new EzVarDouble("NA:",1.4,0.,Double.MAX_VALUE,0.05);
+        ni = new EzVarDouble("ni:",1.518,1.,2.,0.01);
+        lambda = new EzVarDouble( "\u03BB(nm):",542.,10.,15000.,10);
         showPSF = new EzButton("Show PSF", new ActionListener() {
 
             @Override
@@ -336,8 +327,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         EzPanel varianceTab = new EzPanel("VarianceTab");
         weightsMethod = new EzVarText(      "Weighting:", weightOptions, false);
         weights = new EzVarSequence(        "Map:");
-        gain = new EzVarDouble(             "Gain:");
-        noise = new EzVarDouble(            "Readout Noise:");
+        gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,0.01);
+        noise = new EzVarDouble(            "Readout Noise:",3.,0.,Double.MAX_VALUE,0.1);
         deadPixGiven = new EzVarBoolean(    "Data Map?", false);
         deadPixel = new EzVarSequence(      "Map:");
 
@@ -391,8 +382,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         //Creation of the inside of DECONVOLUTION TAB
         deconvGlob = new EzPanel("Deconvolution"); //Border layout to be sure that the images are stacked to the up
         EzPanel deconvTab = new EzPanel("DeconvolutionTab");
-        mu = new EzVarDouble("Regularization level:");
-        epsilon = new EzVarDouble("Threshold level:");
+        mu = new EzVarDouble("Regularization level:",1E-2,0.,Double.MAX_VALUE,0.01);
+        epsilon = new EzVarDouble("Threshold level:",1E-2,0.,Double.MAX_VALUE,0.01);
         nbIteration = new EzVarInteger("Number of iterations: ");
         positivity = new EzVarBoolean("Enforce nonnegativity:", true);
         // crop = new EzVarBoolean("Crop output to match input:", false);
@@ -433,6 +424,20 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         ModulusMaxIter = new EzVarInteger(      "Max. nb. of iterations for modulus:");
         bDecTotalIteration = new EzVarInteger(  "Number of loops:");
 
+        resetPSF = new EzButton(            "Reset PSF", new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                defocuSpace = null;
+                defocusVector= null;
+                alphaSpace = null;
+                alphaVector = null;
+                betaSpace = null;
+                betaVector = null;
+                buildpupil();
+            }
+        });
+        
         radial.addVarChangeListener(new EzVarListener<Boolean>() {
             @Override
             public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
@@ -493,18 +498,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         EzGroup groupStop2 = new EzGroup("Emergency STOP", stopBlind);
 
-
-
-        /****************************************************/
-        /**                    RESULT TAB                  **/
-        /****************************************************/
-        resultGlob = new EzPanel("Results"); //Border layout to be sure that the images are stacked to the up
-        EzPanel resultTab = new EzPanel(    "ResultsTab");
-        resultCostPrior = new EzVarText(    "Costs");
-        resultDefocus = new EzVarText(      "Defocus");
-        resultModulus = new EzVarText(      "Modulus");
-        resultPhase = new EzVarText(        "Phase");
-        cropResult = new EzButton(          "Crop output to match input", new ActionListener() {
+        cropResult = new EzButton(          "Show deconvolved image with the size of the input", new ActionListener() {
 
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -528,18 +522,18 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        resetPSF = new EzButton(            "Reset PSF", new ActionListener() {
+      
+        /****************************************************/
+        /**                    RESULT TAB                  **/
+        /****************************************************/
+        resultGlob = new EzPanel("Results"); //Border layout to be sure that the images are stacked to the up
+        EzPanel resultTab = new EzPanel(    "ResultsTab");
+        resultCostPrior = new EzVarText(    "Costs");
+        resultDefocus = new EzVarText(      "Defocus");
+        resultModulus = new EzVarText(      "Modulus");
+        resultPhase = new EzVarText(        "Phase");
+        
 
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                defocuSpace = null;
-                defocusVector= null;
-                alphaSpace = null;
-                alphaVector = null;
-                betaSpace = null;
-                betaVector = null;
-            }
-        });
 
         /****************************************************/
         /**                      ToolTips                  **/
@@ -616,7 +610,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         deconvTab.add(epsilon);
         deconvTab.add(nbIteration);
         deconvTab.add(positivity);
-        //deconvTab.add(crop);
         deconvTab.add(restart);
         deconvTab.add(docDec);
         deconvTab.add(startDec);
@@ -626,6 +619,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         tabbedPane.add(deconvGlob);
 
         /**** BDec ****/
+        bdecTab.add(resetPSF);
         bdecTab.add(nbAlphaCoef);
         bdecTab.add(nbBetaCoef);
         bdecTab.add(radial);
@@ -633,25 +627,24 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         bdecTab.add(PhaseMaxIter);
         bdecTab.add(ModulusMaxIter);
         bdecTab.add(bDecTotalIteration);
-        bdecTab.add(show);
         bdecTab.add(docBlind);
         bdecTab.add(startBlind);
+        bdecTab.add(show);
+        bdecTab.add(cropResult);
         bdecTab.add(groupStop2);
         //Creation of BDec TAB
         bdecGlob.add(bdecTab);
         tabbedPane.add(bdecGlob);
 
+        if(debug){
         /**** Result ****/
         resultTab.add(resultCostPrior);
         resultTab.add(resultDefocus);
         resultTab.add(resultModulus);
         resultTab.add(resultPhase);
-        resultTab.add(cropResult);
-        resultTab.add(resetPSF);
         resultGlob.add(resultTab);
         tabbedPane.add(resultGlob);
-
-        // getUI().setRunButtonEnabled(false); //Disable start button if we are not on bdec or deconv tab // TODO What do we do with that
+        }
         addEzComponent(tabbedPane);
         // Must be added to global panel first 
         show.setFoldedState(true);
@@ -838,25 +831,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                   defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
                   defocusVector = defocuSpace.wrap(defocus);
               }
-//                if(resetPSF.getValue())
-//                {
-//                    defocuSpace = null;
-//                    defocusVector= null;
-//                    alphaSpace = null;
-//                    alphaVector = null;
-//                    betaSpace = null;
-//                    betaVector = null;
-//                }
-//                if (alphaSpace==null){
-//                    alphaSpace = new DoubleShapedVectorSpace(new int[]{nbAlpha});
-//                    alphaVector = alphaSpace.create();
-//                }
-//                if (betaSpace==null){
-//                    double[] beta = new double[Integer.parseInt(nbBetaCoef.getValue())];
-//                    beta[0] = 1;
-//                    betaSpace = new DoubleShapedVectorSpace(new int[]{beta.length});
-//                    betaVector = betaSpace.wrap(beta);
-//                }
 
                 PSFEstimation = new PSF_Estimation(pupil);
           
@@ -873,7 +847,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     if (!launchDeconvolution(imgArray, psfArray, weight, false, !(i == 0))) {
                         return;
                     }
-                    //   PSFEstimation.setPsf(tvDec.getData());
                     PSFEstimation.setObj(tvDec.getResult());
 
                     /* Defocus estimation */
@@ -1020,6 +993,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
             sequence.endUpdate();
             sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations());
+
+            System.out.println("Cost "+tvDec.getCost() );
             //Then we will update the result tab panel
             if (runBdec) {
                 // FIXME uncomment
