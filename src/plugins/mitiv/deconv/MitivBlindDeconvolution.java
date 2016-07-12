@@ -87,7 +87,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private EzVarSequence image, restart, weights, deadPixel, outputHeadlessImage, outputHeadlessPSF;
     private EzVarText weightsMethod,  nbAlphaCoef, nbBetaCoef;
     private EzVarChannel canalImage;
-    private EzVarBoolean deadPixGiven, positivity; // crop
+    private EzVarBoolean deadPixGiven, positivity,radial; // crop
     private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"}; 
     private final String[] nAlphaOptions = new String[]{"1","8","19","34","53","76","103","134","169"}; 
     private final String[] nBetaOptions = new String[]{"1","4","11","22","37","56","79","106","137","172"}; 
@@ -99,10 +99,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private EzPanel  imageGlob, varianceGlob, deconvGlob, bdecGlob, resultGlob; 
     private EzTabs tabbedPane;
-
+    
     private double grtol = 0.0;
     private int nbAlpha=0, nbBeta=1;
-
     private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence sizes 
     private Shape imageShape;
     private  int Nxy=512, Nz=128;			 // Output (padded sequence size)
@@ -184,6 +183,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         epsilon.setValue(0.01);
         nbIteration.setValue(10);
         bDecTotalIteration.setValue(1);
+        radial.setValue(false);
         resultCostPrior.setValue(   "No results yet");
         resultDefocus.setValue(     "No results yet");
         resultModulus.setValue(     "No results yet");
@@ -418,7 +418,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         bdecGlob = new EzPanel("BDec"); //Border layout to be sure that the images are stacked to the up
         EzPanel bdecTab = new EzPanel("BDecTab");
         nbAlphaCoef = new EzVarText(            "Number of phase coefs N\u03B1:", nAlphaOptions, false );
-        nbBetaCoef = new EzVarText(             "Number of modulus coefs N\u03B2:", nBetaOptions, false);
+        nbBetaCoef = new EzVarText(             "Number of modulus coefs N\u03B2:", nBetaOptions, false);       
+        radial = new EzVarBoolean(              "Radially symmetric PSF", false);
         DefocusMaxIter = new EzVarInteger(      "Max. nb. of iterations for defocus:");
         PhaseMaxIter = new EzVarInteger(        "Max. nb. of iterations for phase:");
         ModulusMaxIter = new EzVarInteger(      "Max. nb. of iterations for modulus:");
@@ -611,6 +612,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /**** BDec ****/
         bdecTab.add(nbAlphaCoef);
         bdecTab.add(nbBetaCoef);
+        bdecTab.add(radial);
         bdecTab.add(DefocusMaxIter);
         bdecTab.add(PhaseMaxIter);
         bdecTab.add(ModulusMaxIter);
@@ -1038,7 +1040,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void buildpupil()
     {
         pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy.getValue()*1E-9,
-                dz.getValue()*1E-9, Nxy, Nxy, Nz);
+                dz.getValue()*1E-9, Nxy, Nxy, Nz,radial.getValue());
     }	
 
     private void psfClicked()
