@@ -272,6 +272,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 if (debug) {
                     System.out.println("Seq ch..."+image.getValue());
                 }
+                // getting metadata and computing sizes
                 Sequence seq = image.getValue();
                 if (seq != null) {
                     meta = getMetaData(seq);
@@ -291,11 +292,14 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                     }
+                    // setting restart value to the current sequence
+                    restart.setValue(newValue);
                 }
             }
 
         });
-
+        image.setNoSequenceSelection();
+        
         na = new EzVarDouble("NA:");
         ni = new EzVarDouble("ni:");
         lambda = new EzVarDouble( "\u03BB(nm):");
@@ -857,7 +861,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                  psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
                 launchDeconvolution(imgArray, psfArray, weight);
             }
-            sequence = null; //In any cases the next image will be in a new sequence
+            // Everything went well, the restart will be the current sequence
+            restart.setValue(sequence);
+            // In any cases the next image will be in a new sequence
+            sequence = null;
         } catch (IllegalArgumentException e) {
             new AnnounceFrame("Oops, Error: "+ e.getMessage());
             if (debug) {
