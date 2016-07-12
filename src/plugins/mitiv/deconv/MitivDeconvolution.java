@@ -321,7 +321,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
             //if the user does not give data with same dimensions : no 3d and 2d at same time.
             if (seqImg.getSizeZ() == 1 && seqPsf.getSizeZ() > 1 ||
                     seqImg.getSizeZ() > 1 && seqPsf.getSizeZ() == 1) {
-                message("The psf and the image should have the same number of dimensions");
+                message("The psf and the image should have the same number of dimensions in Z");
             }
             //if the user give data in 4D
             if (seqImg.getSizeT() > 1 || seqPsf.getSizeT() > 1) {
@@ -331,9 +331,9 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
             //Everything seems good we are ready to launch
             if (goodInput) {
                 // Settings all sizes
-                width  = seqImg.getWidth();
-                height = seqImg.getHeight();
-                sizeZ  = seqImg.getSizeZ();
+                width  = Math.max(seqImg.getWidth(), seqPsf.getWidth());
+                height = Math.max(seqImg.getHeight(), seqPsf.getHeight());
+                sizeZ  = Math.max(seqImg.getSizeZ(), seqPsf.getSizeZ());
                 widthPad  = FFTUtils.bestDimension((int)(width*coefXY));
                 heightPad = FFTUtils.bestDimension((int)(height*coefXY));
                 sizeZPad  = FFTUtils.bestDimension((int)(sizeZ*coefZ));
