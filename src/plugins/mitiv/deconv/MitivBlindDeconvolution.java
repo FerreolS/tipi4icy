@@ -11,6 +11,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Arrays;
 
+import javax.swing.SwingUtilities;
+
 import loci.common.services.ServiceException;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
@@ -892,7 +894,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 launchDeconvolution(imgArray, psfArray, weight);
             }
             // Everything went well, the restart will be the current sequence
-            restart.setValue(sequence);
+            // For now, if not called in the graphic thread launch errors
+            // I'am using lastsequence because invokelater will find null with sequence
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    restart.setValue(lastSequence);
+                }
+            });
             // In any cases the next image will be in a new sequence
             lastSequence = sequence;
             sequence = null;
