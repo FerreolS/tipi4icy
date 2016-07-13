@@ -1,0 +1,58 @@
+# Specific files #
+##################
+.classpath
+.settings
+bin
+lib
+src/devel
+src/edu
+
+# Automatic backups #
+#####################
+*~
+*.orig
+
+# Compiled sources and libraries #
+##################################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+lib*.a
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.bz2
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.tar.bz2
+*.tar.gz
+*.tar.xz
+*.tgz
+*.txz
+*.xz
+*.zip
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+
+# OS generated files #
+######################
+.DS_Store*
+ehthumbs.db
+Icon?
+Thumbs.db
+.directory
+
