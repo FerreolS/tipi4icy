@@ -79,7 +79,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /***************************************************/
     /**                  All variables                **/
     /***************************************************/
-    private EzVarDouble dxy, dz, na, lambda, ni;
+    private EzVarDouble dxy_nm, dz_nm, na, lambda, ni;
     private EzVarInteger  nbIteration, bDecTotalIteration,DefocusMaxIter,PhaseMaxIter,ModulusMaxIter, paddingSizeXY, paddingSizeZ;
     private WideFieldModel pupil=null;
     // private boolean psfInitFlag = false;
@@ -264,8 +264,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     sizeX = seq.getSizeX();
                     sizeY = seq.getSizeY();
                     sizeZ = seq.getSizeZ();
-                    dxy.setValue(    meta.dxy);
-                    dz.setValue(     meta.dz);
+                    dxy_nm.setValue(    meta.dxy);
+                    dz_nm.setValue(     meta.dz);
                     na.setValue(     meta.na);
                     lambda.setValue( meta.lambda);
                     ni.setValue(     meta.ni);
@@ -297,10 +297,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         };
         };
 
-        dxy = new EzVarDouble("dxy(nm):",64.5,0., Double.MAX_VALUE,1.);
-        dxy.addVarChangeListener(metaActionListener);
-        dz = new EzVarDouble("dz(nm):",128.,0., Double.MAX_VALUE,1.);
-        dz.addVarChangeListener(metaActionListener);
+        dxy_nm = new EzVarDouble("dxy(nm):",64.5,0., Double.MAX_VALUE,1.);
+        dxy_nm.addVarChangeListener(metaActionListener);
+        dz_nm = new EzVarDouble("dz(nm):",128.,0., Double.MAX_VALUE,1.);
+        dz_nm.addVarChangeListener(metaActionListener);
 
         na = new EzVarDouble("NA:",1.4,0.,Double.MAX_VALUE,0.05);
         na.addVarChangeListener(metaActionListener);
@@ -543,8 +543,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         canalImage.setToolTipText(ToolTipText.textCanal);
 
-        dxy.setToolTipText(ToolTipText.doubleDxy);
-        dz.setToolTipText(ToolTipText.doubleDz);
+        dxy_nm.setToolTipText(ToolTipText.doubleDxy);
+        dz_nm.setToolTipText(ToolTipText.doubleDz);
         na.setToolTipText(ToolTipText.doubleNa);
         lambda.setToolTipText(ToolTipText.doubleLambda);
         ni.setToolTipText(ToolTipText.doubleNi);
@@ -577,8 +577,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         imagePan.add(paddingSizeXY);
         imagePan.add(paddingSizeZ);
         imagePan.add(outputSize);
-        imagePan.add(dxy);
-        imagePan.add(dz);
+        imagePan.add(dxy_nm);
+        imagePan.add(dz_nm);
 
 
         imagePan.add(na);
@@ -732,8 +732,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 System.out.println("Canal: "+canalImage.getValue());
                 System.out.println("--------------PSF------------------");
                 //         System.out.println("PSF: "+psf.getValue());                 //Used
-                System.out.println("dxy: "+dxy.getValue()*1E-9);
-                System.out.println("dz: "+dz.getValue()*1E-9);
+                System.out.println("dxy: "+dxy_nm.getValue()*1E-9);
+                System.out.println("dz: "+dz_nm.getValue()*1E-9);
                 System.out.println("Nxy: "+Nxy);
                 System.out.println("Nx: "+Nz);
                 System.out.println("NA: "+na.getValue());
@@ -1004,10 +1004,11 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             System.out.println("Cost "+tvDec.getCost() );
             //Then we will update the result tab panel
             if (runBdec) {
-                // FIXME uncomment
-                resultCostPrior.setValue("Cost "+tvDec.getCost()                       );
-                resultDefocus.setValue(   "Defocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())   );
+            	System.out.println("Cost "+tvDec.getCost()   );
+            	System.out.println( "Defocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())  );
                 if (debug) {
+                    resultCostPrior.setValue("Cost "+tvDec.getCost()                       );
+                    resultDefocus.setValue(   "Defocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())   );
                     resultModulus.setValue(  "Modulus    "+pupil.getRho()[0]                     );
                     resultPhase.setValue(    "Phase      "+pupil.getPhi()[0]                     );
                 }
@@ -1051,8 +1052,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private void buildpupil()
     {
-        pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy.getValue()*1E-9,
-                dz.getValue()*1E-9, Nxy, Nxy, Nz,radial.getValue());
+        pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy_nm.getValue()*1E-9,
+                dz_nm.getValue()*1E-9, Nxy, Nxy, Nz,radial.getValue());
     }	
 
     private void psfClicked()
@@ -1185,9 +1186,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void setMetaData(Sequence seqOld, Sequence seqNew) {
         OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(seqOld.getMetadata());
         //newMetdat.setImageDescription("MyDescription", 0);
-        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy.getValue()*1E-9), 0);
-        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy.getValue()*1E-9), 0);
-        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz.getValue()*1E-9), 0);
+        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
+        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
+        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-9), 0);
         // seqNew.setMetaData(newMetdat); //FIXME may not working now
     }
 
@@ -1197,9 +1198,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void setMetaData(Sequence seqNew) {
         OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata();
         //newMetdat.setImageDescription("MyDescription", 0);
-        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy.getValue()*1E-9), 0);
-        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy.getValue()*1E-9), 0);
-        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz.getValue()*1E-9), 0);
+        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
+        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
+        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-9), 0);
         // seqNew.setMetaData(newMetdat); //FIXME may not working now
     }
 
@@ -1208,9 +1209,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         if (seq != null) {
             try {
                 OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
-                newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy.getValue()*1E-9), 0);
-                newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy.getValue()*1E-9), 0);
-                newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz.getValue()*1E-9), 0);
+                newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
+                newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
+                newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-9), 0);
                 // seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
             } catch (ServiceException e) {
                 e.printStackTrace();
@@ -1249,8 +1250,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     public void declareInput(VarList inputMap) {
         initialize();
         inputMap.add("Image", image.getVariable());
-        inputMap.add("dxy(nm)", dxy.getVariable());
-        inputMap.add("dz(nm)", dz.getVariable());
+        inputMap.add("dxy(nm)", dxy_nm.getVariable());
+        inputMap.add("dz(nm)", dz_nm.getVariable());
         inputMap.add("NA", na.getVariable());
         inputMap.add("ni", ni.getVariable());
         inputMap.add("\u03BB(nm):", lambda.getVariable());
