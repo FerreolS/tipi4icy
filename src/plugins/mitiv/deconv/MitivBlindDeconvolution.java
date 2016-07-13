@@ -1058,36 +1058,30 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private void psfClicked()
     {
-        /* PSF0 initialisation */
-        if(pupil==null)
-        {
-            buildpupil();
-        }
+    	/* PSF0 initialisation */
+    	if(pupil==null)
+    	{
+    		buildpupil();
+    	}
 
-        /* PSF0 Sequence */
-        Sequence PSF0Sequence = new Sequence();
-        if(debug){
-        DoubleArray psf = Double3D.wrap(pupil.getPSF(), outputShape);
-        double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
-        //double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
-        for (int k = 0; k < Nz; k++)
-        {
-            PSF0Sequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
-                    MathUtils.getArray(PSF_shift, Nxy, Nxy, k)));
-        }
-        setMetaData(PSF0Sequence) ;
-        }else{
-        	 
-            for (int k = 0; k < pupil.getNZern(); k++)
-            {
-                PSF0Sequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
-                       ArrayUtils.roll(Double2D.wrap(pupil.getZernike(k), Shape.make(Nxy,Nxy))).toDouble().flatten()));
-            }
-        }
-        PSF0Sequence.setName("PSF");
-        addSequence(PSF0Sequence);
+    	/* PSF0 Sequence */
+    	Sequence PSF0Sequence = new Sequence();
+
+    	DoubleArray psf = Double3D.wrap(pupil.getPSF(), outputShape);
+    	double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
+    	//double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
+    	for (int k = 0; k < Nz; k++)
+    	{
+    		PSF0Sequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
+    				MathUtils.getArray(PSF_shift, Nxy, Nxy, k)));
+    	}
+    	setMetaData(PSF0Sequence) ;
+
+    	PSF0Sequence.setName("PSF");
+    	addSequence(PSF0Sequence);
     }
 
+    
     private void phaseClicked()
     {
         /* PSF0 initialisation */ 
@@ -1242,6 +1236,26 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     }
 
     //Debug function Will have to be deleted in the future 
+    @SuppressWarnings("unused")
+    private void ZernikeClicked()
+    {
+        /* PSF0 initialisation */
+        if(pupil==null)
+        {
+            buildpupil();
+        }
+
+        /* PSF0 Sequence */
+        Sequence PSF0Sequence = new Sequence();
+        	 
+            for (int k = 0; k < pupil.getNZern(); k++)
+            {
+                PSF0Sequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
+                       ArrayUtils.roll(Double2D.wrap(pupil.getZernike(k), Shape.make(Nxy,Nxy))).toDouble().flatten()));
+            }
+        PSF0Sequence.setName("Zernike");
+        addSequence(PSF0Sequence);
+    }
     @SuppressWarnings("unused")
     private void addImage(double[] in, String name, int width, int height, int sizeZ){
         Sequence tmpSeq = new Sequence();
