@@ -441,6 +441,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
             	nbAlphaCoef.setDefaultValues(         nAlphaOptionsR,1, false );
             	nbBetaCoef.setDefaultValues(         nBetaOptionsR,1, false );
+            	resetPSF();
             }
         });
         
@@ -810,7 +811,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             /*---------------------------------------*/
 
             if (runBdec) {
-                if (Integer.parseInt(nbAlphaCoef.getValue()) != nbAlpha){
+                if ((alphaVector==null)||( Integer.parseInt(nbAlphaCoef.getValue()) != nbAlpha)){
                     nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
                     if (nbAlpha==0){
                     guessPhase = false; 	
@@ -820,7 +821,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     alphaVector = alphaSpace.create();
                     }
                 }
-                if (Integer.parseInt(nbBetaCoef.getValue()) != nbBeta){
+                if  ((betaVector==null)||(Integer.parseInt(nbBetaCoef.getValue()) != nbBeta)){
                     nbBeta = Integer.parseInt(nbBetaCoef.getValue());
                     if (nbBeta==0){
                     guessModulus = false; 	
@@ -866,6 +867,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                         PSFEstimation.setRelativeTolerance(0.);
                         PSFEstimation.setMaximumIterations(DefocusMaxIter.getValue());
                         PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
+                    	System.out.println( "Defocus   "+Arrays.toString(PSFEstimation.getPupil().getDefocusMultiplyByLambda())  );
                     }
 
                     /* Phase estimation */
@@ -1004,8 +1006,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             System.out.println("Cost "+tvDec.getCost() );
             //Then we will update the result tab panel
             if (runBdec) {
-            	System.out.println("Cost "+tvDec.getCost()   );
-            	System.out.println( "Defocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())  );
                 if (debug) {
                     resultCostPrior.setValue("Cost "+tvDec.getCost()                       );
                     resultDefocus.setValue(   "Defocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())   );
@@ -1066,6 +1066,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         /* PSF0 Sequence */
         Sequence PSF0Sequence = new Sequence();
+        if(debug){
         DoubleArray psf = Double3D.wrap(pupil.getPSF(), outputShape);
         double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
         //double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
@@ -1075,6 +1076,14 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     MathUtils.getArray(PSF_shift, Nxy, Nxy, k)));
         }
         setMetaData(PSF0Sequence) ;
+        }else{
+        	 
+            for (int k = 0; k < pupil.getNZern(); k++)
+            {
+                PSF0Sequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
+                       ArrayUtils.roll(Double2D.wrap(pupil.getZernike(k), Shape.make(Nxy,Nxy))).toDouble().flatten()));
+            }
+        }
         PSF0Sequence.setName("PSF");
         addSequence(PSF0Sequence);
     }
