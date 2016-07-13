@@ -219,8 +219,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         canalImage = new EzVarChannel("Canal:", image.getVariable(), true);
         imageSize = new EzVarText("Image size:");
         outputSize = new EzVarText("Output size:");
-        dxy = new EzVarDouble("dxy(nm):",64.5,0., Double.MAX_VALUE,1.);
-        dz = new EzVarDouble("dz(nm):",128.,0., Double.MAX_VALUE,1.);
         paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
         paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
         saveMetaData = new EzButton("Save metadata", new ActionListener() {
@@ -236,15 +234,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         updatePaddedSize();
         updateOutputSize();   
         updateImageSize();
-        dxy.addVarChangeListener(new EzVarListener<Double>() {
-            @Override
-            public void variableChanged(EzVar<Double> source, Double newValue) {
-                Sequence seq = image.getValue();
-                if (seq != null)  {              
-                    setMetaData(seq) ;
-                }
-            }
-        });
+        
 
         EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
             @Override
@@ -252,20 +242,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 updatePaddedSize();
                 updateImageSize();
                 updateOutputSize();  
+                resetPSF();
             }
         };
         paddingSizeXY.addVarChangeListener(zeroPadActionListener);
         paddingSizeZ.addVarChangeListener(zeroPadActionListener);
 
-        dz.addVarChangeListener(new EzVarListener<Double>() {
-            @Override
-            public void variableChanged(EzVar<Double> source, Double newValue) {
-                Sequence seq = image.getValue();
-                if (seq != null)  {              
-                    setMetaData(seq) ;
-                }
-            }
-        });
+       
 
         image.addVarChangeListener(new EzVarListener<Sequence>() {
             @Override
@@ -302,9 +285,30 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         });
         image.setNoSequenceSelection();
 
+
+        EzVarListener<Double> metaActionListener = new EzVarListener<Double>() {
+        @Override
+        public void variableChanged(EzVar<Double> source, Double newValue) {
+            Sequence seq = image.getValue();
+            if (seq != null)  {              
+                setMetaData(seq) ;
+            }
+            resetPSF();
+        };
+        };
+
+        dxy = new EzVarDouble("dxy(nm):",64.5,0., Double.MAX_VALUE,1.);
+        dxy.addVarChangeListener(metaActionListener);
+        dz = new EzVarDouble("dz(nm):",128.,0., Double.MAX_VALUE,1.);
+        dz.addVarChangeListener(metaActionListener);
+
         na = new EzVarDouble("NA:",1.4,0.,Double.MAX_VALUE,0.05);
+        na.addVarChangeListener(metaActionListener);
         ni = new EzVarDouble("ni:",1.518,1.,2.,0.01);
+        ni.addVarChangeListener(metaActionListener);
         lambda = new EzVarDouble( "\u03BB(nm):",542.,10.,15000.,10);
+        lambda.addVarChangeListener(metaActionListener);
+        
         showPSF = new EzButton("Show PSF", new ActionListener() {
 
             @Override
@@ -428,13 +432,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                defocuSpace = null;
-                defocusVector= null;
-                alphaSpace = null;
-                alphaVector = null;
-                betaSpace = null;
-                betaVector = null;
-                buildpupil();
+               resetPSF();
             }
         });
         
@@ -660,7 +658,16 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         thread.start();
     }
 
-    public boolean launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
+    protected void resetPSF() {
+    	 defocuSpace = null;
+         defocusVector= null;
+         alphaSpace = null;
+         alphaVector = null;
+         betaSpace = null;
+         betaVector = null;
+         buildpupil();
+	}
+	public boolean launchDeconvolution(DoubleArray imgArray, DoubleArray psfArray, DoubleArray weight){
         return launchDeconvolution(imgArray, psfArray, weight, true, false);
     }
 
