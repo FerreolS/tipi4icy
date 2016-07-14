@@ -146,7 +146,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /**       Utils functions       **/
     /*********************************/
 
-    private void throwError(String s){
+    private static void throwError(String s){
         new AnnounceFrame(s);
         //throw new IllegalArgumentException(s);
     }
@@ -439,9 +439,16 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         radial.addVarChangeListener(new EzVarListener<Boolean>() {
             @Override
             public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
+            	if(newValue){
             	nbAlphaCoef.setDefaultValues(         nAlphaOptionsR,1, false );
             	nbBetaCoef.setDefaultValues(         nBetaOptionsR,1, false );
             	resetPSF();
+            	}else{
+                	nbAlphaCoef.setDefaultValues(         nAlphaOptions,1, false );
+                	nbBetaCoef.setDefaultValues(         nBetaOptions,1, false );
+                	resetPSF();           		
+            	}
+            	
             }
         });
         
@@ -514,6 +521,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                                 temp[i] = in[i+j*sizeX*sizeY];
                             }
                             croppedResult.setImage(0,j, new IcyBufferedImage(sizeX, sizeY, temp));
+                            // TODO add meta data
                         }
                         addSequence(croppedResult);
                     }

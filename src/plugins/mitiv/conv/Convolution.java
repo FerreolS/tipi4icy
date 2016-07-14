@@ -179,7 +179,7 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
     /**
      * Action performed when the user clicks on the details button
      */
-    private void onDetailsClicked()
+    private static void onDetailsClicked()
     {
         String    title   = "Wild Field Fluorescent Microscopy 3D Blind Deconvolution";
         JTextPane message = new JTextPane();

@@ -432,7 +432,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
     /**                  UTILS FUNCTIONS               **/
     /****************************************************/
     //Small utils function that will get the sequence and convert it to ShapedArray
-    private ShapedArray weightMapToArray(EzVarSequence seq){
+    private static ShapedArray weightMapToArray(EzVarSequence seq){
         Sequence in = seq.getValue();
         if (in != null) {
             return IcyBufferedImageUtils.imageToArray(in, 0);
