@@ -321,7 +321,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
             //if the user does not give data with same dimensions : no 3d and 2d at same time.
             if (seqImg.getSizeZ() == 1 && seqPsf.getSizeZ() > 1 ||
                     seqImg.getSizeZ() > 1 && seqPsf.getSizeZ() == 1) {
-                message("The psf and the image should have the same rank");
+                message("The psf and the image should have the same number of dimensions in Z");
             }
             //if the user give data in 4D
             if (seqImg.getSizeT() > 1 || seqPsf.getSizeT() > 1) {
