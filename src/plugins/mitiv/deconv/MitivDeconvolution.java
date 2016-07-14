@@ -26,6 +26,7 @@
 package plugins.mitiv.deconv;
 
 import loci.formats.ome.OMEXMLMetadataImpl;
+import mitiv.array.ArrayUtils;
 import mitiv.array.Double1D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
@@ -85,7 +86,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
 
     private double mu = 0.1;
     private double epsilon = 0.1;
-    private double grtol = 0.1;
+    private double grtol = 0.0;
     private double gatol = 0.0;
     private double lowerBound = Double.NEGATIVE_INFINITY;
     private int maxIter = 50;
@@ -97,42 +98,46 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
     private int width = -1;
     private int height = -1;
     private int sizeZ = -1;
-    private double coef = 1.0;
-    private Shape shape;
+    private int widthPad = -1;
+    private int heightPad = -1;
+    private int sizeZPad = -1;
+    private double coefXY = 1.0;
+    private double coefZ = 1.0;
+    private Shape shapePad;
 
     private ReconstructionThreadToken token;
     ReconstructionThread thread;
 
-    private EzVarSequence sequencePsf = new EzVarSequence("Input PSF");
-    private EzVarSequence sequenceImg = new EzVarSequence("Input Image");
-    private EzVarSequence output = new EzVarSequence("Output"); //In headLess mode only
+    private EzVarSequence sequencePsf;
+    private EzVarSequence sequenceImg;
+    private EzVarSequence lastResult;
+    private EzVarSequence output;
     //private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted?", psfSplitted);
-    private EzVarDouble eZmu = new EzVarDouble("Regularization level", 0, Double.MAX_VALUE, 0.1);
-    private EzVarDouble eZepsilon = new EzVarDouble("Threshold level", 0, Double.MAX_VALUE, 1);
-    private EzVarDouble eZgrtol = new EzVarDouble("grtol", 0, 1, 0.1);
-    private EzVarInteger eZcoef = new EzVarInteger("Number of lines to add (padding)", 1, 10000, 1);
-    private EzVarInteger eZmaxIter = new EzVarInteger("Max Iterations", -1, Integer.MAX_VALUE, 1);
-    private EzVarBoolean eZpositivity = new EzVarBoolean("Enforce nonnegativity", false);
-    private EzVarBoolean eZrestart = new EzVarBoolean("Restart with previous result", false);
+    private EzVarDouble eZmu;
+    private EzVarDouble eZepsilon;
+    private EzVarInteger eZcoefXY, eZcoefZ;
+    private EzVarInteger eZmaxIter;
+    private EzVarBoolean eZpositivity;
 
-    private String weightOption1 = new String("None");
-    private String weightOption2 = new String("Personnalized weightMap");
-    private String weightOption3 = new String("Variance map");
-    private String weightOption4 = new String("Computed Variance");
+    private String weightOption1;
+    private String weightOption2;
+    private String weightOption3;
+    private String weightOption4;
 
-    private EzVarText options = new EzVarText("Options", new String[] { weightOption1, weightOption2, weightOption3, weightOption4}, 0, false);
-    private EzVarSequence weightMap = new EzVarSequence("Weight Map");
-    private EzVarSequence varianceMap = new EzVarSequence("Variance Map");
-    private EzVarBoolean showPixMap = new EzVarBoolean("Pixel Map ?", false);
-    private EzVarSequence deadPixel = new EzVarSequence("Dead pixel map");
-    private EzVarDouble alpha = new EzVarDouble("Gain e-/lvl");
-    private EzVarDouble beta = new EzVarDouble("Readout noise e-/pxl");
-    private EzGroup groupRegularization = new EzGroup("Regularization", eZmu, eZepsilon);
-    private EzGroup groupWeighting = new EzGroup("Weighting", options, weightMap, varianceMap, alpha, beta, showPixMap, deadPixel);
-    private EzGroup groupConvergence = new EzGroup("Convergence settings", eZgrtol, eZmaxIter);
+    private EzVarText options;
+    private EzVarSequence weightMap;
+    private EzVarSequence varianceMap;
+    private EzVarBoolean showPixMap;
+    private EzVarSequence deadPixel;
+    private EzVarDouble alpha;
+    private EzVarDouble beta;
+    private EzGroup groupRegularization;
+    private EzGroup groupWeighting;
+    private EzGroup groupConvergence;
 
-    IcyBufferedImage img;
-    IcyBufferedImage psf;
+    //IcyBufferedImage img;
+    //IcyBufferedImage psf;
+    IcyBufferedImage result;
 
     /****************************************************/
     /**                 MESSAGE ICY                    **/
@@ -147,12 +152,43 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
     /****************************************************/
     @Override
     protected void initialize() {
+
+        sequencePsf = new EzVarSequence("Input PSF");
+        sequenceImg = new EzVarSequence("Input Image");
+        lastResult = new EzVarSequence("Previous result");
+        output = new EzVarSequence("Output"); //In headLess mode only
+        //private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted?", psfSplitted);
+        eZmu = new EzVarDouble("Regularization level", 0, Double.MAX_VALUE, 0.1);
+        eZepsilon = new EzVarDouble("Threshold level", 0, Double.MAX_VALUE, 1);
+        eZcoefXY = new EzVarInteger("Number of lines to add (padding xy)", 0, 10000, 1);
+        eZcoefZ = new EzVarInteger("Number of lines to add (padding z)", 0, 10000, 1);
+        eZmaxIter = new EzVarInteger("Max Iterations", -1, Integer.MAX_VALUE, 1);
+        eZpositivity = new EzVarBoolean("Enforce nonnegativity", false);
+
+        weightOption1 = new String("None");
+        weightOption2 = new String("Personnalized weightMap");
+        weightOption3 = new String("Variance map");
+        weightOption4 = new String("Computed Variance");
+
+        options = new EzVarText("Options", new String[] { weightOption1, weightOption2, weightOption3, weightOption4}, 0, false);
+        weightMap = new EzVarSequence("Weight Map");
+        varianceMap = new EzVarSequence("Variance Map");
+        showPixMap = new EzVarBoolean("Data Map?", false);
+        deadPixel = new EzVarSequence("Dead pixel map");
+        alpha = new EzVarDouble("Gain e-/lvl");
+        beta = new EzVarDouble("Readout noise e-/pxl");
+        groupRegularization = new EzGroup("Regularization", eZmu, eZepsilon);
+        groupWeighting = new EzGroup("Weighting", options, weightMap, varianceMap, alpha, beta, showPixMap, deadPixel);
+        groupConvergence = new EzGroup("Convergence settings", eZmaxIter);
+
+        lastResult.setNoSequenceSelection();
+
         //Settings all initials values
         eZmu.setValue(mu);
         eZepsilon.setValue(epsilon);
-        eZgrtol.setValue(grtol);
         eZmaxIter.setValue(maxIter);
-        eZcoef.setValue(0);
+        eZcoefXY.setValue(0);
+        eZcoefZ.setValue(0);
         options.addVarChangeListener(this);
 
         //Setting visibility to weights parameters
@@ -164,15 +200,15 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         //Setting all tooltips
         sequencePsf.setToolTipText(ToolTipText.sequencePSF);
         sequenceImg.setToolTipText(ToolTipText.sequenceImage);
+        lastResult.setToolTipText(ToolTipText.booleanRestart);
         //eZpsfSplitted.setToolTipText(ToolTipText.booleanPSFSplitted);
         eZmu.setToolTipText(ToolTipText.doubleMu);
         eZepsilon.setToolTipText(ToolTipText.doubleEpsilon);
-        eZgrtol.setToolTipText(ToolTipText.doubleGrtoll);
         eZmaxIter.setToolTipText(ToolTipText.doubleMaxIter);
-        eZcoef.setToolTipText(ToolTipText.doublePadding);
+        eZcoefXY.setToolTipText(ToolTipText.doublePadding);
+        eZcoefZ.setToolTipText(ToolTipText.doublePadding);
         alpha.setToolTipText(ToolTipText.doubleGain);
         beta.setToolTipText(ToolTipText.doubleNoise);
-        eZrestart.setToolTipText(ToolTipText.booleanRestart);
         eZpositivity.setToolTipText(ToolTipText.booleanPositivity);
         showPixMap.setToolTipText(ToolTipText.sequencePixel);
         weightMap.setToolTipText(ToolTipText.sequenceWeigth);
@@ -181,15 +217,14 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         //Adding all components
         addEzComponent(sequenceImg);
         addEzComponent(sequencePsf);
+        addEzComponent(lastResult);
         //addEzComponent(eZpsfSplitted);
         addEzComponent(groupRegularization);
         addEzComponent(groupConvergence);
         addEzComponent(groupWeighting);
-        addEzComponent(eZcoef);
+        addEzComponent(eZcoefXY);
+        addEzComponent(eZcoefZ);
         addEzComponent(eZpositivity);
-        addEzComponent(eZrestart);
-
-
 
         token = new ReconstructionThreadToken(new double[]{mu,epsilon,gatol,grtol});
         thread = new ReconstructionThread(token);
@@ -205,21 +240,41 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         goodInput = true;
         mu = eZmu.getValue();
         epsilon = eZepsilon.getValue();
-        grtol = eZgrtol.getValue();
         maxIter = eZmaxIter.getValue();
         //psfSplitted = eZpsfSplitted.getValue();
         double tmp;
-        if (sequenceImg.getValue() != null  && sequencePsf.getValue() != null) {
-            tmp = sequenceImg.getValue().getSizeX(); //Just to compute the size of the coefficient, we take the width of the image
+
+        Sequence seqImg = sequenceImg.getValue();
+        Sequence seqPsf = sequencePsf.getValue();
+        Sequence seqRes = lastResult.getValue();
+
+        if (seqImg != null  && seqPsf != null) {
+            tmp = seqImg.getSizeX(); //Just to compute the size of the coefficient, we take the width of the image
         } else {
-            message("The Image or PSF given does not exist");
+            //Test if we have the image and the psf ...
+            if(seqImg == null || seqPsf == null){
+                //If there is a missing parameter we notify the user with the missing parameter as information
+                String message = "You have forgotten to give ";
+                String messageEnd = "";
+                if (seqImg == null) {
+                    messageEnd = messageEnd.concat("the image ");
+                }
+                if(seqPsf == null) {
+                    if (seqImg == null) {
+                        messageEnd = messageEnd.concat("and ");
+                    }
+                    messageEnd = messageEnd.concat("a PSF");
+                }
+                message(message+messageEnd);
+            }
             return;
         }
-        coef = (tmp + eZcoef.getValue())/tmp;
+        coefXY= (tmp + eZcoefXY.getValue())/tmp;
+        coefZ = (seqImg.getSizeZ() + eZcoefZ.getValue())/seqImg.getSizeZ();
         if (isHeadLess()) {
             reuse = false;
         }else {
-            reuse = eZrestart.getValue();
+            reuse = !(seqRes == null);
         }
 
         //Testing epsilon and grtol
@@ -229,68 +284,82 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         if (epsilon <= 0) {
             message("Threshold level EPSILON must be strictly positive");
         }
-        if (grtol <= 0 || grtol >= 1) {
+        if (grtol < 0 || grtol >= 1) {
             message("grtol canno't be lower than 0 or greater than 1");
         }
-        if (coef < 1 || coef > 3) {
-            message("The Padding can not be lower than 1 or have a value greater than 3");
+        if (coefXY < 0|| coefZ < 0) {
+            message("The Padding can not be lower than 0");
         }
         if (maxIter < -1)  {
             maxIter = -1;
         }
         try {
-            //Test if we have the image and the psf ...
-            if(sequenceImg.getValue() == null || sequencePsf.getValue() == null){
-                //If there is a missing parameter we notify the user with the missing parameter as information
-                String message = "You have forgotten to give ";
-                String messageEnd = "";
-                if (sequenceImg.getValue() == null) {
-                    messageEnd = messageEnd.concat("the image ");
-                }
-                if(sequencePsf.getValue() == null) {
-                    if (sequenceImg.getValue() == null) {
-                        messageEnd = messageEnd.concat("and ");
-                    }
-                    messageEnd = messageEnd.concat("a PSF");
-                }
-                message(message+messageEnd);
-            }else{
-                //And if the sizes are matching
-                img = sequenceImg.getValue().getFirstNonNullImage();
-                psf = sequencePsf.getValue().getFirstNonNullImage();
-                //if the user they the psf is splitted and the psf and image are not of the same size
-                //if (psfSplitted && (img.getWidth() != psf.getWidth() || img.getHeight() != psf.getHeight())) {
-                //    message("The image and the psf should be of same size");
-                //}
-                //if the user make a mistake between psf and image
-                if (psf.getWidth() > img.getWidth() || psf.getHeight() > img.getHeight()) {
-                    message("The psf can not be larger than the image");
-                }
-                //if the user does not give data with same dimensions : no 3d and 2d at same time.
-                if (sequenceImg.getValue().getSizeZ() == 1 && sequencePsf.getValue().getSizeZ() > 1 ||
-                        sequenceImg.getValue().getSizeZ() > 1 && sequencePsf.getValue().getSizeZ() == 1) {
-                    message("The psf and the image should have the same number of dimensions");
-                }
-                //if the user give data in 4D
-                if (sequenceImg.getValue().getSizeT() > 1 || sequencePsf.getValue().getSizeT() > 1) {
-                    message("Sorry we do not support 4D data for now");
+            //And if the sizes are matching
+            if (reuse) {
+                result = seqRes.getFirstNonNullImage();
+            }
+            //if the user they the psf is splitted and the psf and image are not of the same size
+            //if (psfSplitted && (img.getWidth() != psf.getWidth() || img.getHeight() != psf.getHeight())) {
+            //    message("The image and the psf should be of same size");
+            //}
+            //if the user make a mistake between psf and image
+            if (seqPsf.getWidth() > seqImg.getWidth() || seqPsf.getHeight() > seqImg.getHeight()) {
+                message("The psf can not be larger than the image");
+            }
+            //if the user give a bad previous result
+            if(reuse) {
+                boolean sameAsOrigin = seqRes.getSizeX() == seqImg.getSizeX() 
+                        && seqRes.getSizeY() == seqImg.getSizeY() 
+                        && seqRes.getSizeZ() == seqImg.getSizeZ();
+                boolean sameAsPrevious = seqRes.getSizeX() == shapePad.dimension(0) 
+                        && seqRes.getSizeY() == shapePad.dimension(1) 
+                        && (seqRes.getSizeZ() == 1 ? true : seqRes.getSizeZ() == shapePad.dimension(2)); // If we are a 2d image, we do nothing
+                if (!(sameAsOrigin || sameAsPrevious)) {
+                    message("The previous result does not have the same dimensions as the input image");
                 }
             }
+            //if the user does not give data with same dimensions : no 3d and 2d at same time.
+            if (seqImg.getSizeZ() == 1 && seqPsf.getSizeZ() > 1 ||
+                    seqImg.getSizeZ() > 1 && seqPsf.getSizeZ() == 1) {
+                message("The psf and the image should have the same number of dimensions in Z");
+            }
+            //if the user give data in 4D
+            if (seqImg.getSizeT() > 1 || seqPsf.getSizeT() > 1) {
+                message("Sorry we do not support 4D data for now");
+            }
+
             //Everything seems good we are ready to launch
             if (goodInput) {
+                // Settings all sizes
+                width  = Math.max(seqImg.getWidth(), seqPsf.getWidth());
+                height = Math.max(seqImg.getHeight(), seqPsf.getHeight());
+                sizeZ  = Math.max(seqImg.getSizeZ(), seqPsf.getSizeZ());
+                widthPad  = FFTUtils.bestDimension((int)(width*coefXY));
+                heightPad = FFTUtils.bestDimension((int)(height*coefXY));
+                sizeZPad  = FFTUtils.bestDimension((int)(sizeZ*coefZ));
+
+                if (seqImg.getSizeZ() == 1) { //2D
+                    // shape = Shape.make(width, height);
+                    shapePad = Shape.make(widthPad, heightPad);
+                } else { //3D
+                    // shape = Shape.make(width, height, sizeZ);
+                    shapePad = Shape.make(widthPad, heightPad, sizeZPad);
+                }
+                // FIXME What happen when the image is not square, should we pad it ?
                 if (reuse && tvDec != null) {
                     //If we restart, we reuse the same data and PSF
                     tvDec.setRegularizationWeight(mu);
                     tvDec.setRegularizationThreshold(epsilon);
                     tvDec.setRelativeTolerance(grtol);
                     tvDec.setMaximumIterations(maxIter);
-                    tvDec.setOutputShape(shape);
+                    tvDec.setOutputShape(shapePad);
                     tvDec.setPositivity(eZpositivity.getValue());
                     // We verify that the bounds are respected for previous input
                     lowerBound = tvDec.getLowerBound();
-                    DoubleArray myArray = (DoubleArray)tvDec.getResult();
-                    myArray.map(new DoubleFunction() {
-                        
+                    DoubleArray psfArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(seqPsf, 0);
+                    DoubleArray resArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(seqRes, 0);
+                    //DoubleArray myArray = (DoubleArray)tvDec.getResult();
+                    resArray.map(new DoubleFunction() {
                         @Override
                         public double apply(double arg) {
                             if (arg >= lowerBound) {
@@ -300,6 +369,9 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
                             }
                         }
                     });
+                    resArray = (DoubleArray) ArrayUtils.pad(resArray, shapePad);
+                    tvDec.setPsf(psfArray);
+                    tvDec.setResult(resArray);
                     token.start();  //By default wait for the end of the job
                     computeNew = true;
                 } else {
@@ -314,37 +386,29 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
                     tvDec.setViewer(new tvViewer());
                     thread.setJob(tvDec);
                     // Read the image and the PSF.
-                    width = img.getWidth();
-                    height = img.getHeight();
-                    sizeZ = sequenceImg.getValue().getSizeZ();
+
                     DoubleArray imgArray, psfArray, weight;
 
-                    if (sequenceImg.getValue().getSizeZ() == 1) { //2D
-                        shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)), FFTUtils.bestDimension((int)(height*coef)));
-                    } else { //3D
-                        shape = Shape.make(FFTUtils.bestDimension((int)(width*coef)),
-                                FFTUtils.bestDimension((int)(height*coef)),
-                                FFTUtils.bestDimension((int)(sizeZ*coef)));
-                    }
-                    imgArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(sequenceImg.getValue(), 0);
-                    psfArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(sequencePsf.getValue(), 0);
-
+                    imgArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(seqImg, 0);
+                    psfArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(seqPsf, 0);
                     weight = createWeight(imgArray);
+
+                    imgArray = (DoubleArray) ArrayUtils.pad(imgArray, shapePad);
+                    psfArray = (DoubleArray) ArrayUtils.pad(psfArray, shapePad);
+                    weight   = (DoubleArray) ArrayUtils.pad(weight  , shapePad);
+
                     //BEWARE here we change the value to match the new padded image size
-                    //addImage(weight.flatten(), "weights", width, height, sizeZ); //Uncomment this to see weights
-                    width = FFTUtils.bestDimension((int)(width*coef));
-                    height = FFTUtils.bestDimension((int)(height*coef));
-                    sizeZ = FFTUtils.bestDimension((int)(sizeZ*coef));
+                    //addImage(weight.flatten(), "weights", widthPad, heightPad, sizeZPad); //Uncomment this to see weights
 
                     tvDec.setWeight(weight);
                     tvDec.setData(imgArray);
                     tvDec.setPsf(psfArray);
-                    tvDec.setOutputShape(shape);
+                    tvDec.setOutputShape(shapePad);
                     // We verify that the bounds are respected for previous input
                     lowerBound = tvDec.getLowerBound();
                     DoubleArray myArray = tvDec.getData();
                     myArray.map(new DoubleFunction() {
-                        
+
                         @Override
                         public double apply(double arg) {
                             if (arg >= lowerBound) {
@@ -359,6 +423,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
                 }
             }
         } catch (IllegalArgumentException e) {
+            e.printStackTrace();
             new AnnounceFrame("Oops, Error: "+ e.getMessage());
         }
     }
@@ -394,7 +459,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         String newValue = options.getValue();
         ShapedArray array;
         ShapedArray deadPixMap = null;
-        if (showPixMap.getValue() && deadPixel.getValue().getFirstNonNullImage() != null) {
+        if (showPixMap.getValue() && deadPixel.getValue() != null && deadPixel.getValue().getFirstNonNullImage() != null) {
             deadPixMap = weightMapToArray(deadPixel);
         }
         if (newValue == weightOption1) {//No options
@@ -461,25 +526,22 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
         try {
             sequence.beginUpdate();
             double[] in = tvDec.getResult().toDouble().flatten();
-            for (int j = 0; j < sizeZ; j++) {
-                double[] temp = new double[width*height];
-                for (int i = 0; i < width*height; i++) {
-                    temp[i] = in[i+j*width*height];
+            for (int j = 0; j < sizeZPad; j++) {
+                double[] temp = new double[widthPad*heightPad];
+                for (int i = 0; i < widthPad*heightPad; i++) {
+                    temp[i] = in[i+j*widthPad*heightPad];
                 }
-                sequence.setImage(0,j, new IcyBufferedImage(width, height, temp));
+                sequence.setImage(0,j, new IcyBufferedImage(widthPad, heightPad, temp));
             }
         } finally {
             sequence.endUpdate();
         }
-        sequence.setName("TV mu="+mu+" Epsilon="+epsilon+" Iteration="+tvDec.getIterations()+" grToll= "+tvDec.getRelativeTolerance());
+        sequence.setName("TV mu="+mu+" Epsilon="+epsilon+" Iteration="+tvDec.getIterations());
     }
 
     //When the plugin is closed we try to close/stop everything
     @Override
     public void clean() {
-        if (sequence != null) {
-            sequence.close();
-        }
         if (token != null) {
             token.stop();
             token.exit();
@@ -536,13 +598,14 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
     //The input variable for the protocol
     @Override
     public void declareInput(VarList inputMap) {
-        inputMap.add("psf", sequencePsf.getVariable());
+        initialize();
         inputMap.add("image", sequenceImg.getVariable());
+        inputMap.add("psf", sequencePsf.getVariable());
         inputMap.add("mu", eZmu.getVariable());
         inputMap.add("epsilon", eZepsilon.getVariable());
-        inputMap.add("grtol", eZgrtol.getVariable());
         inputMap.add("maxIter", eZmaxIter.getVariable());
-        inputMap.add("coef", eZcoef.getVariable());
+        inputMap.add("coefXY", eZcoefXY.getVariable());
+        inputMap.add("coefZ", eZcoefZ.getVariable());
     }
 
     //The output variable for the protocol

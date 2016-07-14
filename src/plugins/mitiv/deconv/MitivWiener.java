@@ -81,11 +81,11 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
     EzVarBoolean  varBoolean = new EzVarBoolean("Is PSF splitted ?", false);
     EzVarSequence sequencePSF = new EzVarSequence("PSF");
     EzVarSequence sequenceImage = new EzVarSequence("Image");
-    
+
     EzVarDouble eZcoef = new EzVarDouble("Padding multiplication", 1.0, 10, 0.1);
 
     Sequence myseq;
-    
+
     JLabel label;
     int job;
     int correct;
@@ -163,7 +163,7 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
         double mult = 1E9; //HACK While the data uniformization is not done...
         switch (job) {
         case DeconvUtils.JOB_WIENER:
-            tmp =deconvolution.nextDeconvolution(mu);
+            tmp = deconvolution.nextDeconvolution(mu);
             break;
         case DeconvUtils.JOB_QUAD:
             tmp = deconvolution.nextDeconvolutionQuad(mu*mult);
@@ -229,7 +229,7 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
             myseq.setImage(0, i, list.get(i));
         }
     }
-    
+
     @Override
     protected void initialize()
     {
@@ -243,10 +243,10 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
         eZcoef.setToolTipText(ToolTipText.doublePadding);
         slider.setToolTipText(ToolTipText.deconvolutionSlider);
         varBoolean.setToolTipText(ToolTipText.booleanPSFSplitted);
-        
+
+        addEzComponent(sequenceImage);
         addEzComponent(sequencePSF);
         addEzComponent(varBoolean);
-        addEzComponent(sequenceImage);
         addEzComponent(options);
         options.addVarChangeListener(this);
         addEzComponent(eZcoef);
@@ -307,8 +307,8 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
                     deconvolution.setPaddingCoefficient(eZcoef.getValue());
                     firstJob3D(job);
                 } else {
-                	new AnnounceFrame("The PSF and the image should be of same dimensions");
-                	return;
+                    new AnnounceFrame("The PSF and the image should be of same dimensions");
+                    return;
                 }
                 if (isHeadLess()) {
                     double value = valueBlock.getValue();

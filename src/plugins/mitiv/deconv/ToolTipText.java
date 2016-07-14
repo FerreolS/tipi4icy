@@ -45,7 +45,7 @@ public class ToolTipText {
     static final String doubleMu = "Mu";
     static final String doubleEpsilon = "Epsilon";
     static final String doubleMaxIter = "Maximum number of iterations, -1 for no limits";
-    static final String doublePadding = "Add zero around the image (2D and 3D)";
+    static final String doublePadding = "Add X zero lines around the image";
     static final String doubleGain = "The gain in e-/level";
     static final String doubleNoise = "The readout noise i.e the RMS in e-/pixel";
     static final String doubleBDecTotalIteration = "The maximum number of loop the algorithm is allowed to do, the higher the potentially longer";
@@ -73,9 +73,14 @@ public class ToolTipText {
             + "</pre></html>";
     static final String booleanRestart = "Restart from previous result, if enabled will start with last image and PSF";
     static final String booleanPositivity = "Limit the negatives values while computing the solution";
+    static final String booleanCrop = "<html><pre>"
+            + "To ensure that the output will be of the same size as the input.<br/>"
+            + "<font color=\"red\">WARNING:</font> Enabling this option may alter restarting with previous result. <br/>"
+            + "</pre></html>";
     
     static final String textMethod = "Choose the algorithm used to deconvoluate the image";
     static final String textCanal = "Choose the image canal to use for the deconvolution";
+    static final String textOutput = "The output size as the nearest power of 2 size";
 }
 
 

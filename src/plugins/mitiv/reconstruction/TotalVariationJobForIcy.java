@@ -31,17 +31,15 @@ import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.cost.CompositeDifferentiableCostFunction;
+import mitiv.cost.DifferentiableCostFunction;
 import mitiv.cost.HyperbolicTotalVariation;
-import mitiv.cost.QuadraticCost;
-import mitiv.deconv.WeightedConvolutionOperator;
+import mitiv.deconv.WeightedConvolutionCost;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionSynchronizer;
 import mitiv.invpb.ReconstructionViewer;
-import mitiv.linalg.LinearOperator;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
-import mitiv.linalg.shaped.ShapedLinearOperator;
-import mitiv.optim.ArmijoLineSearch;
+import mitiv.optim.BLMVM;
 import mitiv.optim.BoundProjector;
 import mitiv.optim.LBFGS;
 import mitiv.optim.LineSearch;
@@ -52,7 +50,6 @@ import mitiv.optim.ReverseCommunicationOptimizer;
 import mitiv.optim.SimpleBounds;
 import mitiv.optim.SimpleLowerBound;
 import mitiv.optim.SimpleUpperBound;
-import mitiv.optim.VMLMB;
 import mitiv.utils.Timer;
 import mitiv.utils.reconstruction.ReconstructionThreadToken;
 
@@ -241,9 +238,8 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
 
         DoubleShapedVectorSpace dataSpace = new DoubleShapedVectorSpace(dataShape);
         DoubleShapedVectorSpace resultSpace = new DoubleShapedVectorSpace(resultShape);
-        LinearOperator W = null;
-        DoubleShapedVector y = dataSpace.create(data);
         DoubleShapedVector x = null;
+        
         if (result != null) {
             x = resultSpace.create(result);
         } else {
@@ -251,17 +247,16 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         }
         result = ArrayFactory.wrap(x.getData(), resultShape);
 
+        
         // Build convolution operator.
-        ShapedLinearOperator H = null;
-        // FIXME: add a method for that
-        WeightedConvolutionOperator A = WeightedConvolutionOperator.build(resultSpace, dataSpace);
-        A.setPSF(psf);
-        A.setWeights(weight);
-        H = A;
+        DifferentiableCostFunction fdata;
+        WeightedConvolutionCost weightedCost = WeightedConvolutionCost.build(resultSpace, dataSpace);
+        weightedCost.setPSF(psf);
+        weightedCost.setWeightsAndData(weight, data);
+        fdata = weightedCost;
+        
         // Build the cost functions
-        QuadraticCost fdata = new QuadraticCost(H, y, W);
         HyperbolicTotalVariation fprior = new HyperbolicTotalVariation(resultSpace, epsilon);
-
         CompositeDifferentiableCostFunction cost = new CompositeDifferentiableCostFunction(1.0, fdata, mu, fprior);
         fcost = 0.0;
         gcost = resultSpace.create();
@@ -273,7 +268,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         timer.start();
         LineSearch lineSearch = null;
         LBFGS lbfgs = null;
-        VMLMB vmlmb = null;
+        BLMVM blmvm = null;
         NonLinearConjugateGradient nlcg = null;
         BoundProjector projector = null;
         int bounded = 0;
@@ -300,7 +295,6 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
             }
         } else {
             /* Some bounds have been specified. */
-            lineSearch = new ArmijoLineSearch(0.5, 1e-4);
             if (bounded == 1) {
                 /* Only a lower bound has been specified. */
                 projector = new SimpleLowerBound(resultSpace, lowerBound);
@@ -311,11 +305,15 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
                 /* Both a lower and an upper bounds have been specified. */
                 projector = new SimpleBounds(resultSpace, lowerBound, upperBound);
             }
-            int m = (limitedMemorySize > 1 ? limitedMemorySize : 5);
-            vmlmb = new VMLMB(resultSpace, projector, m, lineSearch);
-            vmlmb.setAbsoluteTolerance(gatol);
-            vmlmb.setRelativeTolerance(grtol);
-            minimizer = vmlmb;
+            int m = (limitedMemorySize > 1 ? limitedMemorySize : 3);
+            //vmlmb = new VMLMB(resultSpace, projector, m, lineSearch);
+            //vmlmb.setAbsoluteTolerance(gatol);
+            //vmlmb.setRelativeTolerance(grtol);
+            //minimizer = vmlmb;
+            blmvm = new BLMVM(resultSpace, projector, m);
+            blmvm.setAbsoluteTolerance(gatol);
+            blmvm.setRelativeTolerance(grtol);
+            minimizer = blmvm;
             projector.projectVariables(x);
         }
         timer.stop();
@@ -342,7 +340,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
                 }
             } else {
                 //To see the reason: got to TiPi abstract class ReverseCommunicationOptimizer
-                System.err.println("TotalVariationJobForIcy error/warning: "+task+" reason: "+minimizer.getReason());
+                System.err.println("TotalVariationJobForIcy error/warning: "+minimizer.getReason());
                 break;
             }
             if (synchronizer != null) {

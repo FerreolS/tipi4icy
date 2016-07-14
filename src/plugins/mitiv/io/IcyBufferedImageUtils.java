@@ -140,6 +140,22 @@ public class IcyBufferedImageUtils {
             return BufferedImageUtils.imageToArray(image);
         }
     }
+    
+    public static Sequence IcyBufferedToSequence(ArrayList<IcyBufferedImage> image) {
+        Sequence tmp = new Sequence();
+        for (int i = 0; i < image.size(); i++) {
+            tmp.addImage(i, image.get(i));
+        }
+        return tmp;
+    }
+    
+    public static Sequence BufferedToSequence(ArrayList<BufferedImage> image) {
+        Sequence tmp = new Sequence();
+        for (int i = 0; i < image.size(); i++) {
+            tmp.addImage(i, image.get(i));
+        }
+        return tmp;
+    }
 
     public static double[] shiftIcyPsf3DToArray1D(ArrayList<IcyBufferedImage>listPSF,int width, int height, int sizeZ,  boolean isComplex) {
         double[] out;
@@ -242,7 +258,7 @@ public class IcyBufferedImageUtils {
         return out;
     }
 
-    public ArrayList<BufferedImage> arrayToIcyImage3D(double[] array, int job, boolean isComplex, int width, int height, int sizeZ){
+    public static ArrayList<BufferedImage> arrayToIcyImage3D(double[] array, boolean isComplex, int width, int height, int sizeZ){
         ArrayList<BufferedImage> out = new ArrayList<BufferedImage>();
         if (isComplex) {
             for (int k = 0; k < sizeZ; k++) {
@@ -266,6 +282,11 @@ public class IcyBufferedImageUtils {
         //IMPORTANT WE DEPAD AS WE COMPUTE OR NOT ...
         //return CommonUtils.imageUnPad(out, sizePadding);
         return out;
+    }
+    
+    public static Sequence arrayToSequence(double[] array, boolean isComplex, int width, int height, int sizeZ){
+        ArrayList<BufferedImage> tmp = arrayToIcyImage3D(array, isComplex, width, height, sizeZ);
+        return BufferedToSequence(tmp);
     }
 }
 
