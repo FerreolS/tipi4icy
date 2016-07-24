@@ -858,6 +858,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
                 for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
                      psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
+                     pupil.freePSF();
                     /* OBJET ESTIMATION (by the current PSF) */
                     // If first iteration we use given result, after we continue with our previous result (i == 0)
                     if (!launchDeconvolution(imgArray, psfArray, weight, false, !(i == 0))) {
@@ -913,8 +914,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             pupil = PSFEstimation.getPupil();
             } else {
                  psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
+                 pupil.freePSF();
                 launchDeconvolution(imgArray, psfArray, weight);
             }
+            pupil.freePSF();
             // Everything went well, the restart will be the current sequence
             // For now, if not called in the graphic thread launch errors
             // I'am using lastsequence because invokelater will find null with sequence
