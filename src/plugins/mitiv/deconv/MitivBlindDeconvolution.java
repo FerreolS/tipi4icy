@@ -735,7 +735,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     protected void launch(boolean runDeconv) {
         try {
-
+            startBlind.setText("Computing...");
             if (debug) {
                 System.out.println("-------------IMAGE-------------------");
                 System.out.println("File: "+image.getValue());              //Used
@@ -935,6 +935,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             if (debug) {
                 e.printStackTrace();
             }
+        } finally {
+            startBlind.setText("Guess PSF");
         }
     }
 
