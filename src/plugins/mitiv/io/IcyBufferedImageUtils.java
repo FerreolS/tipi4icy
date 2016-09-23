@@ -111,7 +111,7 @@ public class IcyBufferedImageUtils {
 
     public static ShapedArray imageToArray(Sequence seq, Shape shape, int canal) {
         if (seq.getSizeT() != 1) {
-            throw new IllegalArgumentException("The input canno't be a 4D sequence");
+            throw new IllegalArgumentException("The input cannot be a 4D sequence");
         }
         try {
             double[] out = Array1DUtil.arrayToDoubleArray(seq.getDataCopyXYZT( canal ), seq.isSignedDataType());
@@ -121,7 +121,7 @@ public class IcyBufferedImageUtils {
                 return Double3D.wrap(out, shape);
             }
         } catch (Exception e) {
-            System.err.println("Canno't take only one canal "+e);
+            System.err.println("Cannot take only one canal "+e);
             if (shape.rank() == 2) {    //2D input -> Rank = 2
                 return Double2D.wrap(icyImage3DToArray1D(seq.getAllImage(), shape.dimension(0), shape.dimension(1), 1, false), shape);
             } else {
