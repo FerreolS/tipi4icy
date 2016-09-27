@@ -35,20 +35,20 @@ package plugins.mitiv.deconv;
 public class ToolTipText {
 
     static final String deconvolutionSlider = "Update Mu value";
-    static final String sequenceImage = "The image on which we will work";
+    static final String sequenceImage = "Stack to be deconvolved";
     static final String sequencePSF = "The PSF associated to the image given";
-    static final String sequenceWeigth = "The weight map to possibly ignore or minize errors in the image";
+    static final String sequenceWeigth = "Map of space varying noise variance or precision";
     static final String sequenceVariance = "The variance map";
-    static final String sequencePixel = "The binary pixel map representing the pixels that we should ignore";
+    static final String sequencePixel = "The binary map with 0 for bad pixels";
     
     static final String doubleGrtoll = "Relative gradient tolerance for the convergence";
-    static final String doubleMu = "Mu";
-    static final String doubleEpsilon = "Epsilon";
-    static final String doubleMaxIter = "Maximum number of iterations, -1 for no limits";
-    static final String doublePadding = "Add X zero lines around the image";
+    static final String doubleMu = "Hyper-parameter";
+    static final String doubleEpsilon = "TV threshold Epsilon";
+    static final String doubleMaxIter = "Maximum number of iterations";
+    static final String doublePadding = "Pad with X lines";
     static final String doubleGain = "The gain in e-/level";
     static final String doubleNoise = "The readout noise i.e the RMS in e-/pixel";
-    static final String doubleBDecTotalIteration = "The maximum number of loop the algorithm is allowed to do, the higher the potentially longer";
+    static final String doubleBDecTotalIteration = "The maximum number of loops of the algorithm, the higher the potentially longer";
     static final String doubleGrtolPhase = "Relative gradient tolerance for the convergence of the phase coeficients";
     static final String doubleGrtolModulus = "Relative gradient tolerance for the convergence of the modulus coeficients";
     static final String doubleGrtolDefocus = "Relative gradient tolerance for the convergence of the defocus coeficients";
@@ -72,12 +72,8 @@ public class ToolTipText {
             + " ---------      ---------     <br/>"
             + "</pre></html>";
     static final String booleanRestart = "Restart from previous result, if enabled will start with last image and PSF";
-    static final String booleanPositivity = "Limit the negatives values while computing the solution";
-    static final String booleanCrop = "<html><pre>"
-            + "To ensure that the output will be of the same size as the input.<br/>"
-            + "<font color=\"red\">WARNING:</font> Enabling this option may alter restarting with previous result. <br/>"
-            + "</pre></html>";
-    
+    static final String booleanPositivity = "Enforce the positivity of the solution";
+    static final String booleanCrop = "To ensure that the output will be of the same size as the input.";
     static final String textMethod = "Choose the algorithm used to deconvoluate the image";
     static final String textCanal = "Choose the image canal to use for the deconvolution";
     static final String textOutput = "The output size as the nearest power of 2 size";
