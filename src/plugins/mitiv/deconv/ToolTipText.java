@@ -73,7 +73,7 @@ public class ToolTipText {
             + "</pre></html>";
     static final String booleanRestart = "Restart from previous result, if enabled will start with last image and PSF";
     static final String booleanPositivity = "Enforce the positivity of the solution";
-    static final String booleanCrop = "To ensure that the output will be of the same size as the input.";
+    static final String booleanCrop = "Crop the output with the same field of view as the input.";
     static final String textMethod = "Choose the algorithm used to deconvoluate the image";
     static final String textCanal = "Choose the image canal to use for the deconvolution";
     static final String textOutput = "The output size as the nearest power of 2 size";
