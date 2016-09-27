@@ -162,10 +162,15 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
         DoubleShapedVector xVector = space.create(imgArray);
 
         /* Convolve x by the psf h */
-        RealComplexFFT FFT = new RealComplexFFT(space);
-        ConvolutionOperator H = new ConvolutionOperator(FFT, hVector);
+      //  RealComplexFFT FFT = new RealComplexFFT(space);
+      //  ConvolutionOperator H = new ConvolutionOperator(FFT, hVector);
+      //  DoubleShapedVector y = space.create();
+      //  H.apply(xVector, y, LinearOperator.DIRECT);
+        
         DoubleShapedVector y = space.create();
-        H.apply(xVector, y, LinearOperator.DIRECT);
+        mitiv.deconv.Convolution        H = mitiv.deconv.Convolution.build(space);
+        H.setPSF(hVector);
+        H.apply(xVector, y);
         
         Sequence seqY = new Sequence();
         seqY.setName("Y");

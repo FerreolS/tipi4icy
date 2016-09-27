@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.mitiv.deconv;
+package plugins.mitiv.normalization;
 
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;

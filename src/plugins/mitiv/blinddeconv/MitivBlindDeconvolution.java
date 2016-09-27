@@ -1,4 +1,4 @@
-package plugins.mitiv.deconv;
+package plugins.mitiv.blinddeconv;
 
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;

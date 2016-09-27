@@ -54,6 +54,7 @@ import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
+import plugins.mitiv.blinddeconv.ToolTipText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 
 /**
