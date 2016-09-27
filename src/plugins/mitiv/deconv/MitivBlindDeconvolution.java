@@ -83,7 +83,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private EzVarInteger  nbIteration, bDecTotalIteration,DefocusMaxIter,PhaseMaxIter,ModulusMaxIter, paddingSizeXY, paddingSizeZ;
     private WideFieldModel pupil=null;
     // private boolean psfInitFlag = false;
-    private EzVarDouble mu, epsilon, gain, noise;         
+    private EzVarDouble logmu, mu, epsilon, gain, noise;         
     private EzVarSequence image, restart, weights, deadPixel, outputHeadlessImage, outputHeadlessPSF;
     private EzVarText weightsMethod,  nbAlphaCoef, nbBetaCoef;
     private EzVarChannel canalImage;
@@ -190,6 +190,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         if (!isHeadLess()) {
             outputSize.setEnabled(false);
             imageSize.setEnabled(false);
+            mu.setEnabled(false);
             if(debug){
                 resultCostPrior.setEnabled(false);
                 resultDefocus.setEnabled(false);
@@ -388,6 +389,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         deconvGlob = new EzPanel("Deconvolution"); //Border layout to be sure that the images are stacked to the up
         EzPanel deconvTab = new EzPanel("DeconvolutionTab");
         mu = new EzVarDouble("Regularization level:",1E-2,0.,Double.MAX_VALUE,0.01);
+        logmu = new EzVarDouble("Log10 of the Regularization level:",-2,-Double.MAX_VALUE,Double.MAX_VALUE,1);
         epsilon = new EzVarDouble("Threshold level:",1E-2,0.,Double.MAX_VALUE,0.01);
         nbIteration = new EzVarInteger("Number of iterations: ");
         positivity = new EzVarBoolean("Enforce nonnegativity:", true);
@@ -413,6 +415,14 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
+        EzVarListener<Double> logmuActionListener = new EzVarListener<Double>() {
+            @Override
+            public void variableChanged(EzVar<Double> source, Double newValue) {
+            	mu.setValue(Math.pow(10, logmu.getValue()));
+            }
+        };
+        logmu.addVarChangeListener(logmuActionListener);
+        
         EzGroup groupStop1 = new EzGroup("Emergency STOP", stopDec);
 
         /****************************************************/
@@ -615,6 +625,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         tabbedPane.add(varianceGlob);
 
         /**** Deconv ****/
+
+        deconvTab.add(logmu);
         deconvTab.add(mu);
         deconvTab.add(epsilon);
         deconvTab.add(nbIteration);
