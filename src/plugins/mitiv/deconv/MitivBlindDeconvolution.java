@@ -104,11 +104,12 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private double grtol = 0.0;
     private int nbAlpha=0, nbBeta=1;
-    private int sizeX=512, sizeY=512, sizeZ=128, sizeXY=512; // Input sequence sizes 
+    private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence sizes 
     private Shape imageShape;
     private  int Nxy=512, Nz=128;			 // Output (padded sequence size)
-    private Shape outputShape, inputShape;
-    //   private  int xPad, yPad, zPad;    // Pad size
+    private Shape outputShape;
+ //   private  int xPad, yPad, zPad;    // Pad size
+    
 
 
     private boolean guessPhase;
@@ -170,11 +171,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
 
     protected void updatePaddedSize() {
-        sizeXY = Math.max(sizeX, sizeY);
+        int sizeXY = Math.max(sizeX, sizeY);
         Nxy = FFTUtils.bestDimension((int)(sizeXY + paddingSizeXY.getValue()));
         Nz= FFTUtils.bestDimension((int)( sizeZ + paddingSizeZ.getValue()));
         outputShape = Shape.make(Nxy, Nxy, Nz);
-        inputShape = Shape.make(sizeXY, sizeXY, sizeZ);
     }
 
     private void setDefaultValue() {
@@ -814,8 +814,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             DoubleArray weight = createWeight(imgArray).toDouble();
 
 
-            imgArray = (DoubleArray) ArrayUtils.pad(imgArray, inputShape);
-            weight   = (DoubleArray) ArrayUtils.pad(weight  , inputShape);
+            imgArray = (DoubleArray) ArrayUtils.pad(imgArray, outputShape);
+            weight   = (DoubleArray) ArrayUtils.pad(weight  , outputShape);
 
 
 
@@ -862,8 +862,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 PSFEstimation.setAbsoluteTolerance(0.0);
 
                 for(int i = 0; i < bDecTotalIteration.getValue(); i++) {
-                    psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), inputShape));
-                    pupil.freePSF();
+                     psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
+                     pupil.freePSF();
                     /* OBJET ESTIMATION (by the current PSF) */
                     // If first iteration we use given result, after we continue with our previous result (i == 0)
                     if (!launchDeconvolution(imgArray, psfArray, weight, false, !(i == 0))) {
@@ -918,8 +918,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 }
                 pupil = PSFEstimation.getPupil();
             } else {
-                psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), inputShape));
-                pupil.freePSF();
+                 psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
+                 pupil.freePSF();
                 launchDeconvolution(imgArray, psfArray, weight);
             }
             pupil.freePSF();
@@ -1000,7 +1000,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             //Here we will update the sequence
             if (sequence == null || (sequence != null && sequence.isEmpty())) {
                 sequence = new Sequence();
-                //  setMetaData(image.getValue(), sequence);
+                setMetaData(image.getValue(), sequence);
                 if (isHeadLess()) {
                     outputHeadlessImage.setValue(sequence);
                 } else {
@@ -1047,14 +1047,14 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void showResult(int num)
     {
         Sequence psf3DSequence = new Sequence();
-        DoubleArray psf = Double3D.wrap(pupil.getPSF(), inputShape);
+        DoubleArray psf = Double3D.wrap(pupil.getPSF(), outputShape);
         double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
         //double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
         psf3DSequence.setName("PSF Estimated - " + num);
-        for (int k = 0; k < sizeZ; k++)
+        for (int k = 0; k < Nz; k++)
         {
-            psf3DSequence.setImage(0, k, new IcyBufferedImage(sizeXY, sizeXY,
-                    MathUtils.getArray(PSF_shift, sizeXY, sizeXY, k)));
+            psf3DSequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
+                    MathUtils.getArray(PSF_shift, Nxy, Nxy, k)));
         }
         if (isHeadLess()) {
             outputHeadlessPSF.setValue(psf3DSequence);
@@ -1071,35 +1071,35 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void buildpupil()
     {
         pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy_nm.getValue()*1E-9,
-                dz_nm.getValue()*1E-9, sizeXY, sizeXY, sizeZ,radial.getValue());
+                dz_nm.getValue()*1E-9, Nxy, Nxy, Nz,radial.getValue());
     }	
 
     private void psfClicked()
     {
-        /* PSF0 initialisation */
-        if(pupil==null)
-        {
-            buildpupil();
-        }
+    	/* PSF0 initialisation */
+    	if(pupil==null)
+    	{
+    		buildpupil();
+    	}
 
-        /* PSF0 Sequence */
-        Sequence PSF0Sequence = new Sequence();
+    	/* PSF0 Sequence */
+    	Sequence PSF0Sequence = new Sequence();
 
-        DoubleArray psf = Double3D.wrap(pupil.getPSF(), inputShape);
-        double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
-        //double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
-        for (int k = 0; k < sizeZ; k++)
-        {
-            PSF0Sequence.setImage(0, k, new IcyBufferedImage(sizeXY, sizeXY,
-                    MathUtils.getArray(PSF_shift, sizeXY, sizeXY, k)));
-        }
-        setMetaData(PSF0Sequence) ;
+    	DoubleArray psf = Double3D.wrap(pupil.getPSF(), outputShape);
+    	double[] PSF_shift = ArrayUtils.roll(psf).toDouble().flatten();
+    	//double[] PSF_shift = MathUtils.fftShift3D(pupil.getPSF(), xyPad, xyPad, sizeZPad);
+    	for (int k = 0; k < Nz; k++)
+    	{
+    		PSF0Sequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
+    				MathUtils.getArray(PSF_shift, Nxy, Nxy, k)));
+    	}
+    	setMetaData(PSF0Sequence) ;
 
-        PSF0Sequence.setName("PSF");
-        addSequence(PSF0Sequence);
+    	PSF0Sequence.setName("PSF");
+    	addSequence(PSF0Sequence);
     }
 
-
+    
     private void phaseClicked()
     {
         /* PSF0 initialisation */ 
@@ -1110,10 +1110,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /* Phase Sequence */
         Sequence phaseSequence = new Sequence();
         phaseSequence.setName("Phase of the pupil");
-        DoubleArray psf = Double2D.wrap(pupil.getPhi(), Shape.make(sizeXY, sizeXY));
+        DoubleArray psf = Double2D.wrap(pupil.getPhi(), Shape.make(Nxy, Nxy));
         double[] phase_shift = ArrayUtils.roll(psf).toDouble().flatten();
         //double[] phase_shift = MathUtils.fftShift1D(pupil.getPhi(), xyPad, xyPad);
-        phaseSequence.addImage(new IcyBufferedImage(sizeXY, sizeXY, phase_shift));
+        phaseSequence.addImage(new IcyBufferedImage(Nxy, Nxy, phase_shift));
         addSequence(phaseSequence);
     }
 
@@ -1127,10 +1127,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /* Modulus Sequence */
         Sequence modulusSequence = new Sequence();
         modulusSequence.setName("Modulus of the pupil");
-        DoubleArray psf = Double2D.wrap(pupil.getRho(), Shape.make(sizeXY, sizeXY));
+        DoubleArray psf = Double2D.wrap(pupil.getRho(), Shape.make(Nxy, Nxy));
         double[] modulus_shift = ArrayUtils.roll(psf).toDouble().flatten();
         //double[] modulus_shift = MathUtils.fftShift1D(pupil.getRho(), xyPad, xyPad);
-        modulusSequence.addImage(new IcyBufferedImage(sizeXY, sizeXY, modulus_shift));
+        modulusSequence.addImage(new IcyBufferedImage(Nxy, Nxy, modulus_shift));
         addSequence(modulusSequence);
     }
 
@@ -1264,15 +1264,15 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         }
 
         /* PSF0 Sequence */
-        Sequence zSequence = new Sequence();
-
-        for (int k = 0; k < pupil.getNZern(); k++)
-        {
-            zSequence.setImage(0, k, new IcyBufferedImage(sizeXY, sizeXY,
-                    ArrayUtils.roll(Double2D.wrap(pupil.getZernike(k), Shape.make(sizeXY,sizeXY))).toDouble().flatten()));
-        }
-        zSequence.setName("Zernike");
-        addSequence(zSequence);
+        Sequence PSF0Sequence = new Sequence();
+        	 
+            for (int k = 0; k < pupil.getNZern(); k++)
+            {
+                PSF0Sequence.setImage(0, k, new IcyBufferedImage(Nxy, Nxy,
+                       ArrayUtils.roll(Double2D.wrap(pupil.getZernike(k), Shape.make(Nxy,Nxy))).toDouble().flatten()));
+            }
+        PSF0Sequence.setName("Zernike");
+        addSequence(PSF0Sequence);
     }
     @SuppressWarnings("unused")
     private void addImage(double[] in, String name, int width, int height, int sizeZ){
