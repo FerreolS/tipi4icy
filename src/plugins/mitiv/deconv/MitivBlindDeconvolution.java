@@ -227,8 +227,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             public void actionPerformed(ActionEvent e) {
                 if (debug) {
                     System.out.println("Saving metadata");
-                    updateMetaData();
                 }
+                updateMetaData();
             }
         });
 
@@ -292,7 +292,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             public void variableChanged(EzVar<Double> source, Double newValue) {
                 Sequence seq = image.getValue();
                 if (seq != null)  {              
-                    setMetaData(seq) ;
+                 //   setMetaData(seq) ;
                 }
                 resetPSF();
             };
@@ -393,7 +393,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         positivity = new EzVarBoolean("Enforce nonnegativity:", true);
         // crop = new EzVarBoolean("Crop output to match input:", false);
         restart = new EzVarSequence("Starting point:");
-        docDec = new EzLabel("Launch a deconvolution by using a psf (ifgiven) or creating a simple PSF from parameters from PSF tab", Color.red);
+        docDec = new EzLabel("Launch a deconvolution using the current PSF", Color.red);
         startDec = new EzButton("Start Deconvolution", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -463,7 +463,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        showPhase = new EzButton(       "Show phase of the pupil", new ActionListener() {
+        showPhase = new EzButton(       "Phase of the pupil function", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 phaseClicked();
@@ -473,7 +473,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        showModulus = new EzButton(     "Show modulus of the pupil", new ActionListener() {
+        showModulus = new EzButton(     "Modulus of the pupil function", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 modulusClicked();
@@ -482,8 +482,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 }
             }
         });
-        docBlind = new EzLabel("BlindDeconvolution use the parameters from previous tab to compute the PSF", Color.RED);
-        startBlind = new EzButton("Guess PSF", new ActionListener() {
+        docBlind = new EzLabel("Joint estimation of the image and PSF", Color.RED);
+        startBlind = new EzButton("Blind deconvolution", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 Thread workerThread = new Thread() {
@@ -505,7 +505,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         EzGroup groupStop2 = new EzGroup("Emergency STOP", stopBlind);
 
-        cropResult = new EzButton(          "Show deconvolved image with the size of the input", new ActionListener() {
+        cropResult = new EzButton(          "Show deconvolved image at the size of the input", new ActionListener() {
 
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -522,8 +522,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                                 temp[i] = in[i+j*sizeX*sizeY];
                             }
                             croppedResult.setImage(0,j, new IcyBufferedImage(sizeX, sizeY, temp));
-                            // TODO add meta data
                         }
+                        // TODO add meta data
+                        setMetaData(croppedResult) ;
                         addSequence(croppedResult);
                     }
                 }
@@ -1218,10 +1219,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void setMetaData(Sequence seqNew) {
         OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata();
         //newMetdat.setImageDescription("MyDescription", 0);
-        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
-        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
-        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-9), 0);
-        // seqNew.setMetaData(newMetdat); //FIXME may not working now
+        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
+        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
+        seqNew.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
     }
 
     private void updateMetaData() {
@@ -1229,10 +1230,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         if (seq != null) {
             try {
                 OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
-                newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
-                newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
-                newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-9), 0);
-                // seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
+                newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
+                newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
+                newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
+                seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
             } catch (ServiceException e) {
                 e.printStackTrace();
             }
