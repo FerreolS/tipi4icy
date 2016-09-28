@@ -168,15 +168,16 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
       //  H.apply(xVector, y, LinearOperator.DIRECT);
         
         DoubleShapedVector y = space.create();
-        mitiv.deconv.Convolution        H = mitiv.deconv.Convolution.build(space,space);
+        mitiv.deconv.Convolution        H = mitiv.deconv.Convolution.build(space);
        H.setPSF(hVector);
        H.apply( y,xVector);
         
         Sequence seqY = new Sequence();
-        seqY.setName("Y");
+        seqY.setName(seqImg.getName()+"*"+seqPSF.getName());
         for(int k = 0; k < d; k++)
         {
-            seqY.addImage(new IcyBufferedImage(w, h, MathUtils.getArray(y.getData(), w, h, k)));
+       //     seqY.addImage(new IcyBufferedImage(w, h, MathUtils.getArray(y.getData(), w, h, k)));
+            seqY.setImage(0, k, new IcyBufferedImage(w, h, MathUtils.getArray(y.getData(), w, h, k)));
         }
         addSequence(seqY);
     }
