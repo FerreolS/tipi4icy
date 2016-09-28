@@ -116,9 +116,9 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
 
         super.addEzComponent(EzVarSequenceImage);
         super.addEzComponent(EzVarSequencePSF);
-        super.addEzComponent(noise);
-        super.addComponent(slider);
-        super.addComponent(label);
+      //  super.addEzComponent(noise);
+      //  super.addComponent(slider);
+    //    super.addComponent(label);
 
         EzButton detailsButton = new EzButton("Help", new ActionListener()
         {
@@ -128,7 +128,7 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
                 onDetailsClicked();
             }
         });
-        addEzComponent(detailsButton);
+   //     addEzComponent(detailsButton);
     }
 
     @Override
@@ -168,9 +168,9 @@ public class Convolution extends EzPlug implements EzStoppable,SequenceListener,
       //  H.apply(xVector, y, LinearOperator.DIRECT);
         
         DoubleShapedVector y = space.create();
-        mitiv.deconv.Convolution        H = mitiv.deconv.Convolution.build(space);
-        H.setPSF(hVector);
-        H.apply(xVector, y);
+        mitiv.deconv.Convolution        H = mitiv.deconv.Convolution.build(space,space);
+       H.setPSF(hVector);
+       H.apply( y,xVector);
         
         Sequence seqY = new Sequence();
         seqY.setName("Y");
