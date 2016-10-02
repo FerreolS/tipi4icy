@@ -335,8 +335,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         EzPanel varianceTab = new EzPanel("VarianceTab");
         weightsMethod = new EzVarText(      "Weighting:", weightOptions, false);
         weights = new EzVarSequence(        "Map:");
-        gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,0.01);
-        noise = new EzVarDouble(            "Readout Noise:",3.,0.,Double.MAX_VALUE,0.1);
+        gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
+        noise = new EzVarDouble(            "Readout Noise:",5.,0.,Double.MAX_VALUE,0.1);
         deadPixGiven = new EzVarBoolean(    "Data Map?", false);
         deadPixel = new EzVarSequence(      "Map:");
 
@@ -352,10 +352,12 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     weights.setVisible(true);
                     gain.setVisible(false);
                     noise.setVisible(false);
+                    weights.setNoSequenceSelection();
                 } else if (weightsMethod.getValue() == weightOptions[3]) {  //Computed variance
                     weights.setVisible(false);
                     gain.setVisible(true);
                     noise.setVisible(true);
+                    weights.setNoSequenceSelection();
                 } else {
                     throwError("Invalid argument passed to weight method");
                     return;
@@ -367,6 +369,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             @Override
             public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
                 deadPixel.setVisible(deadPixGiven.getValue());
+                deadPixel.setNoSequenceSelection();
             }
         });
 
