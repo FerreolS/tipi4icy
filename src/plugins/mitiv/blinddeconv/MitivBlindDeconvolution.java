@@ -339,7 +339,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         noise = new EzVarDouble(            "Readout Noise:",5.,0.,Double.MAX_VALUE,0.1);
         deadPixGiven = new EzVarBoolean(    "Data Map?", false);
         deadPixel = new EzVarSequence(      "Map:");
-
+        weights.setNoSequenceSelection();
         weightsMethod.addVarChangeListener(new EzVarListener<String>() {
 
             @Override
@@ -387,6 +387,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });	
 
+        
         /****************************************************/
         /**                    DECONV TAB                  **/
         /****************************************************/
