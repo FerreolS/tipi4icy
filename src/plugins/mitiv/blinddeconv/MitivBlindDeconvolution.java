@@ -16,22 +16,24 @@ import javax.swing.SwingUtilities;
 import loci.common.services.ServiceException;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
+import mitiv.array.ArrayFactory;
 import mitiv.array.ArrayUtils;
-import mitiv.array.Double1D;
 import mitiv.array.Double2D;
 import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
+import mitiv.array.FloatArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
+import mitiv.base.Traits;
 import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionViewer;
-import mitiv.linalg.WeightGenerator;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.microscopy.WideFieldModel;
 import mitiv.microscopy.PSF_Estimation;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.MathUtils;
+import mitiv.utils.WeightFactory;
 import mitiv.utils.reconstruction.ReconstructionThread;
 import mitiv.utils.reconstruction.ReconstructionThreadToken;
 import plugins.adufour.blocks.lang.Block;
@@ -95,7 +97,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private final String[] nBetaOptionsR = new String[]{"0","1","2","3","4","5","6","7","8","9"};
     private MyMetadata meta = null;     //The image metadata that we will move from one image to another
     private EzButton saveMetaData, showPSF, psfShow2, showWeight, showModulus, showPhase;
-    private EzButton startDec, startBlind, stopDec, stopBlind, cropResult, resetPSF;
+    private EzButton startDec, startBlind, stopDec, stopBlind, cropResult, cropResultInDeconv, resetPSF;
     private EzVarText imageSize, outputSize, resultCostPrior, resultDefocus, resultPhase, resultModulus;
     private EzLabel docDec, docBlind;
 
@@ -275,7 +277,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     updateOutputSize();
                     updateImageSize();
 
-                    imageShape    = Shape.make(sizeX, sizeY, sizeZ);
+                    imageShape = Shape.make(sizeX, sizeY, sizeZ);
                     if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                     }
@@ -326,10 +328,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         // Note The listener of PSF is after BDEC tab
 
         /****************************************************/
-        /**                 VARIANCE TAB                   **/
+        /**                WEIGHTING TAB                   **/
         /****************************************************/
-        //Creation of the inside of VARIANCE TAB
-        varianceGlob = new EzPanel("Variance"); //Border layout to be sure that the images are stacked to the up
+        //Creation of the inside of WEIGHTING TAB
+        varianceGlob = new EzPanel("Weighting"); //Border layout to be sure that the images are stacked to the up
         EzPanel varianceTab = new EzPanel("VarianceTab");
         weightsMethod = new EzVarText(      "Weighting:", weightOptions, false);
         weights = new EzVarSequence(        "Map:");
@@ -423,6 +425,32 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         };
         logmu.addVarChangeListener(logmuActionListener);
         
+        cropResultInDeconv = new EzButton(          "Show deconvolved image at the size of the input", new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // We crop on the fly the last tvdec result to match input
+                if (tvDec != null) {
+                    ShapedArray prevResult = tvDec.getResult();
+                    if (prevResult != null) {
+                        Sequence croppedResult = new Sequence("Cropped Result");
+                        ShapedArray croppedArray = ArrayUtils.crop(prevResult, imageShape);
+                        double[] in = croppedArray.toDouble().flatten();
+                        for (int j = 0; j < sizeZ; j++) {
+                            double[] temp = new double[sizeX*sizeY];
+                            for (int i = 0; i < sizeX*sizeY; i++) {
+                                temp[i] = in[i+j*sizeX*sizeY];
+                            }
+                            croppedResult.setImage(0,j, new IcyBufferedImage(sizeX, sizeY, temp));
+                        }
+                        // TODO add meta data
+                        setMetaData(croppedResult) ;
+                        addSequence(croppedResult);
+                    }
+                }
+            }
+        });
+
         EzGroup groupStop1 = new EzGroup("Emergency STOP", stopDec);
 
         /****************************************************/
@@ -586,6 +614,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         restart.setToolTipText(ToolTipText.booleanRestart);
         positivity.setToolTipText(ToolTipText.booleanPositivity);
+        cropResultInDeconv.setToolTipText(ToolTipText.booleanCrop);
         cropResult.setToolTipText(ToolTipText.booleanCrop);
         resultTab.setToolTipText(ToolTipText.textOutput);
 
@@ -634,6 +663,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         deconvTab.add(restart);
         deconvTab.add(docDec);
         deconvTab.add(startDec);
+        deconvTab.add(cropResultInDeconv);
         deconvTab.add(groupStop1);
         //Creation of DECONVOLUTION TAB
         deconvGlob.add(deconvTab);
@@ -812,22 +842,20 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
             int numCanal = canalImage.getValue();
 
-            DoubleArray imgArray, psfArray;
+            DoubleArray imgArray, psfArray, wgtArray;
             runBdec = !runDeconv;
 
 
-            if(pupil==null)
-            {
+            if (pupil == null) {
                 buildpupil();
             }
 
             imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, numCanal);
-
-            DoubleArray weight = createWeight(imgArray).toDouble();
-
-
+            wgtArray = createWeights(imgArray).toDouble();
+            
+            // Zero pad the data and their weights. FIXME: should not be needed (to save memory).
             imgArray = (DoubleArray) ArrayUtils.pad(imgArray, outputShape);
-            weight   = (DoubleArray) ArrayUtils.pad(weight  , outputShape);
+            wgtArray = (DoubleArray) ArrayUtils.pad(wgtArray, outputShape);
 
 
 
@@ -867,7 +895,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
                 PSFEstimation = new PSF_Estimation(pupil);
 
-                PSFEstimation.setWeight(weight);
+                PSFEstimation.setWeight(wgtArray);
                 PSFEstimation.setData(imgArray);
 
                 PSFEstimation.enablePositivity(false);
@@ -878,7 +906,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                      pupil.freePSF();
                     /* OBJET ESTIMATION (by the current PSF) */
                     // If first iteration we use given result, after we continue with our previous result (i == 0)
-                    if (!launchDeconvolution(imgArray, psfArray, weight, false, !(i == 0))) {
+                    if (!launchDeconvolution(imgArray, psfArray, wgtArray, false, !(i == 0))) {
                         return;
                     }
                     PSFEstimation.setObj(tvDec.getResult());
@@ -932,7 +960,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             } else {
                  psfArray = (DoubleArray) ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
                  pupil.freePSF();
-                launchDeconvolution(imgArray, psfArray, weight);
+                launchDeconvolution(imgArray, psfArray, wgtArray);
             }
             pupil.freePSF();
             // Everything went well, the restart will be the current sequence
@@ -957,49 +985,85 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     }
 
     /**
-     * The goal is to create an weight array, but it will be created depending
+     * The goal is to create an array of weights, but it will be created depending
      * the user input so we will have to test each cases:
-     *  	-None
-     *  	-A given map
-     *  	-A variance map
-     *  	-A computed variance
+     *  	- None
+     *  	- A given map
+     *  	- A variance map
+     *  	- A computed variance
      * Then we apply the dead pixel map
      * 
-     * @param data
-     * @return
+     * @param datArray - The data to deconvolve.
+     * @return The weights.
      */
-    private ShapedArray createWeight(ShapedArray data){
-        WeightGenerator weightGen = new WeightGenerator();
-        ShapedArray array;
-        ShapedArray deadPixMap = null;
-        Sequence tmp;
-        //If a dead pixel map was given
-        if (deadPixGiven.getValue() && (tmp = deadPixel.getValue()) != null) {
-            deadPixMap = IcyBufferedImageUtils.imageToArray(tmp.getAllImage());
+    private ShapedArray createWeights(ShapedArray datArray) {
+    	ShapedArray wgtArray = null;
+        Sequence seq;
+        boolean wgtCopy = true, datCopy = true;
+
+        // We check the values given
+        if (weightsMethod.getValue() == weightOptions[0]) {
+        	// Nothing specified.  The weights are an array of ones with same size as the data.
+        	wgtArray = WeightFactory.defaultWeights(datArray);
+        	wgtCopy = false; // no needs to copy weights
+        } else if (weightsMethod.getValue() == weightOptions[1]) {
+        	// A map of weights is provided.
+            if ((seq = weights.getValue()) != null) {      
+                wgtArray = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+            }
+        } else if (weightsMethod.getValue() == weightOptions[2]) {
+        	// A variance map is provided. FIXME: check shape and values.
+            if ((seq = weights.getValue()) != null) {
+            	ShapedArray varArray = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+                wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
+            	wgtCopy = false; // no needs to copy weights
+            }
+        } else if (weightsMethod.getValue() == weightOptions[3]) {
+        	// Weights are computed given the gain and the readout noise of the detector.
+        	double gamma = gain.getValue();
+        	double sigma = noise.getValue();
+        	double alpha = 1/gamma;
+        	double beta = (sigma/gamma)*(sigma/gamma);
+            wgtArray = WeightFactory.computeWeightsFromData(datArray, alpha, beta);
+        	wgtCopy = false; // no needs to copy weights
         }
-        //We check the values given
-        if (weightsMethod.getValue() == weightOptions[0]) { //None
-            //we create an array of 1, that correspond to the image
-            double[] weight = new double[sizeX*sizeY*sizeZ];
-            for (int i = 0; i < weight.length; i++) {
-                weight[i] = 1;
-            }
-            weightGen.setWeightMap(Double1D.wrap(weight, weight.length));
-        } else if (weightsMethod.getValue() == weightOptions[1]) {  //Personnalized map
-            if((tmp = weights.getValue()) != null) {      
-                array = IcyBufferedImageUtils.imageToArray(tmp.getAllImage());
-                weightGen.setWeightMap(array);
-            }
-        } else if (weightsMethod.getValue() == weightOptions[2]) {  //Variance map
-            if((tmp = weights.getValue()) != null) {//Variance map
-                array = IcyBufferedImageUtils.imageToArray(tmp.getAllImage());
-                weightGen.setVarianceMap(array);
-            }
-        }else if (weightsMethod.getValue() == weightOptions[3]) {   //Computed variance
-            weightGen.setComputedVariance(data, gain.getValue(), noise.getValue());
+        
+        // Make sure weights and data are private copies because we may have to modify their contents.
+        if (wgtCopy) {
+        	wgtArray = flatCopy(wgtArray);
         }
-        weightGen.setPixelMap(deadPixMap);
-        return weightGen.getWeightMap(data.getShape()).toDouble();
+        if (datCopy) {
+        	datArray = flatCopy(datArray);
+        }
+        
+        if (deadPixGiven.getValue() && (seq = deadPixel.getValue()) != null) {
+        	// Account for bad data.
+        	ShapedArray badArr = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+        	WeightFactory.removeBads(wgtArray, badArr);
+        }
+
+    	// Check everything.
+    	WeightFactory.fixWeightsAndData(wgtArray, datArray);
+    	return wgtArray;
+    }
+
+    /**
+     * Make a private flat copy of an array.
+     * 
+     * @param arr - The source array.
+     * 
+     * @return A copy of the source array.
+     */
+    private static ShapedArray flatCopy(ShapedArray arr)
+    {
+    	switch (arr.getType()) {
+    	case Traits.FLOAT:
+    		return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
+    	case Traits.DOUBLE:
+    		return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
+    	default:
+    		throw new IllegalArgumentException("Unsupported data type");
+    	}
     }
 
     /**
@@ -1149,7 +1213,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void showWeightClicked()
     {
 
-        //    DoubleArray weight = createWeight(...).toDouble();
+        //    DoubleArray weight = createWeights(...).toDouble();
         /* PSF0 Sequence */
         //  FIXME fix the weightsize
         Sequence img = image.getValue();
@@ -1157,13 +1221,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             new AnnounceFrame("No image input found");
             return;
         }
-        Shape myShape=Shape.make(sizeX, sizeY);
+        Shape myShape=Shape.make(sizeX, sizeY, sizeZ);
 
         int numCanal = canalImage.getValue();
         DoubleArray input = (DoubleArray) IcyBufferedImageUtils.imageToArray(img, myShape, numCanal);
         Sequence WeightSequence = new Sequence();
         WeightSequence.setName("Weight");
-        double[] wght = createWeight(input).toDouble().flatten();
+        double[] wght = createWeights(input).toDouble().flatten();
         if (wght.length != sizeX*sizeY*sizeZ) {
             new AnnounceFrame("Invalid weight size");
             return;
