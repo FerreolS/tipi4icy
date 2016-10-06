@@ -240,7 +240,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 updateMetaData();
             }
         });
-        
 
         expertMode.addVarChangeListener(new EzVarListener<Boolean>() {
             @Override
