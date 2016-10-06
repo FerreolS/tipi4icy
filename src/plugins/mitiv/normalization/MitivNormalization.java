@@ -27,28 +27,31 @@ package plugins.mitiv.normalization;
 
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
+import icy.plugin.interface_.PluginBundled;
 import icy.sequence.Sequence;
 import mitiv.array.ShapedArray;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
+import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVarSequence;
+import plugins.mitiv.deconv.MitivDeconvolution;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 
 /**
  * This plugin is normalizing all the data so that the sum of all pixels
- * is equal to one. 
- * 
+ * is equal to one.
+ *
  * @author light
  *
  */
-public class MitivNormalization extends EzPlug implements Block {
+public class MitivNormalization extends EzPlug implements  EzStoppable, Block, PluginBundled  {
 
     EzVarSequence image = new EzVarSequence("Image to normalize");
     //Block
     EzVarSequence imageOut = new EzVarSequence("Image Normalized");
     boolean goodInput = true;
-    
+
     @Override
     protected void initialize() {
         addEzComponent(image);
@@ -58,7 +61,7 @@ public class MitivNormalization extends EzPlug implements Block {
         new AnnounceFrame(info);
         goodInput = false;
     }
-    
+
     @Override
     protected void execute() {
         Sequence seq = image.getValue();
@@ -91,40 +94,32 @@ public class MitivNormalization extends EzPlug implements Block {
             //Add the sequence to icy
             seqOut.setName("Normalized_"+seq.getName());
             if (isHeadLess()) {
-            	imageOut.setValue(seqOut);
+                imageOut.setValue(seqOut);
             } else {
                 addSequence(seqOut);
             }
         }
     }
-    
+
     @Override
     public void clean() {
     }
 
-	@Override
-	public void declareInput(VarList inputMap) {
-		inputMap.add("imageIn", image.getVariable());		
-	}
+    @Override
+    public void declareInput(VarList inputMap) {
+        inputMap.add("imageIn", image.getVariable());
+    }
 
-	@Override
-	public void declareOutput(VarList outputMap) {
-		outputMap.add("imageOut", imageOut.getVariable());
-	}
+    @Override
+    public void declareOutput(VarList outputMap) {
+        outputMap.add("imageOut", imageOut.getVariable());
+    }
+
+    @Override
+    public String getMainPluginClassName() {
+        return  MitivDeconvolution.class.getName();
+    }
 
 
 
 }
-
-
-/*
- * Local Variables:
- * mode: Java
- * tab-width: 8
- * indent-tabs-mode: nil
- * c-basic-offset: 4
- * fill-column: 78
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */
