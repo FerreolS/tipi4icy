@@ -178,7 +178,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         int sizeXY = Math.max(sizeX, sizeY);
         Nxy = FFTUtils.bestDimension(sizeXY + paddingSizeXY.getValue());
         Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
-        outputShape = Shape.make(Nxy, Nxy, Nz);
+        outputShape = new Shape(Nxy, Nxy, Nz);
+        System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
     }
 
     private void setDefaultValue() {
@@ -227,8 +228,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         channel = new EzVarChannel("Canal:", image.getVariable(), false);
         imageSize = new EzVarText("Image size:");
         outputSize = new EzVarText("Output size:");
-        paddingSizeXY = new EzVarInteger("padding xy:",30, 0,Integer.MAX_VALUE,1);
-        paddingSizeZ = new EzVarInteger("padding z :",30,0, Integer.MAX_VALUE,1);
+        paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
+        paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
         saveMetaData = new EzButton("Save metadata", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -258,9 +259,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         });
 
 
-        updatePaddedSize();
-        updateOutputSize();
-        updateImageSize();
 
 
         EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
@@ -299,9 +297,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     updatePaddedSize();
                     updateOutputSize();
                     updateImageSize();
+                    resetPSF();
 
                     imageShape = Shape.make(sizeX, sizeY, sizeZ);
-                    if (debug) {
+                    if (true) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                     }
                     // setting restart value to the current sequence
@@ -324,6 +323,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             };
         };
 
+        paddingSizeXY.setValue(30);
         dxy_nm = new EzVarDouble("dxy(nm):",64.5,0., Double.MAX_VALUE,1.);
         dxy_nm.addVarChangeListener(metaActionListener);
         dz_nm = new EzVarDouble("dz(nm):",128.,0., Double.MAX_VALUE,1.);
@@ -742,6 +742,11 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         // Must be added to global panel first
         show.setFoldedState(true);
 
+        updatePaddedSize();
+        updateOutputSize();
+        updateImageSize();
+        resetPSF();
+
         setDefaultValue();
         if (isHeadLess()) {
             outputHeadlessImage = new EzVarSequence("Output Image");
@@ -1135,7 +1140,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 }
                 sequence.setImage(0,j, new IcyBufferedImage(Nxy, Nxy, temp));
             }
-
+            System.out.println("setResult:"+Nxy+"x"+Nxy+"x"+Nz);
 
             sequence.endUpdate();
             sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations());
