@@ -64,13 +64,13 @@ public class ToolTipText {
     public static final String doubleNbeta = "Number of zernike describing the pupil modulus";
     //static final String booleanPSFSplitted = "If the PSF is not centered check this box";
     public static final String booleanPSFSplitted = "<html><pre>"
-        + "Is the PSF:<br/>"
-        + " ---------      ---------     <br/>"
-        + " |       |      |       |     <br/>"
-        + " |   *   |  or  |       |     <br/>"
-        + " |       |      |*      |     <br/>"
-        + " ---------      ---------     <br/>"
-        + "</pre></html>";
+            + "Is the PSF:<br/>"
+            + " ---------      ---------     <br/>"
+            + " |       |      |       |     <br/>"
+            + " |   *   |  or  |       |     <br/>"
+            + " |       |      |*      |     <br/>"
+            + " ---------      ---------     <br/>"
+            + "</pre></html>";
     public static final String booleanRestart = "Restart from previous result, if enabled will start with last image and PSF";
     public  static final String booleanPositivity = "Enforce the positivity of the solution";
     public static final String booleanCrop = "Crop the output with the same field of view as the input.";

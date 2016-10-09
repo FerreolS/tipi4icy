@@ -240,7 +240,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         Nxy = FFTUtils.bestDimension(sizeXY + paddingSizeXY.getValue());
         Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
         outputShape = new Shape(Nxy, Nxy, Nz);
-        System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
+        if(debug){
+            System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
+        }
     }
 
     private void setDefaultValue() {
@@ -361,7 +363,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     resetPSF();
 
                     imageShape = new Shape(sizeX, sizeY, sizeZ);
-                    if (true) {
+                    if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                     }
                     // setting restart value to the current sequence
@@ -1199,15 +1201,16 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 }
                 sequence.setImage(0,j, new IcyBufferedImage(Nxy, Nxy, temp));
             }
-            System.out.println("setResult:"+Nxy+"x"+Nxy+"x"+Nz);
 
             sequence.endUpdate();
             sequence.setName("TV mu:"+mu.getValue()+" Iteration:"+tvDec.getIterations());
 
-            System.out.println("Cost "+tvDec.getCost() );
-            //Then we will update the result tab panel
+            if (expertMode.getValue()){
+                System.out.println("Cost "+tvDec.getCost() );
+            }
             if (runBdec) {
                 if (debug) {
+                    //Then we will update the result tab panel
                     resultCostPrior.setValue("Cost "+tvDec.getCost()                       );
                     resultDefocus.setValue(   "Defocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())   );
                     resultModulus.setValue(  "Modulus    "+pupil.getRho()[0]                     );
