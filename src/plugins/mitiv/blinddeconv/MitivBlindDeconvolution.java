@@ -93,6 +93,8 @@ import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
  */
 public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Block, PluginBundled {
 
+
+
     /***************************************************/
     /**               Viewer Update result            **/
     /***************************************************/
@@ -122,13 +124,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private EzVarInteger    paddingSizeXY, paddingSizeZ;
     private EzButton saveMetaData, showPSF;
     private EzVarText imageSize, outputSize;
+    private MyMetadata meta = null;     //The image metadata that we will move from one image to another
 
     /** weighting tab: **/
     private EzPanel   weigthPanel;
     private EzVarText weightsMethod;
     private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
     private EzVarDouble  gain, noise;
-    private EzVarBoolean deadPixGiven;
     private EzVarSequence weights, deadPixel;
     private EzButton showWeight;
 
@@ -157,14 +159,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private EzGroup show;
 
 
-
+    /** headless mode: **/
     private EzVarSequence   outputHeadlessImage, outputHeadlessPSF;
 
 
 
     private WideFieldModel pupil=null;
 
-    private MyMetadata meta = null;     //The image metadata that we will move from one image to another
     private double grtol = 0.0;
     private int nbAlpha=0, nbBeta=1;
     private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence sizes
@@ -248,6 +249,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void setDefaultValue() {
         weightsMethod.setValue( weightOptions[3]);
         radial.setValue(false);
+        image.setNoSequenceSelection();
+
+        paddingSizeXY.setValue(30);
+        paddingSizeZ.setValue(30);
+        deadPixel.setNoSequenceSelection();
+        deadPixel.setNoSequenceSelection();
+
         if(debug){
             resultCostPrior.setValue(   "No results yet");
             resultDefocus.setValue(     "No results yet");
@@ -273,6 +281,11 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /*********************************/
     @Override
     protected void initialize() {
+        String  javav = System.getProperty("java.version");
+        if((javav.charAt(0)<2)&(javav.charAt(2)<7)){
+            throwError("Java version <1.7 is not compatible. Please update to a newer java version");
+        }
+
         if (!isHeadLess()) {
             getUI().setParametersIOVisible(false);
             getUI().setActionPanelVisible(false);
@@ -372,8 +385,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
 
         });
-        image.setNoSequenceSelection();
-
 
         EzVarListener<Double> metaActionListener = new EzVarListener<Double>() {
             @Override
@@ -386,8 +397,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             };
         };
 
-        paddingSizeXY.setValue(30);
-        paddingSizeZ.setValue(30);
+
+
         dxy_nm = new EzVarDouble("dxy(nm):",64.5,0., Double.MAX_VALUE,1.);
         dxy_nm.addVarChangeListener(metaActionListener);
         dz_nm = new EzVarDouble("dz(nm):",128.,0., Double.MAX_VALUE,1.);
@@ -424,7 +435,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         weights = new EzVarSequence(        "Map:");
         gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
         noise = new EzVarDouble(            "Readout Noise:",10.,0.,Double.MAX_VALUE,0.1);
-        deadPixGiven = new EzVarBoolean(    "Bad data?", false);
         deadPixel = new EzVarSequence(      "Bad data map:");
         weights.setNoSequenceSelection();
         weightsMethod.addVarChangeListener(new EzVarListener<String>() {
@@ -452,18 +462,11 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        deadPixGiven.addVarChangeListener(new EzVarListener<Boolean>() {
-            @Override
-            public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
-                deadPixel.setVisible(deadPixGiven.getValue());
-                deadPixel.setNoSequenceSelection();
-            }
-        });
 
         weights.setVisible(false);
         gain.setVisible(false);
         noise.setVisible(false);
-        deadPixel.setVisible(false);
+        deadPixel.setVisible(true);
         showWeight = new EzButton("Show weight map", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -747,7 +750,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         varianceTab.add(weights);
         varianceTab.add(gain);
         varianceTab.add(noise);
-        varianceTab.add(deadPixGiven);
         varianceTab.add(deadPixel);
         varianceTab.add(showWeight);
         //Creation of VARIANCE TAB
@@ -1145,7 +1147,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             datArray = flatCopy(datArray);
         }
 
-        if (deadPixGiven.getValue() && (seq = deadPixel.getValue()) != null) {
+        if (/*deadPixGiven.getValue() && */(seq = deadPixel.getValue()) != null) {
             // Account for bad data.
             ShapedArray badArr = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
             WeightFactory.removeBads(wgtArray, badArr);
