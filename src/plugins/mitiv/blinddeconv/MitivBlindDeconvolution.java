@@ -56,7 +56,7 @@ import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.microscopy.PSF_Estimation;
-import mitiv.microscopy.WideFieldModel;
+import mitiv.microscopy.MicroscopeModel;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.MathUtils;
 import mitiv.utils.WeightFactory;
@@ -164,7 +164,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
 
 
-    private WideFieldModel pupil=null;
+    private MicroscopeModel pupil=null;
 
     private double grtol = 0.0;
     private int nbAlpha=0, nbBeta=1;
@@ -1258,7 +1258,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private void buildpupil()
     {
-        pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy_nm.getValue()*1E-9,
+        pupil = new MicroscopeModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy_nm.getValue()*1E-9,
                 dz_nm.getValue()*1E-9, Nxy, Nxy, Nz,radial.getValue());
     }
 
