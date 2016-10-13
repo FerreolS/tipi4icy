@@ -25,13 +25,12 @@
 package plugins.mitiv.io;
 
 
-import icy.image.IcyBufferedImage;
-import icy.sequence.Sequence;
-import icy.type.collection.array.Array1DUtil;
-
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
+import icy.image.IcyBufferedImage;
+import icy.sequence.Sequence;
+import icy.type.collection.array.Array1DUtil;
 import mitiv.array.Double2D;
 import mitiv.array.Double3D;
 import mitiv.array.Float2D;
@@ -103,9 +102,9 @@ public class IcyBufferedImageUtils {
 
     public static ShapedArray imageToArray(Sequence seq, int canal) {
         if (seq.getSizeZ() == 1) {
-            return imageToArray(seq, Shape.make(seq.getSizeX(), seq.getSizeY()), canal);
+            return imageToArray(seq, new Shape(seq.getSizeX(), seq.getSizeY()), canal);
         } else {
-            return imageToArray(seq, Shape.make(seq.getSizeX(), seq.getSizeY(), seq.getSizeZ()), canal);
+            return imageToArray(seq, new Shape(seq.getSizeX(), seq.getSizeY(), seq.getSizeZ()), canal);
         }
     }
 
@@ -140,7 +139,7 @@ public class IcyBufferedImageUtils {
             return BufferedImageUtils.imageToArray(image);
         }
     }
-    
+
     public static Sequence IcyBufferedToSequence(ArrayList<IcyBufferedImage> image) {
         Sequence tmp = new Sequence();
         for (int i = 0; i < image.size(); i++) {
@@ -148,7 +147,7 @@ public class IcyBufferedImageUtils {
         }
         return tmp;
     }
-    
+
     public static Sequence BufferedToSequence(ArrayList<BufferedImage> image) {
         Sequence tmp = new Sequence();
         for (int i = 0; i < image.size(); i++) {
@@ -225,9 +224,9 @@ public class IcyBufferedImageUtils {
     }
 
     /*
-     * 
+     *
      * HERE BACKUP FROM DELETED FUNCTION FROM DECONVUTILS
-     * 
+     *
      */
 
     //FIXME TMP COPY
@@ -283,7 +282,7 @@ public class IcyBufferedImageUtils {
         //return CommonUtils.imageUnPad(out, sizePadding);
         return out;
     }
-    
+
     public static Sequence arrayToSequence(double[] array, boolean isComplex, int width, int height, int sizeZ){
         ArrayList<BufferedImage> tmp = arrayToIcyImage3D(array, isComplex, width, height, sizeZ);
         return BufferedToSequence(tmp);

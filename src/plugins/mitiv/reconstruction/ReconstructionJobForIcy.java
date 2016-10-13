@@ -25,10 +25,10 @@
 
 package plugins.mitiv.reconstruction;
 
-import mitiv.array.ShapedArray;
-import mitiv.utils.reconstruction.ReconstructionThreadToken;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
+import mitiv.array.ShapedArray;
+import mitiv.utils.reconstruction.ReconstructionThreadToken;
 
 public abstract class ReconstructionJobForIcy implements Runnable  {
 
@@ -46,16 +46,6 @@ public abstract class ReconstructionJobForIcy implements Runnable  {
         this(null, token);
     }
 
+    @Override
     public abstract void run();
 }
-/*
- * Local Variables:
- * mode: Java
- * tab-width: 8
- * indent-tabs-mode: nil
- * c-basic-offset: 4
- * fill-column: 78
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

@@ -25,210 +25,485 @@
 
 package plugins.mitiv.deconv;
 
-import loci.formats.ome.OMEXMLMetadataImpl;
-import mitiv.array.ArrayUtils;
-import mitiv.array.Double1D;
-import mitiv.array.DoubleArray;
-import mitiv.array.ShapedArray;
-import mitiv.base.Shape;
-import mitiv.base.mapping.DoubleFunction;
-import mitiv.invpb.ReconstructionJob;
-import mitiv.invpb.ReconstructionViewer;
-import mitiv.utils.FFTUtils;
-import mitiv.utils.WeightFactory;
-import mitiv.utils.reconstruction.ReconstructionThread;
-import mitiv.utils.reconstruction.ReconstructionThreadToken;
+import java.awt.Color;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
-import icy.sequence.SequenceEvent;
-import icy.sequence.SequenceListener;
-import icy.util.OMEUtil;
+import mitiv.array.ArrayFactory;
+import mitiv.array.ArrayUtils;
+import mitiv.array.Double3D;
+import mitiv.array.DoubleArray;
+import mitiv.array.Float3D;
+import mitiv.array.FloatArray;
+import mitiv.array.ShapedArray;
+import mitiv.base.Shape;
+import mitiv.base.Traits;
+import mitiv.invpb.EdgePreservingDeconvolution;
+import mitiv.linalg.Vector;
+import mitiv.optim.OptimTask;
+import mitiv.utils.FFTUtils;
+import mitiv.utils.WeightFactory;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
+import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzGroup;
+import plugins.adufour.ezplug.EzLabel;
+import plugins.adufour.ezplug.EzPanel;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
+import plugins.adufour.ezplug.EzTabs;
+import plugins.adufour.ezplug.EzTabs.TabPlacement;
 import plugins.adufour.ezplug.EzVar;
 import plugins.adufour.ezplug.EzVarBoolean;
+import plugins.adufour.ezplug.EzVarChannel;
 import plugins.adufour.ezplug.EzVarDouble;
 import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
-import plugins.mitiv.blinddeconv.ToolTipText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
-import plugins.mitiv.reconstruction.TotalVariationJobForIcy;
 /**
  * MitivDeconvolution implements regilarized multi-dimensional deconvolution.
  */
-public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, SequenceListener, EzVarListener<String> {
+public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
-    /****************************************************/
-    /**                 VIEWER UPDATE                  **/
-    /****************************************************/
-    public class tvViewer implements ReconstructionViewer {
-        @Override
-        public void display(ReconstructionJob job) {
-            setResult();
-        }
-    }
+
+    /***************************************************/
+    /**         Plugin interface variables            **/
+    /***************************************************/
+    private EzVarBoolean expertMode;      // Tick box to expose expert parameters
+    private EzTabs tabbedPane;
+
+    /** data tab: **/
+    private EzPanel  dataPanel;
+    private EzVarSequence image;
+    private EzVarChannel channel;
+    private EzVarSequence psf; // Point Spread Function
+
+    private EzVarInteger    paddingSizeXY, paddingSizeZ;
+    private EzVarText imageSize, outputSize;
+    /** weighting tab: **/
+    private EzPanel   weigthPanel;
+    private EzVarText weightsMethod;
+    private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
+    private EzVarDouble  gain, noise;
+    private EzVarSequence weights, deadPixel;
+    private EzButton showWeight;
+
+
+    /** deconvolution tab: **/
+    private EzPanel    deconvPanel;
+    private EzVarDouble logmu, mu, epsilon;
+    private EzVarSequence  restart;
+    private EzVarBoolean  positivity;
+    private EzVarBoolean  singlePrecision;
+    private EzButton startDec, stopDec;
+    private EzVarInteger    nbIterDeconv;
+
+    /** headless mode: **/
+    private EzVarSequence   outputHeadlessImage, outputHeadlessPSF;
+
+    private EzLabel docDec;
+
+
     /****************************************************/
     /**                 VARIABLES                      **/
     /****************************************************/
 
-    TotalVariationJobForIcy tvDec;
+    boolean debug =true;
 
-    private Sequence sequence;
+    private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence size
+    protected int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
+    private Shape imageShape, psfShape;
+    private  int Nxy=512, Nz=128;            // Output (padded sequence size)
+    private Shape outputShape;
 
-    private double mu = 0.1;
-    private double epsilon = 0.1;
-    private double grtol = 0.0;
-    private double gatol = 0.0;
-    private double lowerBound = Double.NEGATIVE_INFINITY;
-    private int maxIter = 50;
-    private boolean validParameters = true;
-    //private boolean psfSplitted = false;
-    private boolean computeNew = true;
-    private boolean reuse = false;
+    Sequence cursequence=null;
+    EdgePreservingDeconvolution solver ;
+    private boolean run;
+    private Vector result;
 
-    private int width = -1;
-    private int height = -1;
-    private int sizeZ = -1;
-    private int widthPad = -1;
-    private int heightPad = -1;
-    private int sizeZPad = -1;
-    private double padXY = 1.0;
-    private double padZ = 1.0;
-    private Shape shapePad;
-
-    private ReconstructionThreadToken token;
-    ReconstructionThread thread;
-
-    private EzVarSequence ezPsfSeq; // Point Spread Function
-    private EzVarSequence ezDatSeq; // Input data
-    private EzVarSequence ezResSeq; // Last result
-    private EzVarSequence ezOutSeq; // Output
-    
-    //private EzVarBoolean eZpsfSplitted = new EzVarBoolean("Is the psf splitted?", psfSplitted);
-    private EzVarDouble ezMu;
-    private EzVarDouble ezEpsilon;
-    private EzVarInteger ezPadXY, ezPadZ;
-    private EzVarInteger ezMaxIter;
-    private EzVarBoolean ezPositivity;
-
-    private String weightOption1;
-    private String weightOption2;
-    private String weightOption3;
-    private String weightOption4;
-
-    private EzVarText ezWgtChoice;
-    private EzVarSequence ezWgtSeq;  // statistical weights of the data
-    private EzVarSequence ezVarSeq;  // variance of the data 
-    private EzVarSequence ezBadSeq;  // bad data mask
-    private EzVarBoolean ezShowBad;
-    private EzVarDouble ezGain;      // detector gain (e-/ADU)
-    private EzVarDouble ezNoise;     // standard deviation of detector noise (e-/voxel)
-    private EzGroup ezRegularizationGroup;
-    private EzGroup ezWeightingGroup;
-    private EzGroup ezConvergenceGroup;
-
-    //IcyBufferedImage img;
-    //IcyBufferedImage psf;
-    IcyBufferedImage result;
-
-    /****************************************************/
-    /**                 MESSAGE ICY                    **/
-    /****************************************************/
-    /**
-     * Display an error message and invalidate the processing.
-     * @param reason
-     */
-    private void error(String reason){
-        new AnnounceFrame(reason);
-        validParameters = false;
-    }
-
-    /****************************************************/
-    /**                 INITIALIZE ICY                 **/
-    /****************************************************/
+    /*********************************/
+    /**      Initialization         **/
+    /*********************************/
     @Override
     protected void initialize() {
+        if (!isHeadLess()) {
+            getUI().setParametersIOVisible(false);
+            getUI().setActionPanelVisible(false);
+        }
 
-        weightOption1 = new String("Uniform weights");
-        weightOption2 = new String("Given weights");
-        weightOption3 = new String("Given variance");
-        weightOption4 = new String("Computed weights");
 
-        /* Create all widget instances. */
-        ezPsfSeq     = new EzVarSequence("Input PSF");
-        ezDatSeq     = new EzVarSequence("Input data");
-        ezResSeq     = new EzVarSequence("Previous result");
-        ezOutSeq     = new EzVarSequence("Output"); //In headLess mode only
-        ezWgtSeq     = new EzVarSequence("Weights");
-        ezVarSeq     = new EzVarSequence("Variance");
-        ezBadSeq     = new EzVarSequence("Bad data mask");
-        ezMu         = new EzVarDouble("Regularization level", 0, Double.MAX_VALUE, 0.1);
-        ezEpsilon    = new EzVarDouble("L1-L2 threshold", 0, Double.MAX_VALUE, 1);
-        ezPadXY      = new EzVarInteger("XY padding", 0, 10000, 1);
-        ezPadZ       = new EzVarInteger("Z padding", 0, 10000, 1);
-        ezMaxIter    = new EzVarInteger("Max. num. iterations", -1, Integer.MAX_VALUE, 1);
-        ezPositivity = new EzVarBoolean("Enforce nonnegativity", false);
-        ezWgtChoice  = new EzVarText("Options", new String[] { weightOption1, weightOption2, weightOption3, weightOption4}, 0, false);
-        ezShowBad    = new EzVarBoolean("Show bad data?", false);
-        ezGain       = new EzVarDouble("Gain (e-/ADU)");
-        ezNoise      = new EzVarDouble("Readout noise (e-/pixel)");
-        ezRegularizationGroup = new EzGroup("Regularization", ezMu, ezEpsilon);
-        ezWeightingGroup      = new EzGroup("Weighting", ezWgtChoice, ezWgtSeq, ezVarSeq, ezGain, ezNoise, ezShowBad, ezBadSeq);
-        ezConvergenceGroup    = new EzGroup("Convergence criterion", ezMaxIter);
+        tabbedPane = new EzTabs("BlindTabs", TabPlacement.TOP);
 
-        ezResSeq.setNoSequenceSelection();
+        /****************************************************/
+        /**                    IMAGE TAB                   **/
+        /****************************************************/
+        //Creation of the inside of IMAGE TAB
+        expertMode = new EzVarBoolean("Expert mode", false);
 
-        /* Set initial values. */
-        ezMu.setValue(mu);
-        ezEpsilon.setValue(epsilon);
-        ezMaxIter.setValue(maxIter);
-        ezPadXY.setValue(0);
-        ezPadZ.setValue(0);
-        ezWgtChoice.addVarChangeListener(this);
+        dataPanel = new EzPanel("Step 1: Data"); //Border layout to be sure that the images are stacked to the up
+        EzPanel imagePan = new EzPanel("FILEPanel");
+        image = new EzVarSequence("Sequence:");
+        channel = new EzVarChannel("Canal:", image.getVariable(), false);
+        psf = new EzVarSequence("PSF:");
+        imageSize = new EzVarText("Image size:");
+        outputSize = new EzVarText("Output size:");
+        paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
+        paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
 
-        /* Set visibility of weight parameters. */
-        ezGain.setVisible(false);
-        ezNoise.setVisible(false);
-        ezBadSeq.setVisible(false);
-        ezShowBad.addVisibilityTriggerTo(ezBadSeq, true);
+        image.setNoSequenceSelection();
+        psf.setNoSequenceSelection();
 
-        /* Set tool-tips. */
-        ezPsfSeq.setToolTipText(ToolTipText.sequencePSF);
-        ezDatSeq.setToolTipText(ToolTipText.sequenceImage);
-        ezResSeq.setToolTipText(ToolTipText.booleanRestart);
-        //eZpsfSplitted.setToolTipText(ToolTipText.booleanPSFSplitted);
-        ezMu.setToolTipText(ToolTipText.doubleMu);
-        ezEpsilon.setToolTipText(ToolTipText.doubleEpsilon);
-        ezMaxIter.setToolTipText(ToolTipText.doubleMaxIter);
-        ezPadXY.setToolTipText(ToolTipText.doublePadding);
-        ezPadZ.setToolTipText(ToolTipText.doublePadding);
-        ezGain.setToolTipText(ToolTipText.doubleGain);
-        ezNoise.setToolTipText(ToolTipText.doubleNoise);
-        ezPositivity.setToolTipText(ToolTipText.booleanPositivity);
-        ezShowBad.setToolTipText(ToolTipText.sequencePixel);
-        ezWgtSeq.setToolTipText(ToolTipText.sequenceWeigth);
-        ezVarSeq.setToolTipText(ToolTipText.sequenceVariance);
+        expertMode.addVarChangeListener(new EzVarListener<Boolean>() {
+            @Override
+            public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
+                paddingSizeXY.setVisible(newValue);
+                paddingSizeZ.setVisible(newValue);
+                weigthPanel.setVisible(newValue);
+                epsilon.setVisible(newValue);            }
+        });
 
-        /* Add all components. */
-        addEzComponent(ezDatSeq);
-        addEzComponent(ezPsfSeq);
-        addEzComponent(ezResSeq);
-        addEzComponent(ezRegularizationGroup);
-        addEzComponent(ezConvergenceGroup);
-        addEzComponent(ezWeightingGroup);
-        addEzComponent(ezPadXY);
-        addEzComponent(ezPadZ);
-        addEzComponent(ezPositivity);
+        EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
+            @Override
+            public void variableChanged(EzVar<Integer> source, Integer newValue) {
+                updatePaddedSize();
+                updateImageSize();
+                updateOutputSize();
+            }
+        };
+        paddingSizeXY.addVarChangeListener(zeroPadActionListener);
+        paddingSizeZ.addVarChangeListener(zeroPadActionListener);
 
-        token = new ReconstructionThreadToken(new double[]{mu,epsilon,gatol,grtol});
-        thread = new ReconstructionThread(token);
-        thread.start();
+
+
+        image.addVarChangeListener(new EzVarListener<Sequence>() {
+            @Override
+            public void variableChanged(EzVar<Sequence> source,
+                    Sequence newValue) {
+                if (debug) {
+                    System.out.println("Seq ch..."+image.getValue());
+                }
+
+                // getting metadata and computing sizes
+                Sequence seq = image.getValue();
+                if (seq != null || (seq != null && seq.isEmpty())) {
+                    sizeX =  newValue.getSizeX();
+                    sizeY = newValue.getSizeY();
+                    sizeZ = newValue.getSizeZ();
+                    updatePSFSize();
+                    updateImageSize();
+
+                    imageShape = new Shape(sizeX, sizeY, sizeZ);
+
+                    show(IcyBufferedImageUtils.imageToArray(seq, imageShape,0),"Image map");
+                    if (debug) {
+                        System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
+                    }
+                    // setting restart value to the current sequence
+                    restart.setValue(newValue);
+                }
+            }
+
+        });
+
+        psf.addVarChangeListener(new EzVarListener<Sequence>() {
+            @Override
+            public void variableChanged(EzVar<Sequence> source,
+                    Sequence newValue) {
+                if (debug) {
+                    System.out.println("PSF changed"+psf.getValue());
+                }
+                // getting metadata and computing sizes
+                //  Sequence seq = psf.getValue();
+                if (newValue != null || (newValue != null && newValue.isEmpty())) {
+                    psfSizeX = Math.max(1,newValue.getSizeX());
+                    psfSizeY =  Math.max(1,newValue.getSizeY());
+                    psfSizeZ =  Math.max(1,newValue.getSizeZ());
+                    psfShape = new Shape(psfSizeX, psfSizeY, psfSizeZ);
+                    updatePSFSize();
+                    updateImageSize();
+
+                    if (debug) {
+                        System.out.println("PSF changed:" + psfSizeX + "  "+ psfSizeY);
+                    }
+                }
+            }
+
+        });
+
+
+
+
+
+
+
+
+
+        // Note The listener of PSF is after BDEC tab
+
+        /****************************************************/
+        /**                WEIGHTING TAB                   **/
+        /****************************************************/
+        //Creation of the inside of WEIGHTING TAB
+        weigthPanel = new EzPanel("Step 1b: Weights"); //Border layout to be sure that the images are stacked to the up
+        EzPanel varianceTab = new EzPanel("VarianceTab");
+        weightsMethod = new EzVarText(      "Weighting:", weightOptions, false);
+        weights = new EzVarSequence(        "Map:");
+        gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
+        noise = new EzVarDouble(            "Readout Noise:",10.,0.,Double.MAX_VALUE,0.1);
+        deadPixel = new EzVarSequence(      "Bad data map:");
+        weights.setNoSequenceSelection();
+        weightsMethod.addVarChangeListener(new EzVarListener<String>() {
+
+            @Override
+            public void variableChanged(EzVar<String> source, String newValue) {
+                if (weightsMethod.getValue() == weightOptions[0]) { //None
+                    weights.setVisible(false);
+                    gain.setVisible(false);
+                    noise.setVisible(false);
+                } else if (weightsMethod.getValue() == weightOptions[1] || weightsMethod.getValue() == weightOptions[2]) {  //Personnalized map ou Variance map
+                    weights.setVisible(true);
+                    gain.setVisible(false);
+                    noise.setVisible(false);
+                    weights.setNoSequenceSelection();
+                } else if (weightsMethod.getValue() == weightOptions[3]) {  //Computed variance
+                    weights.setVisible(false);
+                    gain.setVisible(true);
+                    noise.setVisible(true);
+                    weights.setNoSequenceSelection();
+                } else {
+                    throwError("Invalid argument passed to weight method");
+                    return;
+                }
+            }
+        });
+
+
+        weights.setVisible(false);
+        gain.setVisible(false);
+        noise.setVisible(false);
+        deadPixel.setVisible(true);
+        deadPixel.setNoSequenceSelection();
+        showWeight = new EzButton("Show weight map", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                DoubleArray imgArray, wgtArray;
+                // Preparing parameters and testing input
+                Sequence imgSeq = image.getValue();
+                imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, channel.getValue());
+                wgtArray = createWeights(imgArray).toDouble();
+                show(wgtArray,"Weight map");
+                if (debug) {
+                    System.out.println("Weight compute");
+                }
+            }
+        });
+
+
+        /****************************************************/
+        /**                    DECONV TAB                  **/
+        /****************************************************/
+        //Creation of the inside of DECONVOLUTION TAB
+        deconvPanel = new EzPanel("Step 2: Deconvolution"); //Border layout to be sure that the images are stacked to the up
+        EzPanel deconvTab = new EzPanel("DeconvolutionTab");
+        mu = new EzVarDouble("Regularization level:",1E-5,0.,Double.MAX_VALUE,0.01);
+        logmu = new EzVarDouble("Log10 of the Regularization level:",-5,-Double.MAX_VALUE,Double.MAX_VALUE,1);
+        epsilon = new EzVarDouble("Threshold level:",1E-2,0.,Double.MAX_VALUE,0.01);
+        nbIterDeconv = new EzVarInteger("Number of iterations: ",10,0,Integer.MAX_VALUE ,1);
+        positivity = new EzVarBoolean("Enforce nonnegativity:", true);
+        // crop = new EzVarBoolean("Crop output to match input:", false);
+        restart = new EzVarSequence("Starting point:");
+        restart.setNoSequenceSelection();
+        docDec = new EzLabel("Launch a deconvolution input PSF", Color.red);
+        startDec = new EzButton("Start Deconvolution", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Thread workerThread = new Thread() {
+                    @Override
+                    public void run() {
+                        launch();
+                    }
+                };
+                workerThread.start();
+            }
+        });
+        stopDec = new EzButton("STOP Computation", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                stopExecution();
+            }
+        });
+
+        EzVarListener<Double> logmuActionListener = new EzVarListener<Double>() {
+            @Override
+            public void variableChanged(EzVar<Double> source, Double newValue) {
+                mu.setValue(Math.pow(10, logmu.getValue()));
+            }
+        };
+        logmu.addVarChangeListener(logmuActionListener);
+
+
+        EzGroup groupStop1 = new EzGroup("Emergency STOP", stopDec);
+
+
+
+        /**** IMAGE ****/
+        imagePan.add(image);
+        imagePan.add(channel);
+        imagePan.add(imageSize);
+        imagePan.add(psf);
+        imagePan.add(paddingSizeXY);
+        imagePan.add(paddingSizeZ);
+        imagePan.add(outputSize);
+
+        dataPanel.add(imagePan);
+        tabbedPane.add(dataPanel);
+
+        /**** Variance ****/
+        varianceTab.add(weightsMethod);
+        varianceTab.add(weights);
+        varianceTab.add(gain);
+        varianceTab.add(noise);
+        varianceTab.add(deadPixel);
+        varianceTab.add(showWeight);
+        //Creation of VARIANCE TAB
+        weigthPanel.add(varianceTab);
+        tabbedPane.add(weigthPanel);
+
+        /**** Deconv ****/
+
+        deconvTab.add(logmu);
+        deconvTab.add(mu);
+        deconvTab.add(epsilon);
+        deconvTab.add(nbIterDeconv);
+        deconvTab.add(positivity);
+        deconvTab.add(restart);
+        deconvTab.add(docDec);
+        deconvTab.add(startDec);
+        deconvTab.add(groupStop1);
+        //Creation of DECONVOLUTION TAB
+        deconvPanel.add(deconvTab);
+        tabbedPane.add(deconvPanel);
+
+        addEzComponent(expertMode);
+        addEzComponent(tabbedPane);
+        outputSize.setEnabled(false);
+        imageSize.setEnabled(false);
+        mu.setEnabled(false);
+
+    }
+
+    protected  void show(ShapedArray  arr,  String title ) {
+        show(  arr,  null,  title ) ;
+    }
+    protected  void show(ShapedArray  arr) {
+        show(  arr,  null,  "" ) ;
+    }
+    protected void show(ShapedArray  arr, Sequence sequence, String title ) {
+        //Here we will update the sequence
+        //        if (sequence != null && sequence.isEmpty()){
+        //            removeSequence(sequence);
+        //        }
+
+        if (sequence == null )  {
+
+            sequence = new Sequence();
+            //   setMetaData(image.getValue(), sequence); // TODO metadata
+            addSequence(sequence);
+        }
+
+        if( sequence.getViewers() ==null){
+            addSequence(sequence);
+        }
+        sequence.beginUpdate();
+
+        Shape shape = arr.getShape();
+        int rank = shape.rank();
+        int type = arr.getType();
+        int nx, ny, nz;
+        switch (rank) {
+            case 2:
+                nx  = shape.dimension(0);
+                ny  = shape.dimension(1);
+                switch (type) {
+                    case Traits.DOUBLE:
+                        sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.toDouble().flatten()));
+                        break;
+                    case Traits.FLOAT:
+                        sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.toFloat().flatten()));
+                        break;
+                    default:
+                        throwError("Show: only Double or Float array");
+                        break;
+                }
+                break;
+            case 3:
+                nx  = shape.dimension(0);
+                ny  = shape.dimension(1);
+                nz =  shape.dimension(2);
+                switch (type) {
+                    case Traits.DOUBLE:
+                        for (int j = 0; j < nz; j++) {
+                            sequence.setImage(0,j, new IcyBufferedImage(nx, ny, ((Double3D) arr).slice(j).flatten()));
+                        }
+                        break;
+                    case Traits.FLOAT:
+                        for (int j = 0; j < nz; j++) {
+                            sequence.setImage(0,j, new IcyBufferedImage(nx, ny, ((Float3D) arr).slice(j).flatten()));
+                        }
+                        break;
+                    default:
+                        throwError("Show: only Double or Float array");
+                        break;
+                }
+
+                break;
+
+            default:
+                throwError("Show: only 2D and 3D array");
+                break;
+        }
+
+        sequence.endUpdate();
+        sequence.setName(title);
+
+
+
+    }
+
+    protected void updateOutputSize() {
+        String text = Nxy+"x"+Nxy+"x"+Nz;
+        outputSize.setValue(text);
+    }
+
+    protected void updateImageSize() {
+        String text = sizeX+"x"+sizeY+"x"+sizeZ;
+        imageSize.setValue(text);
+    }
+
+
+    protected void updatePaddedSize() {
+        int sizeXY = Math.max(sizeX, sizeY);
+        Nxy = FFTUtils.bestDimension(sizeXY + paddingSizeXY.getValue());
+        Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
+        outputShape = new Shape(Nxy, Nxy, Nz);
+        updateOutputSize();
+        if(debug){
+            System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
+        }
+    }
+
+    protected void updatePSFSize() {
+        paddingSizeXY.setValue( Math.max(psfSizeX, psfSizeY));
+        paddingSizeZ.setValue(  psfSizeZ);
+        updatePaddedSize();
+        if(debug){
+            System.out.println(" UpdatePaddedSize " + paddingSizeXY.getValue()  + outputShape.toString());
+        }
     }
 
     /****************************************************/
@@ -236,422 +511,229 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable, Se
     /****************************************************/
     @Override
     protected void execute() {
-        /* Extract settings. */
-        validParameters = true;
-        mu = ezMu.getValue();
-        epsilon = ezEpsilon.getValue();
-        maxIter = ezMaxIter.getValue();
-        double tmp;
+        launch();
+    }
 
-        Sequence datSeq = ezDatSeq.getValue();
-        Sequence psfSeq = ezPsfSeq.getValue();
-        Sequence resSeq = ezResSeq.getValue();
+    protected void launch() {
+        solver = new EdgePreservingDeconvolution();
 
-        if (datSeq == null) {
-        	error("A data sequence to be deblurred must be selected");
-        	return;
+        // Preparing parameters and testing input
+        Sequence imgSeq = image.getValue();
+        Sequence psfSeq = psf.getValue();
+
+        psfShape = new Shape(psfSizeX, psfSizeY, psfSizeZ);
+
+
+        if (imgSeq == null)
+        {
+            throwError("An image/sequence of images should be given");
+            return;
         }
-        if (psfSeq == null) {
-        	error("A point spread function (PSF) must be selected");
-        	return;
-        }
-        tmp = datSeq.getSizeX(); //Just to compute the size of the coefficient, we take the width of the image
-        padXY= (tmp + ezPadXY.getValue())/tmp;
-        padZ = (datSeq.getSizeZ() + ezPadZ.getValue())/datSeq.getSizeZ();
-        if (isHeadLess()) {
-            reuse = false;
-        } else {
-            reuse = (resSeq != null);
+        if (psfSeq == null)
+        {
+            throwError("An image/sequence of images should be given");
+            return;
         }
 
-        //Testing epsilon and grtol
-        if (mu < 0) {
-            error("Regularization level MU must be strictly positive");
+        // Set the informations about the input
+        if (sizeZ == 1) {
+            throwError("Input data must be 3D");
+            return;
         }
-        if (epsilon <= 0) {
-            error("Threshold level EPSILON must be strictly positive");
+        if (paddingSizeXY.getValue() < 0.0) {
+            throwError("Padding value cannot be negative");
+            return;
         }
-        if (grtol < 0 || grtol >= 1) {
-            error("grtol canno't be lower than 0 or greater than 1");
+        if (paddingSizeZ.getValue() < 0.0) {
+            throwError("Padding value cannot be negative");
+            return;
         }
-        if (padXY < 0|| padZ < 0) {
-            error("The Padding can not be lower than 0");
+
+        int numCanal = channel.getValue();
+
+        DoubleArray imgArray, psfArray, wgtArray;
+
+        imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, numCanal);
+        psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, psfShape, 0);
+        wgtArray = createWeights(imgArray).toDouble();
+
+        cursequence = new Sequence("Current Iterate");
+        cursequence.copyMetaDataFrom(imgSeq, false);
+
+        addSequence(cursequence);
+
+
+
+        solver.setObjectShape(outputShape);
+        solver.setPSF(ArrayUtils.roll(psfArray));
+        solver.setPSF(psfArray);
+        solver.setData(imgArray);
+        solver.setWeight(wgtArray);
+        solver.setEdgeThreshold(epsilon.getValue());
+        solver.setRegularizationLevel(mu.getValue());
+        //    solver.setForceSinglePrecision(singlePrecision.getValue());
+        solver.setSaveBest(true);
+        if (positivity.getValue()){
+            solver.setLowerBound(0.);
         }
-        if (maxIter < 0)  {
-            maxIter = -1;
-        }
-        try {
-            //And if the sizes are matching
-            if (reuse) {
-                result = resSeq.getFirstNonNullImage();
+        solver.setMaximumIterations(nbIterDeconv.getValue());
+        solver.setMaximumEvaluations(2*nbIterDeconv.getValue());
+        System.out.println("Launch it:"+nbIterDeconv.getValue());
+        run = true;
+        OptimTask task = solver.start();
+        int it =0;
+
+
+        show(solver.getPSF(),"PSF");
+        show(solver.getData(),"Data");
+
+        while (run) {
+            task = solver.getTask();
+            System.out.println("it"+(it++)+"  it "+solver.getIterations());
+            if (task == OptimTask.ERROR) {
+                System.err.format("Error: %s\n", solver.getReason());
+                break;
             }
-            //if the user they the psf is splitted and the psf and image are not of the same size
-            //if (psfSplitted && (img.getWidth() != psf.getWidth() || img.getHeight() != psf.getHeight())) {
-            //    message("The image and the psf should be of same size");
-            //}
-            //if the user make a mistake between psf and image
-            if (psfSeq.getWidth() > datSeq.getWidth() || psfSeq.getHeight() > datSeq.getHeight()) {
-                error("The psf can not be larger than the image");
-            }
-            //if the user give a bad previous result
-            if(reuse) {
-                boolean sameAsOrigin = resSeq.getSizeX() == datSeq.getSizeX() 
-                        && resSeq.getSizeY() == datSeq.getSizeY() 
-                        && resSeq.getSizeZ() == datSeq.getSizeZ();
-                boolean sameAsPrevious = resSeq.getSizeX() == shapePad.dimension(0) 
-                        && resSeq.getSizeY() == shapePad.dimension(1) 
-                        && (resSeq.getSizeZ() == 1 ? true : resSeq.getSizeZ() == shapePad.dimension(2)); // If we are a 2d image, we do nothing
-                if (!(sameAsOrigin || sameAsPrevious)) {
-                    error("The previous result does not have the same dimensions as the input image");
+            if (task == OptimTask.NEW_X || task == OptimTask.FINAL_X) {
+                show(ArrayUtils.roll(solver.getObject()),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                if (task == OptimTask.FINAL_X) {
+                    break;
                 }
             }
-            //if the user does not give data with same dimensions : no 3d and 2d at same time.
-            if (datSeq.getSizeZ() == 1 && psfSeq.getSizeZ() > 1 ||
-                    datSeq.getSizeZ() > 1 && psfSeq.getSizeZ() == 1) {
-                error("The psf and the image should have the same number of dimensions in Z");
+            if (task == OptimTask.WARNING) {
+                break;
             }
-            //if the user give data in 4D
-            if (datSeq.getSizeT() > 1 || psfSeq.getSizeT() > 1) {
-                error("Sorry we do not support 4D data for now");
-            }
-
-            //Everything seems good we are ready to launch
-            if (validParameters) {
-                // Settings all sizes
-                width  = Math.max(datSeq.getWidth(), psfSeq.getWidth());
-                height = Math.max(datSeq.getHeight(), psfSeq.getHeight());
-                sizeZ  = Math.max(datSeq.getSizeZ(), psfSeq.getSizeZ());
-                widthPad  = FFTUtils.bestDimension((int)(width*padXY));
-                heightPad = FFTUtils.bestDimension((int)(height*padXY));
-                sizeZPad  = FFTUtils.bestDimension((int)(sizeZ*padZ));
-
-                if (datSeq.getSizeZ() == 1) { //2D
-                    // shape = Shape.make(width, height);
-                    shapePad = Shape.make(widthPad, heightPad);
-                } else { //3D
-                    // shape = Shape.make(width, height, sizeZ);
-                    shapePad = Shape.make(widthPad, heightPad, sizeZPad);
-                }
-                // FIXME What happen when the image is not square, should we pad it ?
-                if (reuse && tvDec != null) {
-                    //If we restart, we reuse the same data and PSF
-                    tvDec.setRegularizationWeight(mu);
-                    tvDec.setRegularizationThreshold(epsilon);
-                    tvDec.setRelativeTolerance(grtol);
-                    tvDec.setMaximumIterations(maxIter);
-                    tvDec.setOutputShape(shapePad);
-                    tvDec.setPositivity(ezPositivity.getValue());
-                    // We verify that the bounds are respected for previous input
-                    lowerBound = tvDec.getLowerBound();
-                    DoubleArray psfArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, 0);
-                    DoubleArray resArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(resSeq, 0);
-                    //DoubleArray myArray = (DoubleArray)tvDec.getResult();
-                    resArray.map(new DoubleFunction() {
-                        @Override
-                        public double apply(double arg) {
-                            if (arg >= lowerBound) {
-                                return arg;
-                            } else {
-                                return lowerBound;
-                            }
-                        }
-                    });
-                    resArray = (DoubleArray) ArrayUtils.pad(resArray, shapePad);
-                    tvDec.setPsf(psfArray);
-                    tvDec.setResult(resArray);
-                    token.start();  //By default wait for the end of the job
-                    computeNew = true;
-                } else {
-                    //Launching computation
-                    tvDec = new TotalVariationJobForIcy(token);
-                    tvDec.setRegularizationWeight(mu);
-                    tvDec.setRegularizationThreshold(epsilon);
-                    tvDec.setRelativeTolerance(grtol);
-                    tvDec.setAbsoluteTolerance(gatol);
-                    tvDec.setMaximumIterations(maxIter);
-                    tvDec.setPositivity(ezPositivity.getValue());
-                    tvDec.setViewer(new tvViewer());
-                    thread.setJob(tvDec);
-                    // Read the image and the PSF.
-
-                    DoubleArray imgArray, psfArray, weight;
-
-                    imgArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(datSeq, 0);
-                    psfArray =  (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, 0);
-                    weight = createWeight(imgArray);
-
-                    imgArray = (DoubleArray) ArrayUtils.pad(imgArray, shapePad);
-                    psfArray = (DoubleArray) ArrayUtils.pad(psfArray, shapePad);
-                    weight   = (DoubleArray) ArrayUtils.pad(weight  , shapePad);
-
-                    //BEWARE here we change the value to match the new padded image size
-                    //addImage(weight.flatten(), "weights", widthPad, heightPad, sizeZPad); //Uncomment this to see weights
-
-                    tvDec.setWeight(weight);
-                    tvDec.setData(imgArray);
-                    tvDec.setPsf(psfArray);
-                    tvDec.setOutputShape(shapePad);
-                    // We verify that the bounds are respected for previous input
-                    lowerBound = tvDec.getLowerBound();
-                    DoubleArray myArray = tvDec.getData();
-                    myArray.map(new DoubleFunction() {
-
-                        @Override
-                        public double apply(double arg) {
-                            if (arg >= lowerBound) {
-                                return arg;
-                            } else {
-                                return lowerBound;
-                            }
-                        }
-                    });
-                    token.start();  //By default wait for the end of the job
-                    computeNew = true;
-                }
-            }
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-            new AnnounceFrame("Oops, Error: "+ e.getMessage());
+            solver.iterate();
         }
+        //   Vector vect;
+
+        //   DoubleArray dblArr = DoubleArray.createFrom( solver.getBestSolution());
+
+
     }
 
     /****************************************************/
     /**                  UTILS FUNCTIONS               **/
     /****************************************************/
-    //Small utils function that will get the sequence and convert it to ShapedArray
-    private static ShapedArray weightMapToArray(EzVarSequence seq){
-        Sequence in = seq.getValue();
-        if (in != null) {
-            return IcyBufferedImageUtils.imageToArray(in, 0);
-        } else {
-            throw new IllegalArgumentException("The input requested was not found");
-        }
-
+    private static void throwError(String s){
+        new AnnounceFrame(s);
+        //throw new IllegalArgumentException(s);
     }
 
     /**
-     * The goal is to create an weight array, but it will be created depending
+     * The goal is to create an array of weights, but it will be created depending
      * the user input so we will have to test each cases:
-     *  	-None
-     *  	-A given map
-     *  	-A variance map
-     *  	-A computed variance
+     *      - None
+     *      - A given map
+     *      - A variance map
+     *      - A computed variance
      * Then we apply the dead pixel map
-     * 
-     * @param data
-     * @return
+     *
+     * @param datArray - The data to deconvolve.
+     * @return The weights.
      */
-    private DoubleArray createWeight(ShapedArray datArray) {
-    	return null;
-//        String option = options.getValue();
-//    	ShapedArray wgtArray = null;
-//        Sequence seq;
-//        boolean wgtCopy = true, datCopy = true;
-//
-//        ShapedArray array;
-//        ShapedArray deadPixMap = null;
-//        if (option == weightOption1) {
-//        	//No options
-//            //First case, we create an array of 1, that correspond to the image
-//            double[] weight = new double[width*height*sizeZ];
-//            for (int i = 0; i < weight.length; i++) {
-//                weight[i] = 1;
-//            }
-//            weightGen.setWeightMap(Double1D.wrap(weight, weight.length));
-//        } else if (option == weightOption2) {//Weight Map
-//            //If the user give a weight map we convert it and give it to weightGen
-//            array = weightMapToArray(weightMap);
-//            weightGen.setWeightMap(array);
-//        } else if(option == weightOption3) {//Variance map
-//            //If the user give a varianceMap map we give it to weightGen
-//            array = weightMapToArray(varianceMap);
-//            weightGen.setWeightMap(array);//Gain + readOut
-//        } else if(option == weightOption4) {
-//            weightGen.setComputedVariance(data, gain.getValue(), noise.getValue());
-//        } else {
-//            throw new IllegalArgumentException("Incorrect argument for weightmap");
-//        }
-//        weightGen.setPixelMap(deadPixMap);
-//        return weightGen.getWeightMap(data.getShape()).toDouble();
-//        
-//
-//        // We check the values given
-//        if (options.getValue() == weightOption1) {
-//        	// Nothing specified.  The weights are an array of ones with same size as the data.
-//        	wgtArray = WeightFactory.defaultWeights(datArray);
-//        	wgtCopy = false; // no needs to copy weights
-//        } else if (options.getValue() == weightOption2) {
-//        	// A map of weights is provided.
-//            if ((seq = weights.getValue()) != null) {      
-//                wgtArray = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
-//            }
-//        } else if (options.getValue() == weightOption3) {
-//        	// A variance map is provided. FIXME: check shape and values.
-//            if ((seq = weights.getValue()) != null) {
-//            	ShapedArray varArray = IcyBufferedImageUtils.imageToArray(weightMap.getAllImage());
-//                wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
-//            	wgtCopy = false; // no needs to copy weights
-//            }
-//        } else if (options.getValue() == weightOption4) {
-//        	// Weights are computed given the gain and the readout noise of the detector.
-//        	double gamma = gain.getValue();
-//        	double sigma = noise.getValue();
-//        	double alpha = 1/gamma;
-//        	double beta = (sigma/gamma)*(sigma/gamma);
-//            wgtArray = WeightFactory.computeWeightsFromData(datArray, alpha, beta);
-//        	wgtCopy = false; // no needs to copy weights
-//        }
-//        
-//        // Make sure weights and data are private copies because we may have to modify their contents.
-//        if (wgtCopy) {
-//        	wgtArray = flatCopy(wgtArray);
-//        }
-//        if (datCopy) {
-//        	datArray = flatCopy(datArray);
-//        }
-//        
-//        if (showPixMap.getValue() && deadPixel.getValue() != null && deadPixel.getValue().getFirstNonNullImage() != null) {
-//            deadPixMap = weightMapToArray(deadPixel);
-//        }
-//        if (deadPixGiven.getValue() && (seq = deadPixel.getValue()) != null) {
-//        	// Account for bad data.
-//        	ShapedArray badArr = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
-//        	WeightFactory.removeBads(wgtArray, badArr);
-//        }
-//
-//    	// Check everything.
-//    	WeightFactory.fixWeightsAndData(wgtArray, datArray);
-//    	return wgtArray;
+    private ShapedArray createWeights(ShapedArray datArray) {
+        ShapedArray wgtArray = null;
+        Sequence seq;
+        boolean wgtCopy = true, datCopy = true;
 
-        
-    }
-
-    //Debug function Will have to be deleted in the future 
-    @SuppressWarnings("unused")
-    private void addImage(double[] in, String name, int width, int height, int sizeZ){
-        Sequence tmpSeq = new Sequence();
-        for (int j = 0; j < sizeZ; j++) {
-            double[] temp = new double[width*height];
-            for (int i = 0; i < width*height; i++) {
-                temp[i] = in[i+j*width*height];
+        // We check the values given
+        if (weightsMethod.getValue() == weightOptions[0]) {
+            // Nothing specified.  The weights are an array of ones with same size as the data.
+            wgtArray = WeightFactory.defaultWeights(datArray);
+            wgtCopy = false; // no needs to copy weights
+        } else if (weightsMethod.getValue() == weightOptions[1]) {
+            // A map of weights is provided.
+            if ((seq = weights.getValue()) != null) {
+                wgtArray = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
             }
-            tmpSeq.setImage(0,j, new IcyBufferedImage(width, height, temp));
-        }
-        tmpSeq.setName(name);
-        addSequence(tmpSeq);
-    }
-
-    //Copy the metadata from the input image to the output image
-    //In the future if we want to change metadata should be here
-    private void updateMetaData(Sequence seq) {
-        Sequence imageIn = ezDatSeq.getValue();
-        OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(imageIn.getMetadata());
-        //newMetdat.setImageDescription("MyDescription", 0);
-        seq.setMetaData(newMetdat);
-    }
-
-    //The function called by the viewer, here we take care of printing the result in headless mode (protocol) or not
-    private void setResult(){
-        if (sequence == null || computeNew == true) {
-            sequence = new Sequence();
-            sequence.addListener(this);
-            if (isHeadLess()) {
-                ezOutSeq.setValue(sequence);
-            }else{
-                addSequence(sequence);
+        } else if (weightsMethod.getValue() == weightOptions[2]) {
+            // A variance map is provided. FIXME: check shape and values.
+            if ((seq = weights.getValue()) != null) {
+                ShapedArray varArray = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+                wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
+                wgtCopy = false; // no needs to copy weights
             }
-            updateMetaData(sequence);
-            computeNew = false;
+        } else if (weightsMethod.getValue() == weightOptions[3]) {
+            // Weights are computed given the gain and the readout noise of the detector.
+            double gamma = gain.getValue();
+            double sigma = noise.getValue();
+            double alpha = 1/gamma;
+            double beta = (sigma/gamma)*(sigma/gamma);
+            wgtArray = WeightFactory.computeWeightsFromData(datArray, alpha, beta);
+            wgtCopy = false; // no needs to copy weights
         }
-        try {
-            sequence.beginUpdate();
-            double[] in = tvDec.getResult().toDouble().flatten();
-            for (int j = 0; j < sizeZPad; j++) {
-                double[] temp = new double[widthPad*heightPad];
-                for (int i = 0; i < widthPad*heightPad; i++) {
-                    temp[i] = in[i+j*widthPad*heightPad];
-                }
-                sequence.setImage(0,j, new IcyBufferedImage(widthPad, heightPad, temp));
-            }
-        } finally {
-            sequence.endUpdate();
+
+        // Make sure weights and data are private copies because we may have to modify their contents.
+        if (wgtCopy) {
+            wgtArray = flatCopy(wgtArray);
         }
-        sequence.setName("TV mu="+mu+" Epsilon="+epsilon+" Iteration="+tvDec.getIterations());
+        if (datCopy) {
+            datArray = flatCopy(datArray);
+        }
+
+        if (/*deadPixGiven.getValue() && */(seq = deadPixel.getValue()) != null) {
+            // Account for bad data.
+            ShapedArray badArr = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+            WeightFactory.removeBads(wgtArray, badArr);
+        }
+
+        // Check everything.
+        WeightFactory.fixWeightsAndData(wgtArray, datArray);
+        return wgtArray;
     }
 
-    //When the plugin is closed we try to close/stop everything
-    @Override
-    public void clean() {
-        if (token != null) {
-            token.stop();
-            token.exit();
+    /**
+     * Make a private flat copy of an array.
+     *
+     * @param arr - The source array.
+     *
+     * @return A copy of the source array.
+     */
+    private static ShapedArray flatCopy(ShapedArray arr)
+    {
+        switch (arr.getType()) {
+            case Traits.FLOAT:
+                return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
+            case Traits.DOUBLE:
+                return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
+            default:
+                throw new IllegalArgumentException("Unsupported data type");
         }
     }
 
-    //Sequence listener: if the sequence is changed
-    @Override
-    public void sequenceChanged(SequenceEvent sequenceEvent) {
-    }
 
-    //Sequence listener: if the sequence is closed
-    @Override
-    public void sequenceClosed(Sequence seq) {
-        //computeNew = true;
-    }
-
-    //If the value of ezVarText is changed: meaning we want a particular policy for weightmap
-    @Override
-    public void variableChanged(EzVar<String> source, String newValue) {
-        if (newValue == weightOption1) {
-            ezWgtSeq.setVisible(false);
-            ezVarSeq.setVisible(false);
-            ezGain.setVisible(false);
-            ezNoise.setVisible(false);
-        } else if(newValue == weightOption2) {
-            ezWgtSeq.setVisible(true);
-            ezVarSeq.setVisible(false);
-            ezGain.setVisible(false);
-            ezNoise.setVisible(false);
-        } else if(newValue == weightOption3) {
-            ezWgtSeq.setVisible(false);
-            ezVarSeq.setVisible(true);
-            ezGain.setVisible(false);
-            ezNoise.setVisible(false);
-        } else if(newValue == weightOption4) {
-            ezWgtSeq.setVisible(false);
-            ezVarSeq.setVisible(false);
-            ezGain.setVisible(true);
-            ezNoise.setVisible(true);
-        } else {
-            throw new IllegalArgumentException("Incorrect argument for weightmap");
-        }
-    }
 
     //If the user call the stop button
     @Override
     public void stopExecution() {
-        if (token != null) {
-            token.stop();
-        }
+        run = false;
+
     }
 
     //The input variable for the protocol
     @Override
     public void declareInput(VarList inputMap) {
         initialize();
-        inputMap.add("image", ezDatSeq.getVariable());
-        inputMap.add("psf", ezPsfSeq.getVariable());
-        inputMap.add("mu", ezMu.getVariable());
-        inputMap.add("epsilon", ezEpsilon.getVariable());
-        inputMap.add("maxIter", ezMaxIter.getVariable());
-        inputMap.add("coefXY", ezPadXY.getVariable());
-        inputMap.add("coefZ", ezPadZ.getVariable());
+        inputMap.add("image", image.getVariable());
+        inputMap.add("psf", psf.getVariable());
+        inputMap.add("mu", mu.getVariable());
+        inputMap.add("epsilon", epsilon.getVariable());
+        inputMap.add("maxIter", nbIterDeconv.getVariable());
+        inputMap.add("Padx", paddingSizeXY.getVariable());
+        inputMap.add("PadZ", paddingSizeZ.getVariable());
     }
 
     //The output variable for the protocol
     @Override
     public void declareOutput(VarList outputMap) {
-        outputMap.add("output", ezOutSeq.getVariable());
+        //  outputMap.add("output", outputMap.getVariable());
+    }
+
+    @Override
+    public void clean() {
+        // TODO Auto-generated method stub
+
     }
 }
 

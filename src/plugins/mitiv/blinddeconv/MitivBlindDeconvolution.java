@@ -56,7 +56,7 @@ import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.microscopy.PSF_Estimation;
-import mitiv.microscopy.WideFieldModel;
+import mitiv.microscopy.MicroscopeModel;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.MathUtils;
 import mitiv.utils.WeightFactory;
@@ -156,7 +156,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private EzLabel docDec;
     private EzVarInteger  totalNbOfBlindDecLoop,maxIterDefocus,maxIterPhase,maxIterModulus;
     private EzLabel docBlind;
-    private EzGroup show;
+    private EzGroup visuPSF;
 
 
     /** headless mode: **/
@@ -164,7 +164,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
 
 
-    private WideFieldModel pupil=null;
+    private MicroscopeModel pupil=null;
 
     private double grtol = 0.0;
     private int nbAlpha=0, nbBeta=1;
@@ -281,11 +281,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /*********************************/
     @Override
     protected void initialize() {
-        String  javav = System.getProperty("java.version");
-        if((javav.charAt(0)<2)&(javav.charAt(2)<7)){
-            throwError("Java version <1.7 is not compatible. Please update to a newer java version");
-        }
-
         if (!isHeadLess()) {
             getUI().setParametersIOVisible(false);
             getUI().setActionPanelVisible(false);
@@ -323,7 +318,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 paddingSizeZ.setVisible(newValue);
                 weigthPanel.setVisible(newValue);
                 epsilon.setVisible(newValue);
-                show.setVisible(newValue);
+                visuPSF.setVisible(newValue);
 
                 nbAlphaCoef.setVisible(newValue);
                 nbBetaCoef.setVisible(newValue);
@@ -629,7 +624,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        show = new EzGroup("PSF visualization", showPSF2, showPhase, showModulus);
+        visuPSF = new EzGroup("PSF visualization", showPSF2, showPhase, showModulus);
         stopBlind = new EzButton("STOP Computation", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -784,7 +779,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         bdecTab.add(docBlind);
         bdecTab.add(startBlind);
         bdecTab.add(cropResult);
-        bdecTab.add(show);
+        bdecTab.add(visuPSF);
         bdecTab.add(groupStop2);
         //Creation of BDec TAB
         bdecPanel.add(bdecTab);
@@ -803,7 +798,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         addEzComponent(expertMode);
         addEzComponent(tabbedPane);
         // Must be added to global panel first
-        show.setFoldedState(true);
+        visuPSF.setFoldedState(true);
 
         updatePaddedSize();
         updateOutputSize();
@@ -1258,7 +1253,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private void buildpupil()
     {
-        pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy_nm.getValue()*1E-9,
+        pupil = new MicroscopeModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy_nm.getValue()*1E-9,
                 dz_nm.getValue()*1E-9, Nxy, Nxy, Nz,radial.getValue());
     }
 
