@@ -33,7 +33,6 @@ import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import mitiv.array.ArrayFactory;
-import mitiv.array.ArrayUtils;
 import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
 import mitiv.array.Float3D;
@@ -199,8 +198,9 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
                     imageShape = new Shape(sizeX, sizeY, sizeZ);
 
-                    show(IcyBufferedImageUtils.imageToArray(seq, imageShape,0),"Image map");
+
                     if (debug) {
+                        // show(IcyBufferedImageUtils.imageToArray(seq, imageShape,0),"Image map");
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                     }
                     // setting restart value to the current sequence
@@ -299,6 +299,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 show(wgtArray,"Weight map");
                 if (debug) {
                     System.out.println("Weight compute");
+
                 }
             }
         });
@@ -565,7 +566,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
 
         solver.setObjectShape(outputShape);
-        solver.setPSF(ArrayUtils.roll(psfArray));
         solver.setPSF(psfArray);
         solver.setData(imgArray);
         solver.setWeight(wgtArray);
@@ -581,21 +581,18 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         System.out.println("Launch it:"+nbIterDeconv.getValue());
         run = true;
         OptimTask task = solver.start();
-        int it =0;
-
-
         show(solver.getPSF(),"PSF");
         show(solver.getData(),"Data");
 
         while (run) {
             task = solver.getTask();
-            System.out.println("it"+(it++)+"  it "+solver.getIterations());
+            System.out.println("  it "+solver.getIterations());
             if (task == OptimTask.ERROR) {
                 System.err.format("Error: %s\n", solver.getReason());
                 break;
             }
             if (task == OptimTask.NEW_X || task == OptimTask.FINAL_X) {
-                show(ArrayUtils.roll(solver.getObject()),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                show((solver.getObject()),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
                 if (task == OptimTask.FINAL_X) {
                     break;
                 }
