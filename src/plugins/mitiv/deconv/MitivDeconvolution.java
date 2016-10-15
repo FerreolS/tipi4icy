@@ -32,16 +32,16 @@ import java.awt.event.ActionListener;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
+import mitiv.array.Array3D;
 import mitiv.array.ArrayFactory;
-import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
-import mitiv.array.Float3D;
 import mitiv.array.FloatArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.Traits;
 import mitiv.invpb.EdgePreservingDeconvolution;
 import mitiv.linalg.Vector;
+import mitiv.linalg.shaped.ShapedVector;
 import mitiv.optim.OptimTask;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.WeightFactory;
@@ -398,8 +398,17 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
     }
 
+    protected  void show(ShapedVector  arr) {
+        show(  arr.asShapedArray(),  null,  "" ) ;
+    }
+    protected  void show(ShapedVector  arr,  String title ) {
+        show(  arr.asShapedArray(),  null,  title ) ;
+    }
     protected  void show(ShapedArray  arr,  String title ) {
         show(  arr,  null,  title ) ;
+    }
+    protected void show(ShapedVector  arr, Sequence sequence, String title ) {
+        show(  arr.asShapedArray(),  sequence,  title ) ;
     }
     protected  void show(ShapedArray  arr) {
         show(  arr,  null,  "" ) ;
@@ -413,7 +422,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         if (sequence == null )  {
 
             sequence = new Sequence();
-            //   setMetaData(image.getValue(), sequence); // TODO metadata
             addSequence(sequence);
         }
 
@@ -424,13 +432,14 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
         Shape shape = arr.getShape();
         int rank = shape.rank();
-        int type = arr.getType();
-        int nx, ny, nz;
+        //      int type = arr.getType();
+        int nx, ny, nz, nt;
         switch (rank) {
             case 2:
                 nx  = shape.dimension(0);
                 ny  = shape.dimension(1);
-                switch (type) {
+                sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.flatten()));
+                /*    switch (type) {
                     case Traits.DOUBLE:
                         sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.toDouble().flatten()));
                         break;
@@ -440,12 +449,17 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     default:
                         throwError("Show: only Double or Float array");
                         break;
-                }
+                }*/
                 break;
             case 3:
                 nx  = shape.dimension(0);
                 ny  = shape.dimension(1);
                 nz =  shape.dimension(2);
+
+
+                for (int j = 0; j < nz; j++) {
+                    sequence.setImage(0,j, new IcyBufferedImage(nx, ny,((Array3D)arr).slice(j).flatten() ));
+                }/*
                 switch (type) {
                     case Traits.DOUBLE:
                         for (int j = 0; j < nz; j++) {
@@ -460,12 +474,23 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     default:
                         throwError("Show: only Double or Float array");
                         break;
-                }
+                }*/
 
                 break;
 
+            case 4:
+                nx  = shape.dimension(0);
+                ny  = shape.dimension(1);
+                nz =  shape.dimension(2);
+                nt =  shape.dimension(3);
+
+                for (int k = 0; k < nt; k++) {
+                    for (int j = 0; j < nz; j++) {
+                        sequence.setImage(k,j, new IcyBufferedImage(nx, ny,((Array3D)arr).slice(k).slice(j).flatten() ));
+                    }
+                }
             default:
-                throwError("Show: only 2D and 3D array");
+                throwError("Show can plot only 2D to 4D arrays");
                 break;
         }
 
@@ -527,18 +552,18 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
         if (imgSeq == null)
         {
-            throwError("An image/sequence of images should be given");
+            throwError("An image should be given");
             return;
         }
         if (psfSeq == null)
         {
-            throwError("An image/sequence of images should be given");
+            throwError("A psf should be given");
             return;
         }
 
         // Set the informations about the input
         if (sizeZ == 1) {
-            throwError("Input data must be 3D");
+            throwError("Input data must be 2D or 3D");
             return;
         }
         if (paddingSizeXY.getValue() < 0.0) {
@@ -592,7 +617,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 break;
             }
             if (task == OptimTask.NEW_X || task == OptimTask.FINAL_X) {
-                show((solver.getObject()),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                show(solver.getObject(),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
                 if (task == OptimTask.FINAL_X) {
                     break;
                 }
@@ -605,7 +630,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         //   Vector vect;
 
         //   DoubleArray dblArr = DoubleArray.createFrom( solver.getBestSolution());
-
+        // show(solver.getBestSolution(),"Result ");
 
     }
 
