@@ -431,26 +431,26 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         sequence.beginUpdate();
 
         switch (arr.getRank()) {
-            case 2:
+        case 2:
                 sequence.setImage(0,0, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1), arr.flatten()));
 
-                break;
-            case 3:
+                        break;
+        case 3:
                 for (int j = 0; j < arr.getDimension(2); j++) {
                     sequence.setImage(0,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array3D)arr).slice(j).flatten() ));
-                }
-                break;
+                        }
+                        break;
 
-            case 4:
+        case 4:
 
                 for (int k = 0; k < arr.getDimension(3); k++) {
                     for (int j = 0; j < arr.getDimension(2); j++) {
                         sequence.setImage(k,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array3D)arr).slice(k).slice(j).flatten() ));
-                    }
                 }
-            default:
-                throwError("Show can plot only 2D to 4D arrays");
-                break;
+            }
+        default:
+            throwError("Show can plot only 2D to 4D arrays");
+            break;
         }
 
         sequence.endUpdate();
@@ -576,7 +576,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 break;
             }
             if (task == OptimTask.NEW_X || task == OptimTask.FINAL_X) {
-                show(solver.getObject(),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                show(solver.getSolution(),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
                 if (task == OptimTask.FINAL_X) {
                     break;
                 }
@@ -674,12 +674,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private static ShapedArray flatCopy(ShapedArray arr)
     {
         switch (arr.getType()) {
-            case Traits.FLOAT:
-                return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
-            case Traits.DOUBLE:
-                return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
-            default:
-                throw new IllegalArgumentException("Unsupported data type");
+        case Traits.FLOAT:
+            return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
+        case Traits.DOUBLE:
+            return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
+        default:
+            throw new IllegalArgumentException("Unsupported data type");
         }
     }
 
