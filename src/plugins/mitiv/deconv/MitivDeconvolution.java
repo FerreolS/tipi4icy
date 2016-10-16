@@ -430,63 +430,22 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         }
         sequence.beginUpdate();
 
-        Shape shape = arr.getShape();
-        int rank = shape.rank();
-        //      int type = arr.getType();
-        int nx, ny, nz, nt;
-        switch (rank) {
+        switch (arr.getRank()) {
             case 2:
-                nx  = shape.dimension(0);
-                ny  = shape.dimension(1);
-                sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.flatten()));
-                /*    switch (type) {
-                    case Traits.DOUBLE:
-                        sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.toDouble().flatten()));
-                        break;
-                    case Traits.FLOAT:
-                        sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.toFloat().flatten()));
-                        break;
-                    default:
-                        throwError("Show: only Double or Float array");
-                        break;
-                }*/
+                sequence.setImage(0,0, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1), arr.flatten()));
+
                 break;
             case 3:
-                nx  = shape.dimension(0);
-                ny  = shape.dimension(1);
-                nz =  shape.dimension(2);
-
-
-                for (int j = 0; j < nz; j++) {
-                    sequence.setImage(0,j, new IcyBufferedImage(nx, ny,((Array3D)arr).slice(j).flatten() ));
-                }/*
-                switch (type) {
-                    case Traits.DOUBLE:
-                        for (int j = 0; j < nz; j++) {
-                            sequence.setImage(0,j, new IcyBufferedImage(nx, ny, ((Double3D) arr).slice(j).flatten()));
-                        }
-                        break;
-                    case Traits.FLOAT:
-                        for (int j = 0; j < nz; j++) {
-                            sequence.setImage(0,j, new IcyBufferedImage(nx, ny, ((Float3D) arr).slice(j).flatten()));
-                        }
-                        break;
-                    default:
-                        throwError("Show: only Double or Float array");
-                        break;
-                }*/
-
+                for (int j = 0; j < arr.getDimension(2); j++) {
+                    sequence.setImage(0,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array3D)arr).slice(j).flatten() ));
+                }
                 break;
 
             case 4:
-                nx  = shape.dimension(0);
-                ny  = shape.dimension(1);
-                nz =  shape.dimension(2);
-                nt =  shape.dimension(3);
 
-                for (int k = 0; k < nt; k++) {
-                    for (int j = 0; j < nz; j++) {
-                        sequence.setImage(k,j, new IcyBufferedImage(nx, ny,((Array3D)arr).slice(k).slice(j).flatten() ));
+                for (int k = 0; k < arr.getDimension(3); k++) {
+                    for (int j = 0; j < arr.getDimension(2); j++) {
+                        sequence.setImage(k,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array3D)arr).slice(k).slice(j).flatten() ));
                     }
                 }
             default:
