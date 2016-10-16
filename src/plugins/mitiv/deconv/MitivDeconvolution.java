@@ -435,11 +435,11 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         //      int type = arr.getType();
         int nx, ny, nz, nt;
         switch (rank) {
-            case 2:
-                nx  = shape.dimension(0);
-                ny  = shape.dimension(1);
-                sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.flatten()));
-                /*    switch (type) {
+        case 2:
+            nx  = shape.dimension(0);
+            ny  = shape.dimension(1);
+            sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.flatten()));
+            /*    switch (type) {
                     case Traits.DOUBLE:
                         sequence.setImage(0,0, new IcyBufferedImage(nx, ny, arr.toDouble().flatten()));
                         break;
@@ -450,16 +450,16 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                         throwError("Show: only Double or Float array");
                         break;
                 }*/
-                break;
-            case 3:
-                nx  = shape.dimension(0);
-                ny  = shape.dimension(1);
-                nz =  shape.dimension(2);
+            break;
+        case 3:
+            nx  = shape.dimension(0);
+            ny  = shape.dimension(1);
+            nz =  shape.dimension(2);
 
 
-                for (int j = 0; j < nz; j++) {
-                    sequence.setImage(0,j, new IcyBufferedImage(nx, ny,((Array3D)arr).slice(j).flatten() ));
-                }/*
+            for (int j = 0; j < nz; j++) {
+                sequence.setImage(0,j, new IcyBufferedImage(nx, ny,((Array3D)arr).slice(j).flatten() ));
+            }/*
                 switch (type) {
                     case Traits.DOUBLE:
                         for (int j = 0; j < nz; j++) {
@@ -476,22 +476,22 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                         break;
                 }*/
 
-                break;
+            break;
 
-            case 4:
-                nx  = shape.dimension(0);
-                ny  = shape.dimension(1);
-                nz =  shape.dimension(2);
-                nt =  shape.dimension(3);
+        case 4:
+            nx  = shape.dimension(0);
+            ny  = shape.dimension(1);
+            nz =  shape.dimension(2);
+            nt =  shape.dimension(3);
 
-                for (int k = 0; k < nt; k++) {
-                    for (int j = 0; j < nz; j++) {
-                        sequence.setImage(k,j, new IcyBufferedImage(nx, ny,((Array3D)arr).slice(k).slice(j).flatten() ));
-                    }
+            for (int k = 0; k < nt; k++) {
+                for (int j = 0; j < nz; j++) {
+                    sequence.setImage(k,j, new IcyBufferedImage(nx, ny,((Array3D)arr).slice(k).slice(j).flatten() ));
                 }
-            default:
-                throwError("Show can plot only 2D to 4D arrays");
-                break;
+            }
+        default:
+            throwError("Show can plot only 2D to 4D arrays");
+            break;
         }
 
         sequence.endUpdate();
@@ -617,7 +617,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 break;
             }
             if (task == OptimTask.NEW_X || task == OptimTask.FINAL_X) {
-                show(solver.getObject(),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                show(solver.getSolution(),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
                 if (task == OptimTask.FINAL_X) {
                     break;
                 }
@@ -715,12 +715,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private static ShapedArray flatCopy(ShapedArray arr)
     {
         switch (arr.getType()) {
-            case Traits.FLOAT:
-                return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
-            case Traits.DOUBLE:
-                return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
-            default:
-                throw new IllegalArgumentException("Unsupported data type");
+        case Traits.FLOAT:
+            return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
+        case Traits.DOUBLE:
+            return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
+        default:
+            throw new IllegalArgumentException("Unsupported data type");
         }
     }
 
