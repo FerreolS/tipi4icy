@@ -33,6 +33,7 @@ import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import mitiv.array.Array3D;
 import mitiv.array.ArrayFactory;
+import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
 import mitiv.array.FloatArray;
 import mitiv.array.ShapedArray;
@@ -60,7 +61,7 @@ import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
 /**
- * MitivDeconvolution implements regilarized multi-dimensional deconvolution.
+ * MitivDeconvolution implements regularized multi-dimensional deconvolution.
  */
 public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
@@ -88,7 +89,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private EzVarBoolean  positivity;
     private EzVarBoolean  singlePrecision;
     private EzVarBoolean  showIteration;
-    private EzButton startDec, stopDec;
+    private EzButton startDec, stopDec, showFull;
     private EzVarInteger    nbIterDeconv;
 
     /** headless mode: **/
@@ -108,11 +109,11 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private  int Nxy=512, Nz=128;            // Output (padded sequence size)
     private Shape outputShape;
 
-    Sequence cursequence=null;
+    Sequence cursequence=null,resultSequence=null ;
     EdgePreservingDeconvolution solver ;
     private boolean run;
     private Vector result;
-    private EzVarChannel channelpsf;
+    private EzVarChannel channelpsf, channelRestart;
     private EzGroup ezPaddingGroup;
     private EzGroup ezWeightingGroup;
     private EzGroup ezDeconvolutionGroup;
@@ -176,7 +177,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
 
                     if (debug) {
-                        // show(IcyBufferedImageUtils.imageToArray(seq, imageShape,0),"Image map");
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                     }
                     // setting restart value to the current sequence
@@ -283,9 +283,10 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         nbIterDeconv = new EzVarInteger("Number of iterations: ",10,0,Integer.MAX_VALUE ,1);
         positivity = new EzVarBoolean("Enforce nonnegativity:", true);
         singlePrecision = new EzVarBoolean("Compute in single precision:", false);
-        showIteration = new EzVarBoolean("Show intermediate result:", false);
+        showIteration = new EzVarBoolean("Show intermediate results:", true);
         restart = new EzVarSequence("Starting point:");
         restart.setNoSequenceSelection();
+        channelRestart = new EzVarChannel("Initialization channel :", restart.getVariable(), false);
         ezDeconvolutionGroup = new EzGroup("Deconvolution parameters",logmu,mu,epsilon,nbIterDeconv,positivity,singlePrecision,showIteration);
 
         startDec = new EzButton("Start Deconvolution", new ActionListener() {
@@ -307,6 +308,15 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             }
         });
 
+        showFull = new EzButton("Show the full (padded) object", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                resultSequence = new Sequence("Deconvolved image");
+                resultSequence.copyMetaDataFrom(image.getValue(), false);
+                show(ArrayUtils.crop(solver.getSolution(),imageShape),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+            }
+        });
+
         EzVarListener<Double> logmuActionListener = new EzVarListener<Double>() {
             @Override
             public void variableChanged(EzVar<Double> source, Double newValue) {
@@ -323,6 +333,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         addEzComponent(psf);
         addEzComponent(channelpsf);
         addEzComponent(restart);
+        addEzComponent(channelRestart);
         addEzComponent(imageSize);
         addEzComponent(outputSize);
         addEzComponent(ezPaddingGroup);
@@ -362,7 +373,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             addSequence(sequence);
         }
 
-        if( sequence.getViewers() ==null){
+        if( sequence.getFirstViewer() == null){
             addSequence(sequence);
         }
         sequence.beginUpdate();
@@ -442,6 +453,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         // Preparing parameters and testing input
         Sequence imgSeq = image.getValue();
         Sequence psfSeq = psf.getValue();
+        Sequence restartSeq = restart.getValue();
 
         psfShape = new Shape(psfSizeX, psfSizeY, psfSizeZ);
 
@@ -471,10 +483,14 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             return;
         }
 
-        int numCanal = channel.getValue();
-        ShapedArray imgArray, psfArray, wgtArray;
-        imgArray = IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, numCanal);
-        psfArray = IcyBufferedImageUtils.imageToArray(psfSeq, psfShape, 0);
+        ShapedArray imgArray, psfArray, wgtArray,restartArray;
+        imgArray = IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, channel.getValue());
+        psfArray = IcyBufferedImageUtils.imageToArray(psfSeq, psfShape, channelpsf.getValue());
+
+        if (restart.getValue() != null){
+            restartArray = IcyBufferedImageUtils.imageToArray(restartSeq, imageShape, channelRestart.getValue());
+            solver.setInitialSolution(restartArray);
+        }
         if(singlePrecision.getValue()){
             wgtArray = createWeights(imgArray).toFloat();
             solver.setForceSinglePrecision(true);
@@ -484,9 +500,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         }
         cursequence = new Sequence("Current Iterate");
         cursequence.copyMetaDataFrom(imgSeq, false);
-
-        addSequence(cursequence);
-
+        resultSequence = new Sequence("Deconvolved image");
+        resultSequence.copyMetaDataFrom(imgSeq, false);
 
         solver.setRelativeTolerance(0.0);
         solver.setUseNewCode(false);
@@ -513,7 +528,9 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 break;
             }
             if (task == OptimTask.NEW_X || task == OptimTask.FINAL_X) {
-                show(solver.getSolution(),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                if(showIteration.getValue()){
+                    show(ArrayUtils.crop(solver.getSolution(),imageShape),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                }
                 if (task == OptimTask.FINAL_X) {
                     break;
                 }
@@ -524,7 +541,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             solver.iterate();
         }
         //   result = solver.getBestSolution();
-        show(solver.getBestSolution(),"Deconvolved image");
+        show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),imageShape),resultSequence,"Deconvolved image,  mu="+solver.getRegularizationLevel());
+        restart.setValue(resultSequence);
     }
 
     /****************************************************/
