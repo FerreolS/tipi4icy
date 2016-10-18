@@ -133,6 +133,10 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         channel = new EzVarChannel("Image channel:", image.getVariable(), false);
         psf = new EzVarSequence("PSF:");
         channelpsf = new EzVarChannel("PSF channel :", psf.getVariable(), false);
+        restart = new EzVarSequence("Starting point:");
+        restart.setNoSequenceSelection();
+        channelRestart = new EzVarChannel("Initialization channel :", restart.getVariable(), false);
+
         imageSize = new EzVarText("Image size:");
         outputSize = new EzVarText("Output size:");
         paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
@@ -181,9 +185,17 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     }
                     // setting restart value to the current sequence
                     restart.setValue(newValue);
+                    channelRestart.setValue(channel.getValue());
                 }
             }
 
+        });
+
+        channel.addVarChangeListener(new EzVarListener<Integer>() {
+            @Override
+            public void variableChanged(EzVar<Integer> source, Integer newValue) {
+                channelRestart.setValue(newValue);
+            }
         });
 
         psf.addVarChangeListener(new EzVarListener<Sequence>() {
@@ -284,9 +296,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         positivity = new EzVarBoolean("Enforce nonnegativity:", true);
         singlePrecision = new EzVarBoolean("Compute in single precision:", false);
         showIteration = new EzVarBoolean("Show intermediate results:", true);
-        restart = new EzVarSequence("Starting point:");
-        restart.setNoSequenceSelection();
-        channelRestart = new EzVarChannel("Initialization channel :", restart.getVariable(), false);
         ezDeconvolutionGroup = new EzGroup("Deconvolution parameters",logmu,mu,epsilon,nbIterDeconv,positivity,singlePrecision,showIteration);
 
         startDec = new EzButton("Start Deconvolution", new ActionListener() {
@@ -311,9 +320,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         showFull = new EzButton("Show the full (padded) object", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if(debug){
+                    System.out.println("showFull");
+                }
                 resultSequence = new Sequence("Deconvolved image");
                 resultSequence.copyMetaDataFrom(image.getValue(), false);
-                show(ArrayUtils.crop(solver.getSolution(),imageShape),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                show(solver.getSolution(),resultSequence,"Deconvolved image: mu="+solver.getRegularizationLevel() );
             }
         });
 
@@ -340,6 +352,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         addEzComponent(ezWeightingGroup);
         addEzComponent(ezDeconvolutionGroup);
         addEzComponent(startDec);
+        addEzComponent(showFull);
         addEzComponent(groupStop1);
 
 
