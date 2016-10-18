@@ -25,7 +25,6 @@
 
 package plugins.mitiv.deconv;
 
-import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -49,12 +48,8 @@ import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzGroup;
-import plugins.adufour.ezplug.EzLabel;
-import plugins.adufour.ezplug.EzPanel;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
-import plugins.adufour.ezplug.EzTabs;
-import plugins.adufour.ezplug.EzTabs.TabPlacement;
 import plugins.adufour.ezplug.EzVar;
 import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarChannel;
@@ -73,11 +68,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     /***************************************************/
     /**         Plugin interface variables            **/
     /***************************************************/
-    private EzVarBoolean expertMode;      // Tick box to expose expert parameters
-    private EzTabs tabbedPane;
-
-    /** data tab: **/
-    private EzPanel  dataPanel;
     private EzVarSequence image;
     private EzVarChannel channel;
     private EzVarSequence psf; // Point Spread Function
@@ -85,7 +75,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private EzVarInteger    paddingSizeXY, paddingSizeZ;
     private EzVarText imageSize, outputSize;
     /** weighting tab: **/
-    private EzPanel   weigthPanel;
     private EzVarText weightsMethod;
     private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
     private EzVarDouble  gain, noise;
@@ -94,18 +83,17 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
 
     /** deconvolution tab: **/
-    private EzPanel    deconvPanel;
     private EzVarDouble logmu, mu, epsilon;
     private EzVarSequence  restart;
     private EzVarBoolean  positivity;
     private EzVarBoolean  singlePrecision;
+    private EzVarBoolean  showIteration;
     private EzButton startDec, stopDec;
     private EzVarInteger    nbIterDeconv;
 
     /** headless mode: **/
     private EzVarSequence   outputHeadlessImage, outputHeadlessPSF;
 
-    private EzLabel docDec;
 
 
     /****************************************************/
@@ -124,6 +112,10 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     EdgePreservingDeconvolution solver ;
     private boolean run;
     private Vector result;
+    private EzVarChannel channelpsf;
+    private EzGroup ezPaddingGroup;
+    private EzGroup ezWeightingGroup;
+    private EzGroup ezDeconvolutionGroup;
 
     /*********************************/
     /**      Initialization         **/
@@ -136,19 +128,10 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         }
 
 
-        tabbedPane = new EzTabs("BlindTabs", TabPlacement.TOP);
-
-        /****************************************************/
-        /**                    IMAGE TAB                   **/
-        /****************************************************/
-        //Creation of the inside of IMAGE TAB
-        expertMode = new EzVarBoolean("Expert mode", false);
-
-        dataPanel = new EzPanel("Step 1: Data"); //Border layout to be sure that the images are stacked to the up
-        EzPanel imagePan = new EzPanel("FILEPanel");
-        image = new EzVarSequence("Sequence:");
-        channel = new EzVarChannel("Canal:", image.getVariable(), false);
+        image = new EzVarSequence("Image:");
+        channel = new EzVarChannel("Image channel:", image.getVariable(), false);
         psf = new EzVarSequence("PSF:");
+        channelpsf = new EzVarChannel("PSF channel :", psf.getVariable(), false);
         imageSize = new EzVarText("Image size:");
         outputSize = new EzVarText("Output size:");
         paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
@@ -157,14 +140,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         image.setNoSequenceSelection();
         psf.setNoSequenceSelection();
 
-        expertMode.addVarChangeListener(new EzVarListener<Boolean>() {
-            @Override
-            public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
-                paddingSizeXY.setVisible(newValue);
-                paddingSizeZ.setVisible(newValue);
-                weigthPanel.setVisible(newValue);
-                epsilon.setVisible(newValue);            }
-        });
+        ezPaddingGroup = new EzGroup("Padding",paddingSizeXY,paddingSizeZ);
+        ezPaddingGroup.setFoldedState(true);
 
         EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
             @Override
@@ -187,7 +164,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     System.out.println("Seq ch..."+image.getValue());
                 }
 
-                // getting metadata and computing sizes
                 Sequence seq = image.getValue();
                 if (seq != null || (seq != null && seq.isEmpty())) {
                     sizeX =  newValue.getSizeX();
@@ -217,8 +193,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 if (debug) {
                     System.out.println("PSF changed"+psf.getValue());
                 }
-                // getting metadata and computing sizes
-                //  Sequence seq = psf.getValue();
                 if (newValue != null || (newValue != null && newValue.isEmpty())) {
                     psfSizeX = Math.max(1,newValue.getSizeX());
                     psfSizeY =  Math.max(1,newValue.getSizeY());
@@ -240,25 +214,17 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
 
 
-
-
-
-        // Note The listener of PSF is after BDEC tab
-
         /****************************************************/
-        /**                WEIGHTING TAB                   **/
+        /**                WEIGHTING GROUP                   **/
         /****************************************************/
-        //Creation of the inside of WEIGHTING TAB
-        weigthPanel = new EzPanel("Step 1b: Weights"); //Border layout to be sure that the images are stacked to the up
-        EzPanel varianceTab = new EzPanel("VarianceTab");
         weightsMethod = new EzVarText(      "Weighting:", weightOptions, false);
         weights = new EzVarSequence(        "Map:");
         gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
         noise = new EzVarDouble(            "Readout Noise:",10.,0.,Double.MAX_VALUE,0.1);
         deadPixel = new EzVarSequence(      "Bad data map:");
         weights.setNoSequenceSelection();
-        weightsMethod.addVarChangeListener(new EzVarListener<String>() {
 
+        weightsMethod.addVarChangeListener(new EzVarListener<String>() {
             @Override
             public void variableChanged(EzVar<String> source, String newValue) {
                 if (weightsMethod.getValue() == weightOptions[0]) { //None
@@ -303,23 +269,25 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 }
             }
         });
+        ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weights,gain,noise,deadPixel,showWeight);
+        ezWeightingGroup.setFoldedState(true);
+
 
 
         /****************************************************/
-        /**                    DECONV TAB                  **/
+        /**                    DECONV GROUP                  **/
         /****************************************************/
-        //Creation of the inside of DECONVOLUTION TAB
-        deconvPanel = new EzPanel("Step 2: Deconvolution"); //Border layout to be sure that the images are stacked to the up
-        EzPanel deconvTab = new EzPanel("DeconvolutionTab");
         mu = new EzVarDouble("Regularization level:",1E-5,0.,Double.MAX_VALUE,0.01);
         logmu = new EzVarDouble("Log10 of the Regularization level:",-5,-Double.MAX_VALUE,Double.MAX_VALUE,1);
         epsilon = new EzVarDouble("Threshold level:",1E-2,0.,Double.MAX_VALUE,0.01);
         nbIterDeconv = new EzVarInteger("Number of iterations: ",10,0,Integer.MAX_VALUE ,1);
         positivity = new EzVarBoolean("Enforce nonnegativity:", true);
-        // crop = new EzVarBoolean("Crop output to match input:", false);
+        singlePrecision = new EzVarBoolean("Compute in single precision:", false);
+        showIteration = new EzVarBoolean("Show intermediate result:", false);
         restart = new EzVarSequence("Starting point:");
         restart.setNoSequenceSelection();
-        docDec = new EzLabel("Launch a deconvolution input PSF", Color.red);
+        ezDeconvolutionGroup = new EzGroup("Deconvolution parameters",logmu,mu,epsilon,nbIterDeconv,positivity,singlePrecision,showIteration);
+
         startDec = new EzButton("Start Deconvolution", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -350,51 +318,24 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
         EzGroup groupStop1 = new EzGroup("Emergency STOP", stopDec);
 
+        addEzComponent(image);
+        addEzComponent(channel);
+        addEzComponent(psf);
+        addEzComponent(channelpsf);
+        addEzComponent(restart);
+        addEzComponent(imageSize);
+        addEzComponent(outputSize);
+        addEzComponent(ezPaddingGroup);
+        addEzComponent(ezWeightingGroup);
+        addEzComponent(ezDeconvolutionGroup);
+        addEzComponent(startDec);
+        addEzComponent(groupStop1);
 
 
-        /**** IMAGE ****/
-        imagePan.add(image);
-        imagePan.add(channel);
-        imagePan.add(imageSize);
-        imagePan.add(psf);
-        imagePan.add(paddingSizeXY);
-        imagePan.add(paddingSizeZ);
-        imagePan.add(outputSize);
-
-        dataPanel.add(imagePan);
-        tabbedPane.add(dataPanel);
-
-        /**** Variance ****/
-        varianceTab.add(weightsMethod);
-        varianceTab.add(weights);
-        varianceTab.add(gain);
-        varianceTab.add(noise);
-        varianceTab.add(deadPixel);
-        varianceTab.add(showWeight);
-        //Creation of VARIANCE TAB
-        weigthPanel.add(varianceTab);
-        tabbedPane.add(weigthPanel);
-
-        /**** Deconv ****/
-
-        deconvTab.add(logmu);
-        deconvTab.add(mu);
-        deconvTab.add(epsilon);
-        deconvTab.add(nbIterDeconv);
-        deconvTab.add(positivity);
-        deconvTab.add(restart);
-        deconvTab.add(docDec);
-        deconvTab.add(startDec);
-        deconvTab.add(groupStop1);
-        //Creation of DECONVOLUTION TAB
-        deconvPanel.add(deconvTab);
-        tabbedPane.add(deconvPanel);
-
-        addEzComponent(expertMode);
-        addEzComponent(tabbedPane);
         outputSize.setEnabled(false);
         imageSize.setEnabled(false);
         mu.setEnabled(false);
+
 
     }
 
@@ -414,10 +355,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         show(  arr,  null,  "" ) ;
     }
     protected void show(ShapedArray  arr, Sequence sequence, String title ) {
-        //Here we will update the sequence
-        //        if (sequence != null && sequence.isEmpty()){
-        //            removeSequence(sequence);
-        //        }
 
         if (sequence == null )  {
 
@@ -431,26 +368,26 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         sequence.beginUpdate();
 
         switch (arr.getRank()) {
-        case 2:
+            case 2:
                 sequence.setImage(0,0, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1), arr.flatten()));
 
-                        break;
-        case 3:
+                break;
+            case 3:
                 for (int j = 0; j < arr.getDimension(2); j++) {
                     sequence.setImage(0,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array3D)arr).slice(j).flatten() ));
-                        }
-                        break;
+                }
+                break;
 
-        case 4:
+            case 4:
 
                 for (int k = 0; k < arr.getDimension(3); k++) {
                     for (int j = 0; j < arr.getDimension(2); j++) {
                         sequence.setImage(k,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array3D)arr).slice(k).slice(j).flatten() ));
+                    }
                 }
-            }
-        default:
-            throwError("Show can plot only 2D to 4D arrays");
-            break;
+            default:
+                throwError("Show can plot only 2D to 4D arrays");
+                break;
         }
 
         sequence.endUpdate();
@@ -535,38 +472,38 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         }
 
         int numCanal = channel.getValue();
-
-        DoubleArray imgArray, psfArray, wgtArray;
-
-        imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, numCanal);
-        psfArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(psfSeq, psfShape, 0);
-        wgtArray = createWeights(imgArray).toDouble();
-
+        ShapedArray imgArray, psfArray, wgtArray;
+        imgArray = IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, numCanal);
+        psfArray = IcyBufferedImageUtils.imageToArray(psfSeq, psfShape, 0);
+        if(singlePrecision.getValue()){
+            wgtArray = createWeights(imgArray).toFloat();
+            solver.setForceSinglePrecision(true);
+        }else{
+            wgtArray = createWeights(imgArray).toDouble();
+            solver.setForceSinglePrecision(false);
+        }
         cursequence = new Sequence("Current Iterate");
         cursequence.copyMetaDataFrom(imgSeq, false);
 
         addSequence(cursequence);
 
 
-
+        solver.setRelativeTolerance(0.0);
+        solver.setUseNewCode(false);
         solver.setObjectShape(outputShape);
         solver.setPSF(psfArray);
         solver.setData(imgArray);
         solver.setWeight(wgtArray);
         solver.setEdgeThreshold(epsilon.getValue());
         solver.setRegularizationLevel(mu.getValue());
-        //    solver.setForceSinglePrecision(singlePrecision.getValue());
         solver.setSaveBest(true);
-        if (positivity.getValue()){
-            solver.setLowerBound(0.);
-        }
+        solver.setLowerBound(positivity.getValue() ? 0.0 : Double.NEGATIVE_INFINITY);
+        solver.setUpperBound(Double.POSITIVE_INFINITY);
         solver.setMaximumIterations(nbIterDeconv.getValue());
         solver.setMaximumEvaluations(2*nbIterDeconv.getValue());
         System.out.println("Launch it:"+nbIterDeconv.getValue());
         run = true;
         OptimTask task = solver.start();
-        show(solver.getPSF(),"PSF");
-        show(solver.getData(),"Data");
 
         while (run) {
             task = solver.getTask();
@@ -586,11 +523,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             }
             solver.iterate();
         }
-        //   Vector vect;
-
-        //   DoubleArray dblArr = DoubleArray.createFrom( solver.getBestSolution());
-        // show(solver.getBestSolution(),"Result ");
-
+        //   result = solver.getBestSolution();
+        show(solver.getBestSolution(),"Deconvolved image");
     }
 
     /****************************************************/
@@ -674,12 +608,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private static ShapedArray flatCopy(ShapedArray arr)
     {
         switch (arr.getType()) {
-        case Traits.FLOAT:
-            return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
-        case Traits.DOUBLE:
-            return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
-        default:
-            throw new IllegalArgumentException("Unsupported data type");
+            case Traits.FLOAT:
+                return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
+            case Traits.DOUBLE:
+                return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
+            default:
+                throw new IllegalArgumentException("Unsupported data type");
         }
     }
 
