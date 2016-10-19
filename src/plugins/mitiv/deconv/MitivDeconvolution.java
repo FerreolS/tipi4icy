@@ -40,7 +40,6 @@ import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.Traits;
 import mitiv.invpb.EdgePreservingDeconvolution;
-import mitiv.linalg.Vector;
 import mitiv.linalg.shaped.ShapedVector;
 import mitiv.optim.OptimTask;
 import mitiv.utils.FFTUtils;
@@ -55,6 +54,7 @@ import plugins.adufour.ezplug.EzVar;
 import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarChannel;
 import plugins.adufour.ezplug.EzVarDouble;
+import plugins.adufour.ezplug.EzVarDoubleArrayNative;
 import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
@@ -101,22 +101,25 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     /**                 VARIABLES                      **/
     /****************************************************/
 
-    boolean debug =true;
+    static boolean debug =false;
 
     private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence size
     protected int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
     private Shape imageShape, psfShape;
     private  int Nxy=512, Nz=128;            // Output (padded sequence size)
     private Shape outputShape;
+    private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
     Sequence cursequence=null,resultSequence=null ;
     EdgePreservingDeconvolution solver ;
     private boolean run;
-    private Vector result;
+    // private Vector result;
     private EzVarChannel channelpsf, channelRestart;
     private EzGroup ezPaddingGroup;
     private EzGroup ezWeightingGroup;
     private EzGroup ezDeconvolutionGroup;
+    private EzVarDoubleArrayNative scale;
+    private EzGroup ezDeconvolutionGroup2;
 
     /*********************************/
     /**      Initialization         **/
@@ -296,7 +299,11 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         positivity = new EzVarBoolean("Enforce nonnegativity:", true);
         singlePrecision = new EzVarBoolean("Compute in single precision:", false);
         showIteration = new EzVarBoolean("Show intermediate results:", true);
-        ezDeconvolutionGroup = new EzGroup("Deconvolution parameters",logmu,mu,epsilon,nbIterDeconv,positivity,singlePrecision,showIteration);
+
+        scale = new EzVarDoubleArrayNative("Aspect ratio of a voxel", scaleDef, 2,true); //FIXME SCALE
+        ezDeconvolutionGroup2 = new EzGroup("More  parameters",epsilon,scale,positivity,singlePrecision);
+        ezDeconvolutionGroup2.setFoldedState(true);
+        ezDeconvolutionGroup = new EzGroup("Deconvolution parameters",logmu,mu,nbIterDeconv,ezDeconvolutionGroup2);
 
         startDec = new EzButton("Start Deconvolution", new ActionListener() {
             @Override
@@ -337,6 +344,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         };
         logmu.addVarChangeListener(logmuActionListener);
 
+        EzGroup groupVisu  = new EzGroup("Visualization", showIteration,showFull);
+        groupVisu.setFoldedState(true);
 
         EzGroup groupStop1 = new EzGroup("Emergency STOP", stopDec);
 
@@ -352,7 +361,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         addEzComponent(ezWeightingGroup);
         addEzComponent(ezDeconvolutionGroup);
         addEzComponent(startDec);
-        addEzComponent(showFull);
+        addEzComponent(groupVisu);
         addEzComponent(groupStop1);
 
 
@@ -524,6 +533,11 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         solver.setWeight(wgtArray);
         solver.setEdgeThreshold(epsilon.getValue());
         solver.setRegularizationLevel(mu.getValue());
+        if (scale.getValue().length !=3){
+            throwError("Pixel scale must have 3 elements");
+            return;
+        }
+        solver.setScale(scale.getValue());
         solver.setSaveBest(true);
         solver.setLowerBound(positivity.getValue() ? 0.0 : Double.NEGATIVE_INFINITY);
         solver.setUpperBound(Double.POSITIVE_INFINITY);
@@ -554,7 +568,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             solver.iterate();
         }
         //   result = solver.getBestSolution();
-        show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),imageShape),resultSequence,"Deconvolved image,  mu="+solver.getRegularizationLevel());
+        show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),imageShape),cursequence,"Deconvolved image,  mu="+solver.getRegularizationLevel());
         restart.setValue(resultSequence);
     }
 
