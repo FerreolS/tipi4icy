@@ -39,7 +39,7 @@ import mitiv.array.FloatArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.Traits;
-import mitiv.invpb.EdgePreservingDeconvolution;
+import mitiv.cost.EdgePreservingDeconvolution;
 import mitiv.linalg.shaped.ShapedVector;
 import mitiv.optim.OptimTask;
 import mitiv.utils.FFTUtils;
@@ -530,7 +530,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         solver.setObjectShape(outputShape);
         solver.setPSF(psfArray);
         solver.setData(imgArray);
-        solver.setWeight(wgtArray);
+        solver.setWeights(wgtArray);
         solver.setEdgeThreshold(epsilon.getValue());
         solver.setRegularizationLevel(mu.getValue());
         if (scale.getValue().length !=3){
