@@ -39,6 +39,7 @@ import mitiv.invpb.ReconstructionSynchronizer;
 import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import mitiv.old.reconstruction.ReconstructionThreadToken;
 import mitiv.optim.BLMVM;
 import mitiv.optim.BoundProjector;
 import mitiv.optim.LBFGS;
@@ -51,7 +52,6 @@ import mitiv.optim.SimpleBounds;
 import mitiv.optim.SimpleLowerBound;
 import mitiv.optim.SimpleUpperBound;
 import mitiv.utils.Timer;
-import mitiv.utils.reconstruction.ReconstructionThreadToken;
 
 public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements ReconstructionJob {
     /*****************************************************************************************/

@@ -35,9 +35,9 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import mitiv.array.ShapedArray;
-import mitiv.deconv.DeconvUtils;
-import mitiv.deconv.Deconvolution;
-import mitiv.utils.CommonUtils;
+import mitiv.old.CommonUtils;
+import mitiv.old.DeconvUtils;
+import mitiv.old.Deconvolution;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
