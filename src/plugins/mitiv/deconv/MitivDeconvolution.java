@@ -30,10 +30,11 @@ import java.awt.event.ActionListener;
 
 import javax.swing.SwingUtilities;
 
-import icy.gui.frame.progress.AnnounceFrame;
+import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import mitiv.array.Array3D;
+import mitiv.array.Array4D;
 import mitiv.array.ArrayFactory;
 import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
@@ -134,6 +135,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         if (!isHeadLess()) {
             getUI().setParametersIOVisible(false);
             getUI().setActionPanelVisible(false);
+        }else{
             outputHeadlessImage = new EzVarSequence("Output Image");
         }
 
@@ -159,9 +161,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
             @Override
             public void variableChanged(EzVar<Integer> source, Integer newValue) {
-                updatePaddedSize();
                 updateImageSize();
-                updateOutputSize();
+                updatePaddedSize();
             }
         };
         paddingSizeXY.addVarChangeListener(zeroPadActionListener);
@@ -175,8 +176,10 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             public void variableChanged(EzVar<Sequence> source,
                     Sequence newValue) {
                 newValue = restart.getValue();
-                if (newValue != null || (newValue != null && newValue.isEmpty())) {
-                    System.out.println("restart changed:"+newValue.getName());
+                if(debug){
+                    if (newValue != null || (newValue != null && newValue.isEmpty())) {
+                        System.out.println("restart changed:"+newValue.getName());
+                    }
                 }
             }
         });
@@ -190,6 +193,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
                 Sequence seq = image.getValue();
                 if (seq != null || (seq != null && seq.isEmpty())) {
+
+
                     sizeX =  newValue.getSizeX();
                     sizeY = newValue.getSizeY();
                     sizeZ = newValue.getSizeZ();
@@ -197,7 +202,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     updateImageSize();
 
                     imageShape = new Shape(sizeX, sizeY, sizeZ);
-
+                    show( IcyBufferedImageUtils.sequenceToArray( seq,0));
 
                     if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
@@ -310,7 +315,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         /****************************************************/
         mu = new EzVarDouble("Regularization level:",1E-5,0.,Double.MAX_VALUE,0.01);
         logmu = new EzVarDouble("Log10 of the Regularization level:",-5,-Double.MAX_VALUE,Double.MAX_VALUE,1);
-        epsilon = new EzVarDouble("Threshold level:",1E-2,0.,Double.MAX_VALUE,0.01);
+        epsilon = new EzVarDouble("Threshold level:",1E-2,0.,Double.MAX_VALUE,1.0);
         nbIterDeconv = new EzVarInteger("Number of iterations: ",10,1,Integer.MAX_VALUE ,1);
         positivity = new EzVarBoolean("Enforce nonnegativity:", true);
         singlePrecision = new EzVarBoolean("Compute in single precision:", false);
@@ -333,6 +338,17 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     @Override
                     public void run() {
                         launch();
+
+                        SwingUtilities.invokeLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                if(debug){
+                                    System.out.println("invoke later");
+                                }
+                                restart.setValue(cursequence);
+                                channelRestart.setValue(0);
+                            }
+                        });
                     }
                 };
                 workerThread.start();
@@ -386,11 +402,11 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         addEzComponent(groupVisu);
         addEzComponent(groupStop1);
 
-
-        outputSize.setEnabled(false);
-        imageSize.setEnabled(false);
-        mu.setEnabled(false);
-
+        if (!isHeadLess()) {
+            outputSize.setEnabled(false);
+            imageSize.setEnabled(false);
+            mu.setEnabled(false);
+        }
 
     }
 
@@ -440,7 +456,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
                 for (int k = 0; k < arr.getDimension(3); k++) {
                     for (int j = 0; j < arr.getDimension(2); j++) {
-                        sequence.setImage(k,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array3D)arr).slice(k).slice(j).flatten() ));
+                        sequence.setImage(k,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array4D)arr).slice(k).slice(j).flatten() ));
                     }
                 }
             default:
@@ -458,6 +474,9 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     protected void updateOutputSize() {
         String text = Nxy+"x"+Nxy+"x"+Nz;
         outputSize.setValue(text);
+        if((1.0*Nxy*Nxy*Nz)>Math.pow(2, 32)){
+            throwError("Padded image is too large (>2^32)");
+        }
     }
 
     protected void updateImageSize() {
@@ -536,10 +555,14 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
         if (restart.getValue() != null && restartSeq != null){
             restartArray = IcyBufferedImageUtils.imageToArray(restartSeq, imageShape, channelRestart.getValue());
-            System.out.println("restart seq:" +restartSeq.getName());
+            if(debug){
+                System.out.println("restart seq:" +restartSeq.getName());
+            }
             solver.setInitialSolution(restartArray);
         }else{
-            System.out.println("restart seq is null:");
+            if(debug){
+                System.out.println("restart seq is null:");
+            }
         }
 
         if(singlePrecision.getValue()){
@@ -571,13 +594,14 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         solver.setUpperBound(Double.POSITIVE_INFINITY);
         solver.setMaximumIterations(nbIterDeconv.getValue());
         solver.setMaximumEvaluations(2*nbIterDeconv.getValue());
-        System.out.println("Launch it:"+nbIterDeconv.getValue());
+        if (debug){
+            System.out.println("Launch it:"+nbIterDeconv.getValue());
+        }
         run = true;
         OptimTask task = solver.start();
 
         while (run) {
             task = solver.getTask();
-            System.out.println("  it "+solver.getIterations());
             if (task == OptimTask.ERROR) {
                 System.err.format("Error: %s\n", solver.getReason());
                 break;
@@ -601,23 +625,13 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             outputHeadlessImage.setValue(cursequence);
         }
 
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                if(debug){
-                    System.out.println("invoke later");
-                }
-                restart.setValue(cursequence);
-                channelRestart.setValue(0);
-            }
-        });
     }
 
     /****************************************************/
     /**                  UTILS FUNCTIONS               **/
     /****************************************************/
     private static void throwError(String s){
-        new AnnounceFrame(s);
+        new FailedAnnounceFrame(s);
         //throw new IllegalArgumentException(s);
     }
 
