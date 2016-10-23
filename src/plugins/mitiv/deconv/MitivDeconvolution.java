@@ -31,10 +31,7 @@ import java.awt.event.ActionListener;
 import javax.swing.SwingUtilities;
 
 import icy.gui.frame.progress.FailedAnnounceFrame;
-import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
-import mitiv.array.Array3D;
-import mitiv.array.Array4D;
 import mitiv.array.ArrayFactory;
 import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
@@ -202,10 +199,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     updateImageSize();
 
                     imageShape = new Shape(sizeX, sizeY, sizeZ);
-                    show( IcyBufferedImageUtils.sequenceToArray( seq,0));
 
+                    //  show( IcyBufferedImageUtils.sequenceToArray( image.getValue(),0), "type : "+seq.getDataType_());
+                    //  show( IcyBufferedImageUtils.sequenceToArray( image.getValue(),0).toDouble(), "to double : ");
                     if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
+                        show( IcyBufferedImageUtils.sequenceToArray( seq,0));
                     }
                     // setting restart value to the current sequence
                     restart.setValue(newValue);
@@ -296,7 +295,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 DoubleArray imgArray, wgtArray;
                 // Preparing parameters and testing input
                 Sequence imgSeq = image.getValue();
-                imgArray = (DoubleArray) IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, channel.getValue());
+                imgArray =   IcyBufferedImageUtils.sequenceToArray(imgSeq, channel.getValue()).toDouble();
                 wgtArray = createWeights(imgArray).toDouble();
                 show(wgtArray,"Weight map");
                 if (debug) {
@@ -426,7 +425,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         show(  arr,  null,  "" ) ;
     }
     protected void show(ShapedArray  arr, Sequence sequence, String title ) {
-
         if (sequence == null )  {
 
             sequence = new Sequence();
@@ -434,34 +432,13 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 addSequence(sequence);
             }
         }
+        sequence.beginUpdate();
+        sequence =  IcyBufferedImageUtils.arrayToSequence(arr, sequence);
 
         if( sequence.getFirstViewer() == null){
             if (!isHeadLess()){
                 addSequence(sequence);
             }
-        }
-        sequence.beginUpdate();
-
-        switch (arr.getRank()) {
-            case 2:
-                sequence.setImage(0,0, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1), arr.flatten()));
-                break;
-            case 3:
-                for (int j = 0; j < arr.getDimension(2); j++) {
-                    sequence.setImage(0,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array3D)arr).slice(j).flatten() ));
-                }
-                break;
-
-            case 4:
-
-                for (int k = 0; k < arr.getDimension(3); k++) {
-                    for (int j = 0; j < arr.getDimension(2); j++) {
-                        sequence.setImage(k,j, new IcyBufferedImage(arr.getDimension(0), arr.getDimension(1),((Array4D)arr).slice(k).slice(j).flatten() ));
-                    }
-                }
-            default:
-                throwError("Show can plot only 2D to 4D arrays");
-                break;
         }
 
         sequence.endUpdate();
@@ -550,11 +527,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         }
 
         ShapedArray imgArray, psfArray, wgtArray,restartArray;
-        imgArray = IcyBufferedImageUtils.imageToArray(imgSeq, imageShape, channel.getValue());
-        psfArray = IcyBufferedImageUtils.imageToArray(psfSeq, psfShape, channelpsf.getValue());
-
+        imgArray = IcyBufferedImageUtils.sequenceToArray(imgSeq, channel.getValue());
+        psfArray = IcyBufferedImageUtils.sequenceToArray(psfSeq,  channelpsf.getValue());
+        imageShape = imgArray.getShape();
+        psfShape = psfArray.getShape();
         if (restart.getValue() != null && restartSeq != null){
-            restartArray = IcyBufferedImageUtils.imageToArray(restartSeq, imageShape, channelRestart.getValue());
+            restartArray = IcyBufferedImageUtils.sequenceToArray(restartSeq, channelRestart.getValue());
             if(debug){
                 System.out.println("restart seq:" +restartSeq.getName());
             }
@@ -566,10 +544,10 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         }
 
         if(singlePrecision.getValue()){
-            wgtArray = createWeights(imgArray).toFloat();
+            wgtArray = createWeights(imgArray.toFloat()).toFloat();
             solver.setForceSinglePrecision(true);
         }else{
-            wgtArray = createWeights(imgArray).toDouble();
+            wgtArray = createWeights(imgArray.toDouble()).toDouble();
             solver.setForceSinglePrecision(false);
         }
         cursequence = new Sequence("Current Iterate");
@@ -660,12 +638,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         } else if (weightsMethod.getValue() == weightOptions[1]) {
             // A map of weights is provided.
             if ((seq = weights.getValue()) != null) {
-                wgtArray = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+                wgtArray = IcyBufferedImageUtils.sequenceToArray(seq);
             }
         } else if (weightsMethod.getValue() == weightOptions[2]) {
             // A variance map is provided. FIXME: check shape and values.
             if ((seq = weights.getValue()) != null) {
-                ShapedArray varArray = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+                ShapedArray varArray = IcyBufferedImageUtils.sequenceToArray(seq);
                 wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
                 wgtCopy = false; // no needs to copy weights
             }
@@ -689,7 +667,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
         if (/*deadPixGiven.getValue() && */(seq = deadPixel.getValue()) != null) {
             // Account for bad data.
-            ShapedArray badArr = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+            ShapedArray badArr = IcyBufferedImageUtils.sequenceToArray(seq);
             WeightFactory.removeBads(wgtArray, badArr);
         }
 

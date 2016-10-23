@@ -33,6 +33,8 @@ import icy.sequence.DimensionId;
 import icy.sequence.Sequence;
 import icy.type.DataType;
 import icy.type.collection.array.Array1DUtil;
+import mitiv.array.Array3D;
+import mitiv.array.Array4D;
 import mitiv.array.Byte1D;
 import mitiv.array.Byte2D;
 import mitiv.array.Byte3D;
@@ -53,6 +55,11 @@ import mitiv.array.Int2D;
 import mitiv.array.Int3D;
 import mitiv.array.Int4D;
 import mitiv.array.Int5D;
+import mitiv.array.Long1D;
+import mitiv.array.Long2D;
+import mitiv.array.Long3D;
+import mitiv.array.Long4D;
+import mitiv.array.Long5D;
 import mitiv.array.ShapedArray;
 import mitiv.array.Short1D;
 import mitiv.array.Short2D;
@@ -88,32 +95,36 @@ public class IcyBufferedImageUtils {
     public static ShapedArray sequenceToArray(Sequence seq,int c, int z, int t) {
         int nx, ny, nz, nc, nt;
 
-        if (seq.isSignedDataType())
+        if (!seq.isSignedDataType()) // If the sequence in not signed promote to the next signed type
         {
             switch (seq.getDataType_())
             {
-                case BYTE:
-                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.UBYTE, true);
+                case UBYTE:
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.SHORT, false);
                     break;
-                case SHORT:
-                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.USHORT, true);
+                case USHORT:
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.INT, false);
                     break;
-                case INT:
-                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.UINT, true);
+                case UINT:
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.LONG, false);
                     break;
                 default:
                     break;
             }
         }
+
+        /* extract sequence dimension */
         nx = seq.getSize(DimensionId.X);
         ny = seq.getSize(DimensionId.Y);
         nz = seq.getSize(DimensionId.Z);
         nc = seq.getSize(DimensionId.C);
         nt = seq.getSize(DimensionId.T);
-        byte cztSelect = czt;
+
+        byte cztSelect = czt; // CZT selector
+
         int[] dims ={1,1,1,1,1};
         int ndims =0;
-        if (c<0){
+        if (c<0){ // No C selection
             if (nc>1){
                 dims[ndims] = nc;
                 ndims++;
@@ -135,7 +146,7 @@ public class IcyBufferedImageUtils {
             ndims++;
         }
 
-        if(z<0){
+        if(z<0){ // no Z selection
             if(nz>1){
                 dims[ndims] = nz;
                 ndims++;
@@ -148,7 +159,7 @@ public class IcyBufferedImageUtils {
             }
         }
 
-        if(t<0){
+        if(t<0){ // no T selection
             if(nt>1){
                 dims[ndims] = nt;
                 ndims++;
@@ -211,6 +222,8 @@ public class IcyBufferedImageUtils {
                 return wrapObject((short[]) data, shape);
             case INT:
                 return wrapObject((int[]) data, shape);
+            case LONG:
+                return wrapObject((long[]) data, shape);
             case FLOAT:
                 return wrapObject((float[]) data, shape);
             case DOUBLE:
@@ -256,6 +269,24 @@ public class IcyBufferedImageUtils {
                 throw new IllegalArgumentException("The input dimension must be of rank <6");
         }
     }
+
+    private static ShapedArray wrapObject(long[] data, Shape shape) {
+        switch (shape.rank()) {
+            case 1:
+                return Long1D.wrap(data, shape);
+            case 2:
+                return Long2D.wrap(data, shape);
+            case 3:
+                return Long3D.wrap(data, shape);
+            case 4:
+                return Long4D.wrap(data, shape);
+            case 5:
+                return Long5D.wrap(data, shape);
+            default:
+                throw new IllegalArgumentException("The input dimension must be of rank <6");
+        }
+    }
+
 
     private static ShapedArray wrapObject(int[] data, Shape shape) {
         switch (shape.rank()) {
@@ -309,7 +340,42 @@ public class IcyBufferedImageUtils {
         }
     }
 
+    public static Sequence arrayToSequence(ShapedArray array)
+    {
+        return arrayToSequence( array,null);
+    }
 
+    public static Sequence arrayToSequence(ShapedArray array,Sequence sequence)
+    {
+        if (sequence == null )  {
+            sequence = new Sequence();
+        }
+
+        switch (array.getRank()) {
+            case 1:
+                sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), 1, array.flatten(),true,false));
+                break;
+            case 2:
+                sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), array.getDimension(1), array.flatten(),true,false));
+                break;
+            case 3:
+                for (int j = 0; j < array.getDimension(2); j++) {
+                    sequence.setImage(0,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array3D)array).slice(j).flatten() ,true,false));
+                }
+                break;
+
+            case 4:
+
+                for (int k = 0; k < array.getDimension(3); k++) {
+                    for (int j = 0; j < array.getDimension(2); j++) {
+                        sequence.setImage(k,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array4D)array).slice(k).slice(j).flatten() ,true,false));
+                    }
+                }
+            default:
+                throw new IllegalArgumentException(" arrayToSequence can convert only 1D to 4D arrays");
+        }
+        return sequence;
+    }
     /* Jonathan */
     public static ShapedArray imageToArray(ArrayList<IcyBufferedImage> listImage) {
         int width = listImage.get(0).getWidth();
