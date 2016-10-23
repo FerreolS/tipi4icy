@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import icy.image.IcyBufferedImage;
 import icy.sequence.DimensionId;
 import icy.sequence.Sequence;
+import icy.type.DataType;
 import icy.type.collection.array.Array1DUtil;
 import mitiv.array.Byte1D;
 import mitiv.array.Byte2D;
@@ -74,6 +75,7 @@ public class IcyBufferedImageUtils {
     static final byte CZT = (byte)0b00000111;
     /*Ferréol */
 
+
     public static ShapedArray sequenceToArray(Sequence seq) {
         return sequenceToArray( seq,-1, -1, -1);
     }
@@ -85,6 +87,24 @@ public class IcyBufferedImageUtils {
     }
     public static ShapedArray sequenceToArray(Sequence seq,int c, int z, int t) {
         int nx, ny, nz, nc, nt;
+
+        if (seq.isSignedDataType())
+        {
+            switch (seq.getDataType_())
+            {
+                case BYTE:
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.UBYTE, true);
+                    break;
+                case SHORT:
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.USHORT, true);
+                    break;
+                case INT:
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.UINT, true);
+                    break;
+                default:
+                    break;
+            }
+        }
         nx = seq.getSize(DimensionId.X);
         ny = seq.getSize(DimensionId.Y);
         nz = seq.getSize(DimensionId.Z);
@@ -109,18 +129,40 @@ public class IcyBufferedImageUtils {
             dims[ndims] = nx;
             ndims++;
         }
+
         if(ny>1){
             dims[ndims] = ny;
             ndims++;
         }
-        if(nz>1){
-            dims[ndims] = nz;
-            ndims++;
+
+        if(z<0){
+            if(nz>1){
+                dims[ndims] = nz;
+                ndims++;
+            }
+        }else{
+            if (z<nz){
+                cztSelect |= cZt;
+            }else{
+                throw  new IllegalArgumentException("Requested z unavailable");
+            }
         }
-        if(nt>1){
-            dims[ndims] = nt;
-            ndims++;
+
+        if(t<0){
+            if(nt>1){
+                dims[ndims] = nt;
+                ndims++;
+            }
+        }else{
+            if (t<nt){
+                cztSelect |= czT;
+            }else{
+                throw  new IllegalArgumentException("Requested z unavailable");
+            }
         }
+
+
+
         // Remove singleton dimensions
         int[] newdims = new int[ndims];
         for (int i = 0; i < ndims; i++) {
@@ -160,7 +202,7 @@ public class IcyBufferedImageUtils {
             default:
                 throw  new IllegalArgumentException("CZT Selection impossible");
         };
-        // Array1DUtil.arrayToArray(in, out, signed)
+
         switch (seq.getDataType_().getJavaType())
         {
             case BYTE:
@@ -176,6 +218,7 @@ public class IcyBufferedImageUtils {
             default:
                 return null;
         }
+
     }
 
 
