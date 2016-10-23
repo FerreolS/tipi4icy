@@ -60,6 +60,9 @@ import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.IcyBufferedImageUtils;
+import plugins.mitiv.io.Sequence2Array;
+
+
 /**
  * MitivDeconvolution implements regularized multi-dimensional deconvolution.
  */
@@ -204,7 +207,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     //  show( IcyBufferedImageUtils.sequenceToArray( image.getValue(),0).toDouble(), "to double : ");
                     if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
-                        show( IcyBufferedImageUtils.sequenceToArray( seq,0));
+                        show( Sequence2Array.sequenceToArray( seq,0));
                     }
                     // setting restart value to the current sequence
                     restart.setValue(newValue);
