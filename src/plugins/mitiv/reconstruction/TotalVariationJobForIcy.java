@@ -75,7 +75,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
 
     private DoubleArray data = null;
     private DoubleArray psf = null;
-    private DoubleArray weight = null;
+    private DoubleArray weights = null;
     private double fcost = 0.0;
     private DoubleShapedVector gcost = null;
     private Timer timer = new Timer();
@@ -157,7 +157,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         upperBound = value;
     }
     public void setWeight(DoubleArray W){
-        this.weight = W;
+        this.weights = W;
     }
     public void setOutputShape(Shape shape){
         resultShape = shape;
@@ -239,7 +239,7 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         DoubleShapedVectorSpace dataSpace = new DoubleShapedVectorSpace(dataShape);
         DoubleShapedVectorSpace resultSpace = new DoubleShapedVectorSpace(resultShape);
         DoubleShapedVector x = null;
-        
+
         if (result != null) {
             x = resultSpace.create(result);
         } else {
@@ -247,14 +247,15 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         }
         result = ArrayFactory.wrap(x.getData(), resultShape);
 
-        
+
         // Build convolution operator.
         DifferentiableCostFunction fdata;
         WeightedConvolutionCost weightedCost = WeightedConvolutionCost.build(resultSpace, dataSpace);
         weightedCost.setPSF(psf);
-        weightedCost.setWeightsAndData(weight, data);
+        weightedCost.setData(data);
+        weightedCost.setWeights(weights);
         fdata = weightedCost;
-        
+
         // Build the cost functions
         HyperbolicTotalVariation fprior = new HyperbolicTotalVariation(resultSpace, epsilon);
         CompositeDifferentiableCostFunction cost = new CompositeDifferentiableCostFunction(1.0, fdata, mu, fprior);
@@ -395,14 +396,4 @@ public class TotalVariationJobForIcy extends ReconstructionJobForIcy implements 
         return (gcost == null ? 0.0 : gcost.normInf());
     }
 }
-/*
- * Local Variables:
- * mode: Java
- * tab-width: 8
- * indent-tabs-mode: nil
- * c-basic-offset: 4
- * fill-column: 78
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */
+
