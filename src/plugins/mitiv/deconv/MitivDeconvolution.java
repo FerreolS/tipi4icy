@@ -500,8 +500,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         Sequence psfSeq = psf.getValue();
         Sequence restartSeq = restart.getValue();
 
-        psfShape = new Shape(psfSizeX, psfSizeY, psfSizeZ);
-
 
         if (imgSeq == null)
         {
@@ -741,7 +739,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
     @Override
     public void clean() {
-        // TODO Auto-generated method stub
+        stopExecution();
 
     }
 }
