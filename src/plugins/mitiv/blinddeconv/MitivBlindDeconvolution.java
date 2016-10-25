@@ -55,11 +55,11 @@ import mitiv.invpb.ReconstructionJob;
 import mitiv.invpb.ReconstructionViewer;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import mitiv.microscopy.MicroscopeModel;
 import mitiv.microscopy.PSF_Estimation;
 import mitiv.old.MathUtils;
 import mitiv.old.reconstruction.ReconstructionThread;
 import mitiv.old.reconstruction.ReconstructionThreadToken;
-import mitiv.microscopy.MicroscopeModel;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.WeightFactory;
 import plugins.adufour.blocks.lang.Block;
@@ -296,7 +296,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         dataPanel = new EzPanel("Step 1: Data"); //Border layout to be sure that the images are stacked to the up
         EzPanel imagePan = new EzPanel("FILEPanel");
         image = new EzVarSequence("Sequence:");
-        channel = new EzVarChannel("Canal:", image.getVariable(), false);
+        channel = new EzVarChannel("Channel:", image.getVariable(), false);
         imageSize = new EzVarText("Image size:");
         outputSize = new EzVarText("Output size:");
         paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
@@ -1163,12 +1163,12 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private static ShapedArray flatCopy(ShapedArray arr)
     {
         switch (arr.getType()) {
-            case Traits.FLOAT:
-                return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
-            case Traits.DOUBLE:
-                return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
-            default:
-                throw new IllegalArgumentException("Unsupported data type");
+        case Traits.FLOAT:
+            return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
+        case Traits.DOUBLE:
+            return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
+        default:
+            throw new IllegalArgumentException("Unsupported data type");
         }
     }
 
