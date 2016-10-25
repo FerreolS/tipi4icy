@@ -453,8 +453,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     protected void updateOutputSize() {
         String text = Nxy+"x"+Nxy+"x"+Nz;
         outputSize.setValue(text);
-        if((1.0*Nxy*Nxy*Nz)>Math.pow(2, 32)){
-            throwError("Padded image is too large (>2^32)");
+        if((1.0*Nxy*Nxy*Nz)>Math.pow(2, 31)){
+            throwError("Padded image is too large (>2^31)");
         }
     }
 

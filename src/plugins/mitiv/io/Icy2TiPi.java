@@ -6,6 +6,7 @@ import icy.sequence.Sequence;
 import icy.type.DataType;
 import mitiv.array.Array3D;
 import mitiv.array.Array4D;
+import mitiv.array.ArrayFactory;
 import mitiv.array.Byte1D;
 import mitiv.array.Byte2D;
 import mitiv.array.Byte3D;
@@ -57,28 +58,29 @@ public class Icy2TiPi {
     public static ShapedArray sequenceToArray(Sequence seq,int c) {
         return sequenceToArray( seq,c, -1, -1);
     }
-    public static ShapedArray sequenceToArray(Sequence seq,int c,int z) {
-        return sequenceToArray( seq,c, z, -1);
+    public static ShapedArray sequenceToArray(Sequence seq,int c,int t) {
+        return sequenceToArray( seq,c, -1, t);
     }
     public static ShapedArray sequenceToArray(Sequence seq,int c, int z, int t) {
         int nx, ny, nz, nc, nt;
 
-        if (!seq.isSignedDataType()) // If the sequence in not signed promote to the next signed type
+
+        switch (seq.getDataType_())
         {
-            switch (seq.getDataType_())
-            {
-                case UBYTE:
-                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.SHORT, false);
-                    break;
-                case USHORT:
-                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.INT, false);
-                    break;
-                case UINT:
-                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.LONG, false);
-                    break;
-                default:
-                    break;
-            }
+            case BYTE:
+                seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.SHORT, false);
+                break;
+            case USHORT:
+                seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.INT, false);
+                break;
+            case UINT:
+                seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.LONG, false);
+                break;
+            case ULONG:
+                seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.DOUBLE, false);
+                break;
+            default:
+                break;
         }
 
         /* extract sequence dimension */
@@ -172,7 +174,7 @@ public class Icy2TiPi {
                 data =  seq.getDataCopyXYZ(t, c);
                 break;
             case cZT:
-                data =  seq.getDataCopyXYC(t, c);
+                data =  seq.getDataCopyXYC(t, z);
                 break;
             case CZT:
                 data =  seq.getDataCopyXY(t, z, c); // FIXME it can be  seq.getDataXY(t, z, c);
@@ -185,23 +187,22 @@ public class Icy2TiPi {
         switch (seq.getDataType_().getJavaType())
         {
             case BYTE:
-                return wrapObject((byte[]) data, shape);
+                return ArrayFactory.wrap((byte[]) data, shape);
             case SHORT:
-                return wrapObject((short[]) data, shape);
+                return ArrayFactory.wrap((short[]) data, shape);
             case INT:
-                return wrapObject((int[]) data, shape);
+                return ArrayFactory.wrap((int[]) data, shape);
             case LONG:
-                return wrapObject((long[]) data, shape);
+                return ArrayFactory.wrap((long[]) data, shape);
             case FLOAT:
-                return wrapObject((float[]) data, shape);
+                return ArrayFactory.wrap((float[]) data, shape);
             case DOUBLE:
-                return wrapObject((double[]) data, shape);
+                return ArrayFactory.wrap((double[]) data, shape);
             default:
                 return null;
         }
 
     }
-
 
 
     private static ShapedArray wrapObject(double[] data, Shape shape) {
