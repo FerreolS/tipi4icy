@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.mitiv.wiener;
+package plugins.mitiv.old.wiener;
 
 import java.awt.image.BufferedImage;
 import java.text.DecimalFormat;
@@ -55,7 +55,7 @@ import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.blinddeconv.ToolTipText;
-import plugins.mitiv.io.IcyBufferedImageUtils;
+import plugins.mitiv.old.io.IcyBufferedImageUtils;
 
 /**
  * MiTivWiener is a deconvolution tool based on linear methods. It's goal is to offer a simple 

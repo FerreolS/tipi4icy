@@ -25,6 +25,9 @@
 
 package plugins.mitiv.deconv;
 
+import static plugins.mitiv.io.Icy2TiPi.arrayToSequence;
+import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -59,7 +62,6 @@ import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
-import plugins.mitiv.io.Icy2TiPi;
 
 
 /**
@@ -204,7 +206,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     //  show( IcyBufferedImageUtils.sequenceToArray( image.getValue(),0).toDouble(), "to double : ");
                     if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
-                        show( Icy2TiPi.sequenceToArray( seq,0));
+                        show(  sequenceToArray( seq,0));
                     }
                     // setting restart value to the current sequence
                     restart.setValue(newValue);
@@ -295,7 +297,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 DoubleArray dataArray, wgtArray;
                 // Preparing parameters and testing input
                 Sequence dataSeq = image.getValue();
-                dataArray =   Icy2TiPi.sequenceToArray(dataSeq, channel.getValue()).toDouble();
+                dataArray =    sequenceToArray(dataSeq, channel.getValue()).toDouble();
                 wgtArray = createWeights(dataArray).toDouble();
                 show(wgtArray,"Weight map");
                 if (debug) {
@@ -433,7 +435,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             }
         }
         sequence.beginUpdate();
-        sequence =  Icy2TiPi.arrayToSequence(arr, sequence);
+        sequence =   arrayToSequence(arr, sequence);
 
         if( sequence.getFirstViewer() == null){
             if (!isHeadLess()){
@@ -525,12 +527,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         }
 
         ShapedArray dataArray, psfArray, wgtArray,restartArray;
-        dataArray = Icy2TiPi.sequenceToArray(dataSeq, channel.getValue());
-        psfArray = Icy2TiPi.sequenceToArray(psfSeq,  channelpsf.getValue());
+        dataArray =  sequenceToArray(dataSeq, channel.getValue());
+        psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue());
         imageShape = dataArray.getShape();
         psfShape = psfArray.getShape();
         if (restart.getValue() != null && restartSeq != null){
-            restartArray = Icy2TiPi.sequenceToArray(restartSeq, channelRestart.getValue());
+            restartArray =  sequenceToArray(restartSeq, channelRestart.getValue());
             if(debug){
                 System.out.println("restart seq:" +restartSeq.getName());
             }
@@ -638,12 +640,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         } else if (weightsMethod.getValue() == weightOptions[1]) {
             // A map of weights is provided.
             if ((seq = weights.getValue()) != null) {
-                wgtArray = Icy2TiPi.sequenceToArray(seq);
+                wgtArray =  sequenceToArray(seq);
             }
         } else if (weightsMethod.getValue() == weightOptions[2]) {
             // A variance map is provided. FIXME: check shape and values.
             if ((seq = weights.getValue()) != null) {
-                ShapedArray varArray = Icy2TiPi.sequenceToArray(seq);
+                ShapedArray varArray =  sequenceToArray(seq);
                 wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
                 wgtCopy = false; // no needs to copy weights
             }
@@ -667,7 +669,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
         if (/*deadPixGiven.getValue() && */(seq = deadPixel.getValue()) != null) {
             // Account for bad data.
-            ShapedArray badArr = Icy2TiPi.sequenceToArray(seq);
+            ShapedArray badArr =  sequenceToArray(seq);
             WeightFactory.removeBads(wgtArray, badArr);
         }
 

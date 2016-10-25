@@ -36,7 +36,7 @@ import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.mitiv.deconv.MitivDeconvolution;
-import plugins.mitiv.io.IcyBufferedImageUtils;
+import plugins.mitiv.old.io.IcyBufferedImageUtils;
 
 /**
  * This plugin is normalizing all the data so that the sum of all pixels

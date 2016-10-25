@@ -37,7 +37,7 @@ import mitiv.old.MathUtils;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.mitiv.deconv.MitivDeconvolution;
-import plugins.mitiv.io.IcyBufferedImageUtils;
+import plugins.mitiv.old.io.IcyBufferedImageUtils;
 
 public class Convolution extends EzPlug implements   PluginBundled {
     //Mydata

@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.mitiv.wiener;
+package plugins.mitiv.old.wiener;
 
 import java.awt.image.BufferedImage;
 import mitiv.linalg.LinearConjugateGradient;

@@ -26,6 +26,9 @@
 
 package plugins.mitiv.blinddeconv;
 
+import static plugins.mitiv.io.Icy2TiPi.arrayToSequence;
+import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
+
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -56,6 +59,7 @@ import mitiv.cost.EdgePreservingDeconvolution;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.linalg.shaped.ShapedVector;
+import mitiv.microscopy.MicroscopeMetadata;
 import mitiv.microscopy.MicroscopeModel;
 import mitiv.microscopy.PSF_Estimation;
 import mitiv.optim.OptimTask;
@@ -81,9 +85,6 @@ import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.deconv.MitivDeconvolution;
-import plugins.mitiv.io.Icy2TiPi;
-import plugins.mitiv.io.IcyBufferedImageUtils;
-import plugins.mitiv.myEzPlug.MyMetadata;
 
 /**
  * This class implements an Icy plugin for 3D blind deconvolution in wide field fluorescence deconvolution.
@@ -113,7 +114,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private EzVarInteger    paddingSizeXY, paddingSizeZ;
     private EzButton saveMetaData, showPSF;
     private EzVarText imageSize, outputSize;
-    private MyMetadata meta = null;     //The image metadata that we will move from one image to another
+    private MicroscopeMetadata meta = null;     //The image metadata that we will move from one image to another
 
     /** weighting tab: **/
     private EzPanel   weigthPanel;
@@ -1021,12 +1022,12 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         } else if (weightsMethod.getValue() == weightOptions[1]) {
             // A map of weights is provided.
             if ((seq = weights.getValue()) != null) {
-                wgtArray = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+                wgtArray = sequenceToArray(seq);
             }
         } else if (weightsMethod.getValue() == weightOptions[2]) {
             // A variance map is provided. FIXME: check shape and values.
             if ((seq = weights.getValue()) != null) {
-                ShapedArray varArray = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+                ShapedArray varArray = sequenceToArray(seq);
                 wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
                 wgtCopy = false; // no needs to copy weights
             }
@@ -1050,7 +1051,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         if (/*deadPixGiven.getValue() && */(seq = deadPixel.getValue()) != null) {
             // Account for bad data.
-            ShapedArray badArr = IcyBufferedImageUtils.imageToArray(seq.getAllImage());
+            ShapedArray badArr =  sequenceToArray(seq);
             WeightFactory.removeBads(wgtArray, badArr);
         }
 
@@ -1143,7 +1144,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     {
         // Preparing parameters and testing input
         dataSeq = image.getValue();
-        dataArray =   Icy2TiPi.sequenceToArray(dataSeq, channel.getValue()).toDouble();
+        dataArray =  sequenceToArray(dataSeq, channel.getValue()).toDouble();
         wgtArray = createWeights(dataArray).toDouble();
         show(wgtArray,"Weight map");
     }
@@ -1158,10 +1159,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
      * @param seq
      * @return
      */
-    private MyMetadata getMetaData(Sequence seq){
+    private MicroscopeMetadata getMetaData(Sequence seq){
         OMEXMLMetadata metDat = seq.getMetadata();
         if (meta == null) {
-            meta = new MyMetadata();
+            meta = new MicroscopeMetadata();
             if (metDat.getInstrumentCount() > 0) {
                 try {
                     meta.na      = metDat.getObjectiveLensNA(0, 0);
@@ -1238,7 +1239,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     protected void preProcessing(){
         // Preparing parameters and testing input
-        dataArray = Icy2TiPi.sequenceToArray(dataSeq, channel.getValue());
+        dataArray =  sequenceToArray(dataSeq, channel.getValue());
         dataShape = dataArray.getShape();
 
         // Preparing parameters and testing input
@@ -1257,7 +1258,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         Sequence restartSeq = restart.getValue();
         if (restart.getValue() != null && restartSeq != null){
-            objArray = Icy2TiPi.sequenceToArray(restartSeq, channelRestart.getValue());
+            objArray =  sequenceToArray(restartSeq, channelRestart.getValue());
             if(debug){
                 System.out.println("restart seq:" +restartSeq.getName());
             }
@@ -1376,7 +1377,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         }
         sequence.beginUpdate();
-        sequence =  Icy2TiPi.arrayToSequence(arr, sequence);
+        sequence =   arrayToSequence(arr, sequence);
 
         if( sequence.getFirstViewer() == null){
             if (!isHeadLess()){

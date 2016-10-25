@@ -1,4 +1,4 @@
-package plugins.mitiv.myEzPlug;
+package plugins.mitiv.old.myEzPlug;
 
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;

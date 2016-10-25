@@ -1,6 +1,6 @@
-package plugins.mitiv.myEzPlug;
+package plugins.mitiv.old.myEzPlug;
 
-public class MyMetadata {
+public class MicroscopeMetadata {
     //Just a public object with all psf values inside
     public double dxy     = 64.5;
     public double dz      = 160;
@@ -10,6 +10,7 @@ public class MyMetadata {
     public double lambda  = 542;
     public double ni      = 1.518;
 
+    @Override
     public String toString(){
         return new String("dxy: "+dxy+" dz: "+dz+" nxy: "+nxy+" nz: "+nz+" na "+na+" lambda "+lambda+" ni "+ni);
     }

@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.mitiv.reconstruction;
+package plugins.mitiv.old.reconstruction;
 
 import icy.sequence.Sequence;
 import mitiv.array.ArrayFactory;

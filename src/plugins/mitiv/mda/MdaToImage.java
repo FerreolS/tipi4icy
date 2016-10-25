@@ -10,7 +10,7 @@ import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarFileArray;
-import plugins.mitiv.io.IcyBufferedImageUtils;
+import plugins.mitiv.old.io.IcyBufferedImageUtils;
 
 /**
  * MiTivGlobalDeconv is a blind deconvolution tool built on the same basis than
