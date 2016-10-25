@@ -46,16 +46,14 @@ import icy.util.OMEUtil;
 import loci.common.services.ServiceException;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
-import mitiv.array.ArrayFactory;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
-import mitiv.array.FloatArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
-import mitiv.base.Traits;
 import mitiv.cost.EdgePreservingDeconvolution;
+import mitiv.cost.WeightedData;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.linalg.shaped.ShapedVector;
@@ -98,7 +96,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /***************************************************/
     /**         Plugin interface variables            **/
     /***************************************************/
-    private EzVarBoolean expertMode;      // Tick box to expose expert parameters
+    //   private EzVarBoolean expertMode;      // Tick box to expose expert parameters
     private EzTabs tabbedPane;
 
     /** data tab: **/
@@ -117,12 +115,12 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private MicroscopeMetadata meta = null;     //The image metadata that we will move from one image to another
 
     /** weighting tab: **/
-    private EzPanel   weigthPanel;
     private EzVarText weightsMethod;
     private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
     private EzVarDouble  gain, noise;
     private EzVarSequence weights, deadPixel;
     private EzButton showWeight;
+    private EzGroup ezWeightingGroup, ezPadGroup;
 
 
     /** deconvolution tab: **/
@@ -135,6 +133,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private EzVarInteger    nbIterDeconv;
     private EzVarBoolean  singlePrecision;
     private EzVarDoubleArrayNative scale;
+    private EzGroup ezDeconvolutionGroup;
 
     /** blind deconvolution tab: **/
     private EzPanel    bdecPanel;
@@ -151,6 +150,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private EzVarInteger  totalNbOfBlindDecLoop,maxIterDefocus,maxIterPhase,maxIterModulus;
     private EzLabel docBlind;
     private EzGroup visuPSF;
+    private EzGroup ezBlindDeconvolutionGroup;
 
 
     /** headless mode: **/
@@ -275,7 +275,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /****************************************************/
         /**                    IMAGE TAB                   **/
         /****************************************************/
-        expertMode = new EzVarBoolean("Expert mode", false);
+        //  expertMode = new EzVarBoolean("Expert mode", false);
 
         dataPanel = new EzPanel("Step 1: Data");
         EzPanel imagePan = new EzPanel("FILEPanel");
@@ -298,12 +298,11 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        expertMode.addVarChangeListener(new EzVarListener<Boolean>() {
+        /*   expertMode.addVarChangeListener(new EzVarListener<Boolean>() {
             @Override
             public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
                 paddingSizeXY.setVisible(newValue);
                 paddingSizeZ.setVisible(newValue);
-                weigthPanel.setVisible(newValue);
                 epsilon.setVisible(newValue);
                 visuPSF.setVisible(newValue);
                 scale.setVisible(newValue);
@@ -316,7 +315,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 maxIterPhase.setVisible(newValue);
                 maxIterModulus.setVisible(newValue);
             }
-        });
+        });*/
 
 
 
@@ -413,7 +412,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         na.addVarChangeListener(metaActionListener);
         ni = new EzVarDouble("ni:",1.518,1.,2.,0.01);
         ni.addVarChangeListener(metaActionListener);
-        lambda = new EzVarDouble( "\u03BB(nm):",542.,10.,15000.,10);
+        lambda = new EzVarDouble( "\u03BB(nm):",540.,10.,15000.,5);
         lambda.addVarChangeListener(metaActionListener);
 
         showPSF = new EzButton("Show PSF", new ActionListener() {
@@ -430,10 +429,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
 
         /****************************************************/
-        /**                WEIGHTING TAB                   **/
+        /**                WEIGHTING Group                   **/
         /****************************************************/
-        weigthPanel = new EzPanel("Step 1b: Weights");
-        EzPanel varianceTab = new EzPanel("VarianceTab");
         weightsMethod = new EzVarText(      "Weighting:", weightOptions, false);
         weights = new EzVarSequence(        "Map:");
         gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
@@ -479,6 +476,11 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 }
             }
         });
+
+        ezPadGroup = new EzGroup("Padding",paddingSizeXY, paddingSizeZ);
+        ezPadGroup.setFoldedState(true);
+        ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weights,gain,noise,deadPixel,showWeight);
+        ezWeightingGroup.setFoldedState(true);
 
 
         /****************************************************/
@@ -546,6 +548,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         });
 
         EzGroup groupStop1 = new EzGroup("Emergency STOP", stopDec);
+
+        ezDeconvolutionGroup = new EzGroup("Expert  parameters",epsilon,scale,positivity,singlePrecision, showFullObject);
+        ezDeconvolutionGroup.setFoldedState(true);
 
         /****************************************************/
         /**                      BDEC TAB                  **/
@@ -633,7 +638,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        visuPSF = new EzGroup("PSF visualization", showIteration,showPSF2, showPhase, showModulus);
         stopBlind = new EzButton("STOP Computation", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -657,6 +661,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         });
 
 
+
+        visuPSF = new EzGroup("PSF visualization", showFullObject2,showIteration,showPSF2, showPhase, showModulus);
+
+
+        ezBlindDeconvolutionGroup = new EzGroup("Expert  parameters",nbAlphaCoef,nbBetaCoef,
+                radial, maxIterDefocus, maxIterPhase, maxIterModulus);
+        ezBlindDeconvolutionGroup.setFoldedState(true);
 
         /****************************************************/
         /**                    RESULT TAB                  **/
@@ -704,9 +715,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         resultTab.setToolTipText(ToolTipText.textOutput);
 
         /******** Adding ********/
-        paddingSizeXY.setVisible(false);
+        /*   paddingSizeXY.setVisible(false);
         paddingSizeZ.setVisible(false);
-        weigthPanel.setVisible(false);
         epsilon.setVisible(false);
         scale.setVisible(false);
         singlePrecision.setVisible(false);
@@ -716,14 +726,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         radial.setVisible(false);
         maxIterDefocus.setVisible(false);
         maxIterPhase.setVisible(false);
-        maxIterModulus.setVisible(false);
+        maxIterModulus.setVisible(false);*/
 
         /**** IMAGE ****/
         imagePan.add(image);
         imagePan.add(channel);
         imagePan.add(imageSize);
-        imagePan.add(paddingSizeXY);
-        imagePan.add(paddingSizeZ);
+        imagePan.add(ezPadGroup);
         imagePan.add(outputSize);
         imagePan.add(dxy_nm);
         imagePan.add(dz_nm);
@@ -733,37 +742,26 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         imagePan.add(ni);
         imagePan.add(lambda);
 
+        imagePan.add(ezWeightingGroup);
+
         imagePan.add(saveMetaData);
         imagePan.add(showPSF);
 
         dataPanel.add(imagePan);
         tabbedPane.add(dataPanel);
 
-        /**** Variance ****/
-        varianceTab.add(weightsMethod);
-        varianceTab.add(weights);
-        varianceTab.add(gain);
-        varianceTab.add(noise);
-        varianceTab.add(deadPixel);
-        varianceTab.add(showWeight);
-        //Creation of VARIANCE TAB
-        weigthPanel.add(varianceTab);
-        tabbedPane.add(weigthPanel);
 
         /**** Deconv ****/
 
         deconvTab.add(logmu);
         deconvTab.add(mu);
-        deconvTab.add(epsilon);
-        deconvTab.add(scale);
         deconvTab.add(nbIterDeconv);
-        deconvTab.add(positivity);
         deconvTab.add(restart);
         deconvTab.add(channelRestart);
-        deconvTab.add(singlePrecision);
+        deconvTab.add(ezDeconvolutionGroup);
+
         deconvTab.add(docDec);
         deconvTab.add(startDec);
-        deconvTab.add(showFullObject);
         deconvTab.add(groupStop1);
         //Creation of DECONVOLUTION TAB
         deconvPanel.add(deconvTab);
@@ -771,22 +769,15 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
         /**** BDec ****/
         bdecTab.add(resetPSF);
-        bdecTab.add(nbAlphaCoef);
-        bdecTab.add(nbBetaCoef);
-        bdecTab.add(radial);
-        bdecTab.add(maxIterDefocus);
-        bdecTab.add(maxIterPhase);
-        bdecTab.add(maxIterModulus);
         bdecTab.add(totalNbOfBlindDecLoop);
+        bdecTab.add(ezBlindDeconvolutionGroup);
         bdecTab.add(docBlind);
         bdecTab.add(startBlind);
-        bdecTab.add(showFullObject2);
         bdecTab.add(visuPSF);
         bdecTab.add(groupStop2);
         //Creation of BDec TAB
         bdecPanel.add(bdecTab);
         tabbedPane.add(bdecPanel);
-
         if(debug){
             /**** Result ****/
             resultTab.add(resultCostPrior);
@@ -797,7 +788,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             tabbedPane.add(debuggingPanel);
         }
 
-        addEzComponent(expertMode);
         addEzComponent(tabbedPane);
         // Must be added to global panel first
         visuPSF.setFoldedState(true);
@@ -1009,27 +999,24 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
      * @param datArray - The data to deconvolve.
      * @return The weights.
      */
+
     private ShapedArray createWeights(ShapedArray datArray) {
         ShapedArray wgtArray = null;
         Sequence seq;
-        boolean wgtCopy = true, datCopy = true;
+        WeightedData wd = new WeightedData(datArray);
 
-        // We check the values given
-        if (weightsMethod.getValue() == weightOptions[0]) {
-            // Nothing specified.  The weights are an array of ones with same size as the data.
-            wgtArray = WeightFactory.defaultWeights(datArray);
-            wgtCopy = false; // no needs to copy weights
-        } else if (weightsMethod.getValue() == weightOptions[1]) {
+        if (weightsMethod.getValue() == weightOptions[1]) {
             // A map of weights is provided.
             if ((seq = weights.getValue()) != null) {
-                wgtArray = sequenceToArray(seq);
+                wgtArray =  sequenceToArray(seq);
+                wd.setWeights(wgtArray);
             }
         } else if (weightsMethod.getValue() == weightOptions[2]) {
             // A variance map is provided. FIXME: check shape and values.
             if ((seq = weights.getValue()) != null) {
-                ShapedArray varArray = sequenceToArray(seq);
+                ShapedArray varArray =  sequenceToArray(seq);
                 wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
-                wgtCopy = false; // no needs to copy weights
+                wd.setWeights(wgtArray);
             }
         } else if (weightsMethod.getValue() == weightOptions[3]) {
             // Weights are computed given the gain and the readout noise of the detector.
@@ -1037,50 +1024,15 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             double sigma = noise.getValue();
             double alpha = 1/gamma;
             double beta = (sigma/gamma)*(sigma/gamma);
-            wgtArray = WeightFactory.computeWeightsFromData(datArray, alpha, beta);
-            wgtCopy = false; // no needs to copy weights
+            wd.computeWeightsFromData(alpha, beta);
         }
-
-        // Make sure weights and data are private copies because we may have to modify their contents.
-        if (wgtCopy) {
-            wgtArray = flatCopy(wgtArray);
-        }
-        if (datCopy) {
-            datArray = flatCopy(datArray);
-        }
-
-        if (/*deadPixGiven.getValue() && */(seq = deadPixel.getValue()) != null) {
+        if ((seq = deadPixel.getValue()) != null) {
             // Account for bad data.
             ShapedArray badArr =  sequenceToArray(seq);
-            WeightFactory.removeBads(wgtArray, badArr);
+            wd.markBadData(badArr);
         }
-
-        // Check everything.
-        WeightFactory.fixWeightsAndData(wgtArray, datArray);
-        return wgtArray;
+        return wd.getWeights().asShapedArray();
     }
-
-    /**
-     * Make a private flat copy of an array.
-     *
-     * @param arr - The source array.
-     *
-     * @return A copy of the source array.
-     */
-    private static ShapedArray flatCopy(ShapedArray arr)
-    {
-        switch (arr.getType()) {
-            case Traits.FLOAT:
-                return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
-            case Traits.DOUBLE:
-                return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
-            default:
-                throw new IllegalArgumentException("Unsupported data type");
-        }
-    }
-
-
-
 
     /*****************************************/
     /** All the PSF buttons call are here   **/
@@ -1329,7 +1281,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 if(showIteration.getValue()){
                     show(ArrayUtils.crop(solver.getSolution(),dataShape),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
                 }
-                if (expertMode.getValue()){
+                if (debug){
                     System.out.println("Cost "+solver.getCost() );
                 }
                 if (task == OptimTask.FINAL_X) {

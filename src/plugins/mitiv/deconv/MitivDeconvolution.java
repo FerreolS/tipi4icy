@@ -35,14 +35,12 @@ import javax.swing.SwingUtilities;
 
 import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.sequence.Sequence;
-import mitiv.array.ArrayFactory;
 import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
-import mitiv.array.FloatArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
-import mitiv.base.Traits;
 import mitiv.cost.EdgePreservingDeconvolution;
+import mitiv.cost.WeightedData;
 import mitiv.linalg.shaped.ShapedVector;
 import mitiv.optim.OptimTask;
 import mitiv.utils.FFTUtils;
@@ -111,7 +109,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     protected int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
     private Shape imageShape ;
     private  int Nxy=512, Nz=128;            // Output (padded sequence size)
-    private Shape outputShape, psfShape;
+    private Shape outputShape;//, psfShape;
     private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
     private Sequence cursequence=null;
@@ -234,7 +232,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     psfSizeX = Math.max(1,newValue.getSizeX());
                     psfSizeY =  Math.max(1,newValue.getSizeY());
                     psfSizeZ =  Math.max(1,newValue.getSizeZ());
-                    psfShape = new Shape(psfSizeX, psfSizeY, psfSizeZ);
+                    //  psfShape = new Shape(psfSizeX, psfSizeY, psfSizeZ);
                     updatePSFSize();
                     updateImageSize();
 
@@ -530,7 +528,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         dataArray =  sequenceToArray(dataSeq, channel.getValue());
         psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue());
         imageShape = dataArray.getShape();
-        psfShape = psfArray.getShape();
+        // psfShape = psfArray.getShape();
         if (restart.getValue() != null && restartSeq != null){
             restartArray =  sequenceToArray(restartSeq, channelRestart.getValue());
             if(debug){
@@ -630,24 +628,20 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private ShapedArray createWeights(ShapedArray datArray) {
         ShapedArray wgtArray = null;
         Sequence seq;
-        boolean wgtCopy = true, datCopy = true;
+        WeightedData wd = new WeightedData(datArray);
 
-        // We check the values given
-        if (weightsMethod.getValue() == weightOptions[0]) {
-            // Nothing specified.  The weights are an array of ones with same size as the data.
-            wgtArray = WeightFactory.defaultWeights(datArray);
-            wgtCopy = false; // no needs to copy weights
-        } else if (weightsMethod.getValue() == weightOptions[1]) {
+        if (weightsMethod.getValue() == weightOptions[1]) {
             // A map of weights is provided.
             if ((seq = weights.getValue()) != null) {
                 wgtArray =  sequenceToArray(seq);
+                wd.setWeights(wgtArray);
             }
         } else if (weightsMethod.getValue() == weightOptions[2]) {
             // A variance map is provided. FIXME: check shape and values.
             if ((seq = weights.getValue()) != null) {
                 ShapedArray varArray =  sequenceToArray(seq);
                 wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
-                wgtCopy = false; // no needs to copy weights
+                wd.setWeights(wgtArray);
             }
         } else if (weightsMethod.getValue() == weightOptions[3]) {
             // Weights are computed given the gain and the readout noise of the detector.
@@ -655,48 +649,15 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             double sigma = noise.getValue();
             double alpha = 1/gamma;
             double beta = (sigma/gamma)*(sigma/gamma);
-            wgtArray = WeightFactory.computeWeightsFromData(datArray, alpha, beta);
-            wgtCopy = false; // no needs to copy weights
+            wd.computeWeightsFromData(alpha, beta);
         }
-
-        // Make sure weights and data are private copies because we may have to modify their contents.
-        if (wgtCopy) {
-            wgtArray = flatCopy(wgtArray);
-        }
-        if (datCopy) {
-            datArray = flatCopy(datArray);
-        }
-
-        if (/*deadPixGiven.getValue() && */(seq = deadPixel.getValue()) != null) {
+        if ((seq = deadPixel.getValue()) != null) {
             // Account for bad data.
             ShapedArray badArr =  sequenceToArray(seq);
-            WeightFactory.removeBads(wgtArray, badArr);
+            wd.markBadData(badArr);
         }
-
-        // Check everything.
-        WeightFactory.fixWeightsAndData(wgtArray, datArray);
-        return wgtArray;
+        return wd.getWeights().asShapedArray();
     }
-
-    /**
-     * Make a private flat copy of an array.
-     *
-     * @param arr - The source array.
-     *
-     * @return A copy of the source array.
-     */
-    private static ShapedArray flatCopy(ShapedArray arr)
-    {
-        switch (arr.getType()) {
-            case Traits.FLOAT:
-                return ArrayFactory.wrap(((FloatArray)arr).flatten(true), arr.getShape());
-            case Traits.DOUBLE:
-                return ArrayFactory.wrap(((DoubleArray)arr).flatten(true), arr.getShape());
-            default:
-                throw new IllegalArgumentException("Unsupported data type");
-        }
-    }
-
 
 
     //If the user call the stop button
