@@ -39,7 +39,7 @@ import mitiv.array.FloatArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.Traits;
-import mitiv.invpb.EdgePreservingDeconvolution;
+import mitiv.cost.EdgePreservingDeconvolution;
 import mitiv.linalg.shaped.ShapedVector;
 import mitiv.optim.OptimTask;
 import mitiv.utils.FFTUtils;

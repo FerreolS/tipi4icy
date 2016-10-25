@@ -7,31 +7,6 @@ import icy.type.DataType;
 import mitiv.array.Array3D;
 import mitiv.array.Array4D;
 import mitiv.array.ArrayFactory;
-import mitiv.array.Byte1D;
-import mitiv.array.Byte2D;
-import mitiv.array.Byte3D;
-import mitiv.array.Byte4D;
-import mitiv.array.Byte5D;
-import mitiv.array.Double1D;
-import mitiv.array.Double2D;
-import mitiv.array.Double3D;
-import mitiv.array.Double4D;
-import mitiv.array.Double5D;
-import mitiv.array.Float1D;
-import mitiv.array.Float2D;
-import mitiv.array.Float3D;
-import mitiv.array.Float4D;
-import mitiv.array.Float5D;
-import mitiv.array.Int1D;
-import mitiv.array.Int2D;
-import mitiv.array.Int3D;
-import mitiv.array.Int4D;
-import mitiv.array.Int5D;
-import mitiv.array.Long1D;
-import mitiv.array.Long2D;
-import mitiv.array.Long3D;
-import mitiv.array.Long4D;
-import mitiv.array.Long5D;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 
@@ -60,8 +35,8 @@ public class Icy2TiPi {
         int nx, ny, nz, nc, nt;
 
 
-            switch (seq.getDataType_())
-            {
+        switch (seq.getDataType_())
+        {
             case BYTE:
                 seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.SHORT, false);
                 break;
@@ -76,7 +51,7 @@ public class Icy2TiPi {
                 break;
             default:
                 break;
-            }
+        }
 
         /* extract sequence dimension */
         nx = seq.getSize(DimensionId.X);
@@ -148,35 +123,35 @@ public class Icy2TiPi {
         Shape shape = new Shape(newdims);
         Object data;
         switch (cztSelect) {
-        case czt:
-            data =  seq.getDataCopyXYCZT();
-            break;
-        case Czt:
-            data =  seq.getDataCopyXYZT(c);
-            break;
-        case cZt:
-            throw  new IllegalArgumentException("seq.getDataCopyXYCT(z) is missing, ask Stephane for it");
-            //                data =  seq.getDataCopyXYCT(z);
-            //               break;
-        case czT:
-            data =  seq.getDataCopyXYCZ(t);
-            break;
-        case CZt:
-            throw  new IllegalArgumentException("seq.getDataCopyXYT(c,z) is missing, ask Stephane for it");
-            //                data =  seq.getDataCopyXYT(c,z);
-            //               break;
-        case CzT:
-            data =  seq.getDataCopyXYZ(t, c);
-            break;
-        case cZT:
+            case czt:
+                data =  seq.getDataCopyXYCZT();
+                break;
+            case Czt:
+                data =  seq.getDataCopyXYZT(c);
+                break;
+            case cZt:
+                throw  new IllegalArgumentException("seq.getDataCopyXYCT(z) is missing, ask Stephane for it");
+                //                data =  seq.getDataCopyXYCT(z);
+                //               break;
+            case czT:
+                data =  seq.getDataCopyXYCZ(t);
+                break;
+            case CZt:
+                throw  new IllegalArgumentException("seq.getDataCopyXYT(c,z) is missing, ask Stephane for it");
+                //                data =  seq.getDataCopyXYT(c,z);
+                //               break;
+            case CzT:
+                data =  seq.getDataCopyXYZ(t, c);
+                break;
+            case cZT:
                 data =  seq.getDataCopyXYC(t, z);
-            break;
-        case CZT:
-            data =  seq.getDataCopyXY(t, z, c); // FIXME it can be  seq.getDataXY(t, z, c);
-            break;
+                break;
+            case CZT:
+                data =  seq.getDataCopyXY(t, z, c); // FIXME it can be  seq.getDataXY(t, z, c);
+                break;
 
-        default:
-            throw  new IllegalArgumentException("CZT Selection impossible");
+            default:
+                throw  new IllegalArgumentException("CZT Selection impossible");
         }
 
         return ArrayFactory.wrap(data, shape);
@@ -194,27 +169,27 @@ public class Icy2TiPi {
         }
 
         switch (array.getRank()) {
-        case 1:
-            sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), 1, array.flatten(),true,false));
-            break;
-        case 2:
-            sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), array.getDimension(1), array.flatten(),true,false));
-            break;
-        case 3:
-            for (int j = 0; j < array.getDimension(2); j++) {
-                sequence.setImage(0,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array3D)array).slice(j).flatten() ,true,false));
-            }
-            break;
-
-        case 4:
-
-            for (int k = 0; k < array.getDimension(3); k++) {
+            case 1:
+                sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), 1, array.flatten(),true,false));
+                break;
+            case 2:
+                sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), array.getDimension(1), array.flatten(),true,false));
+                break;
+            case 3:
                 for (int j = 0; j < array.getDimension(2); j++) {
-                    sequence.setImage(k,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array4D)array).slice(k).slice(j).flatten() ,true,false));
+                    sequence.setImage(0,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array3D)array).slice(j).flatten() ,true,false));
                 }
-            }
-        default:
-            throw new IllegalArgumentException(" arrayToSequence can convert only 1D to 4D arrays");
+                break;
+
+            case 4:
+
+                for (int k = 0; k < array.getDimension(3); k++) {
+                    for (int j = 0; j < array.getDimension(2); j++) {
+                        sequence.setImage(k,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array4D)array).slice(k).slice(j).flatten() ,true,false));
+                    }
+                }
+            default:
+                throw new IllegalArgumentException(" arrayToSequence can convert only 1D to 4D arrays");
         }
         return sequence;
     }
