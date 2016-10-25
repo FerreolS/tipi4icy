@@ -11,14 +11,14 @@ import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 
 public class Icy2TiPi {
-    static final byte czt = (byte)0b00000000;
-    static final byte Czt = (byte)0b00000001;
-    static final byte cZt = (byte)0b00000010;
-    static final byte czT = (byte)0b00000100;
-    static final byte cZT = (byte)0b00000110;
-    static final byte CZt = (byte)0b00000011;
-    static final byte CzT = (byte)0b00000101;
-    static final byte CZT = (byte)0b00000111;
+    static final byte czt = (byte) 0x0; // 0b00000000;
+    static final byte Czt = (byte) 0x1; // 0b00000001;
+    static final byte cZt = (byte) 0x2; // 0b00000010;
+    static final byte czT = (byte) 0x4; // 0b00000100;
+    static final byte cZT = (byte) 0x6; // 0b00000110;
+    static final byte CZt = (byte) 0x3; // 0b00000011;
+    static final byte CzT = (byte) 0x5; // 0b00000101;
+    static final byte CZT = (byte) 0x7; // 0b00000111;
     /*Ferréol */
 
 
