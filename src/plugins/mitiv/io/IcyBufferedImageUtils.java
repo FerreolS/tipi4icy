@@ -38,8 +38,8 @@ import mitiv.array.Float3D;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.Traits;
-import mitiv.io.BufferedImageUtils;
-import mitiv.utils.CommonUtils;
+import mitiv.old.BufferedImageUtils;
+import mitiv.old.CommonUtils;
 
 public class IcyBufferedImageUtils {
     /* Jonathan */

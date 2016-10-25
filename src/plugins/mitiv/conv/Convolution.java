@@ -33,7 +33,7 @@ import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
-import mitiv.utils.MathUtils;
+import mitiv.old.MathUtils;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.mitiv.deconv.MitivDeconvolution;

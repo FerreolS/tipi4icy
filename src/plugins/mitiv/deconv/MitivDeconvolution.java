@@ -556,7 +556,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         solver.setObjectShape(outputShape);
         solver.setPSF(psfArray);
         solver.setData(dataArray);
-        solver.setWeight(wgtArray);
+        solver.setWeights(wgtArray);
         solver.setEdgeThreshold(epsilon.getValue());
         solver.setRegularizationLevel(mu.getValue());
         if (scale.getValue().length !=3){

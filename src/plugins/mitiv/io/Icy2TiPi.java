@@ -33,11 +33,6 @@ import mitiv.array.Long3D;
 import mitiv.array.Long4D;
 import mitiv.array.Long5D;
 import mitiv.array.ShapedArray;
-import mitiv.array.Short1D;
-import mitiv.array.Short2D;
-import mitiv.array.Short3D;
-import mitiv.array.Short4D;
-import mitiv.array.Short5D;
 import mitiv.base.Shape;
 
 public class Icy2TiPi {
@@ -65,8 +60,8 @@ public class Icy2TiPi {
         int nx, ny, nz, nc, nt;
 
 
-        switch (seq.getDataType_())
-        {
+            switch (seq.getDataType_())
+            {
             case BYTE:
                 seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.SHORT, false);
                 break;
@@ -81,7 +76,7 @@ public class Icy2TiPi {
                 break;
             default:
                 break;
-        }
+            }
 
         /* extract sequence dimension */
         nx = seq.getSize(DimensionId.X);
@@ -153,160 +148,38 @@ public class Icy2TiPi {
         Shape shape = new Shape(newdims);
         Object data;
         switch (cztSelect) {
-            case czt:
-                data =  seq.getDataCopyXYCZT();
-                break;
-            case Czt:
-                data =  seq.getDataCopyXYZT(c);
-                break;
-            case cZt:
-                throw  new IllegalArgumentException("seq.getDataCopyXYCT(z) is missing, ask Stephane for it");
-                //                data =  seq.getDataCopyXYCT(z);
-                //               break;
-            case czT:
-                data =  seq.getDataCopyXYCZ(t);
-                break;
-            case CZt:
-                throw  new IllegalArgumentException("seq.getDataCopyXYT(c,z) is missing, ask Stephane for it");
-                //                data =  seq.getDataCopyXYT(c,z);
-                //               break;
-            case CzT:
-                data =  seq.getDataCopyXYZ(t, c);
-                break;
-            case cZT:
+        case czt:
+            data =  seq.getDataCopyXYCZT();
+            break;
+        case Czt:
+            data =  seq.getDataCopyXYZT(c);
+            break;
+        case cZt:
+            throw  new IllegalArgumentException("seq.getDataCopyXYCT(z) is missing, ask Stephane for it");
+            //                data =  seq.getDataCopyXYCT(z);
+            //               break;
+        case czT:
+            data =  seq.getDataCopyXYCZ(t);
+            break;
+        case CZt:
+            throw  new IllegalArgumentException("seq.getDataCopyXYT(c,z) is missing, ask Stephane for it");
+            //                data =  seq.getDataCopyXYT(c,z);
+            //               break;
+        case CzT:
+            data =  seq.getDataCopyXYZ(t, c);
+            break;
+        case cZT:
                 data =  seq.getDataCopyXYC(t, z);
-                break;
-            case CZT:
-                data =  seq.getDataCopyXY(t, z, c); // FIXME it can be  seq.getDataXY(t, z, c);
-                break;
+            break;
+        case CZT:
+            data =  seq.getDataCopyXY(t, z, c); // FIXME it can be  seq.getDataXY(t, z, c);
+            break;
 
-            default:
-                throw  new IllegalArgumentException("CZT Selection impossible");
-        };
-
-        switch (seq.getDataType_().getJavaType())
-        {
-            case BYTE:
-                return ArrayFactory.wrap((byte[]) data, shape);
-            case SHORT:
-                return ArrayFactory.wrap((short[]) data, shape);
-            case INT:
-                return ArrayFactory.wrap((int[]) data, shape);
-            case LONG:
-                return ArrayFactory.wrap((long[]) data, shape);
-            case FLOAT:
-                return ArrayFactory.wrap((float[]) data, shape);
-            case DOUBLE:
-                return ArrayFactory.wrap((double[]) data, shape);
-            default:
-                return null;
+        default:
+            throw  new IllegalArgumentException("CZT Selection impossible");
         }
 
-    }
-
-
-    private static ShapedArray wrapObject(double[] data, Shape shape) {
-        switch (shape.rank()) {
-            case 1:
-                return Double1D.wrap(data, shape);
-            case 2:
-                return Double2D.wrap(data, shape);
-            case 3:
-                return Double3D.wrap(data, shape);
-            case 4:
-                return Double4D.wrap(data, shape);
-            case 5:
-                return Double5D.wrap(data, shape);
-            default:
-                throw new IllegalArgumentException("The input dimension must be of rank <6");
-        }
-    }
-
-    private static ShapedArray wrapObject(float[] data, Shape shape) {
-        switch (shape.rank()) {
-            case 1:
-                return Float1D.wrap(data, shape);
-            case 2:
-                return Float2D.wrap(data, shape);
-            case 3:
-                return Float3D.wrap(data, shape);
-            case 4:
-                return Float4D.wrap(data, shape);
-            case 5:
-                return Float5D.wrap(data, shape);
-            default:
-                throw new IllegalArgumentException("The input dimension must be of rank <6");
-        }
-    }
-
-    private static ShapedArray wrapObject(long[] data, Shape shape) {
-        switch (shape.rank()) {
-            case 1:
-                return Long1D.wrap(data, shape);
-            case 2:
-                return Long2D.wrap(data, shape);
-            case 3:
-                return Long3D.wrap(data, shape);
-            case 4:
-                return Long4D.wrap(data, shape);
-            case 5:
-                return Long5D.wrap(data, shape);
-            default:
-                throw new IllegalArgumentException("The input dimension must be of rank <6");
-        }
-    }
-
-
-    private static ShapedArray wrapObject(int[] data, Shape shape) {
-        switch (shape.rank()) {
-            case 1:
-                return Int1D.wrap(data, shape);
-            case 2:
-                return Int2D.wrap(data, shape);
-            case 3:
-                return Int3D.wrap(data, shape);
-            case 4:
-                return Int4D.wrap(data, shape);
-            case 5:
-                return Int5D.wrap(data, shape);
-            default:
-                throw new IllegalArgumentException("The input dimension must be of rank <6");
-        }
-    }
-
-
-    private static ShapedArray wrapObject(short[] data, Shape shape) {
-        switch (shape.rank()) {
-            case 1:
-                return Short1D.wrap(data, shape);
-            case 2:
-                return Short2D.wrap(data, shape);
-            case 3:
-                return Short3D.wrap(data, shape);
-            case 4:
-                return Short4D.wrap(data, shape);
-            case 5:
-                return Short5D.wrap(data, shape);
-            default:
-                throw new IllegalArgumentException("The input dimension must be of rank <6");
-        }
-    }
-
-    private static ShapedArray wrapObject(byte[] data, Shape shape) {
-        switch (shape.rank()) {
-            case 1:
-                return Byte1D.wrap(data, shape);
-            case 2:
-                return Byte2D.wrap(data, shape);
-            case 3:
-                return Byte3D.wrap(data, shape);
-            case 4:
-                return Byte4D.wrap(data, shape);
-            case 5:
-                return Byte5D.wrap(data, shape);
-            default:
-                throw new IllegalArgumentException("The input dimension must be of rank <6");
-        }
+        return ArrayFactory.wrap(data, shape);
     }
 
     public static Sequence arrayToSequence(ShapedArray array)
@@ -321,27 +194,27 @@ public class Icy2TiPi {
         }
 
         switch (array.getRank()) {
-            case 1:
-                sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), 1, array.flatten(),true,false));
-                break;
-            case 2:
-                sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), array.getDimension(1), array.flatten(),true,false));
-                break;
-            case 3:
+        case 1:
+            sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), 1, array.flatten(),true,false));
+            break;
+        case 2:
+            sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), array.getDimension(1), array.flatten(),true,false));
+            break;
+        case 3:
+            for (int j = 0; j < array.getDimension(2); j++) {
+                sequence.setImage(0,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array3D)array).slice(j).flatten() ,true,false));
+            }
+            break;
+
+        case 4:
+
+            for (int k = 0; k < array.getDimension(3); k++) {
                 for (int j = 0; j < array.getDimension(2); j++) {
-                    sequence.setImage(0,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array3D)array).slice(j).flatten() ,true,false));
+                    sequence.setImage(k,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array4D)array).slice(k).slice(j).flatten() ,true,false));
                 }
-                break;
-
-            case 4:
-
-                for (int k = 0; k < array.getDimension(3); k++) {
-                    for (int j = 0; j < array.getDimension(2); j++) {
-                        sequence.setImage(k,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array4D)array).slice(k).slice(j).flatten() ,true,false));
-                    }
-                }
-            default:
-                throw new IllegalArgumentException(" arrayToSequence can convert only 1D to 4D arrays");
+            }
+        default:
+            throw new IllegalArgumentException(" arrayToSequence can convert only 1D to 4D arrays");
         }
         return sequence;
     }

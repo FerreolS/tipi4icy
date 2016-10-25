@@ -28,7 +28,7 @@ package plugins.mitiv.reconstruction;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import mitiv.array.ShapedArray;
-import mitiv.utils.reconstruction.ReconstructionThreadToken;
+import mitiv.old.reconstruction.ReconstructionThreadToken;
 
 public abstract class ReconstructionJobForIcy implements Runnable  {
 
