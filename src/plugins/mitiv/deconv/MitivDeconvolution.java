@@ -107,13 +107,13 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
     private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence size
     protected int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
-    private Shape imageShape, psfShape;
+    private Shape imageShape ;
     private  int Nxy=512, Nz=128;            // Output (padded sequence size)
-    private Shape outputShape;
+    private Shape outputShape, psfShape;
     private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
-    Sequence cursequence=null;
-    EdgePreservingDeconvolution solver =  new EdgePreservingDeconvolution();
+    private Sequence cursequence=null;
+    private EdgePreservingDeconvolution solver =  new EdgePreservingDeconvolution();
     private boolean run;
     private EzVarChannel channelpsf, channelRestart;
     private EzGroup ezPaddingGroup;
@@ -122,8 +122,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private EzVarDoubleArrayNative scale;
     private EzGroup ezDeconvolutionGroup2;
 
-
-    protected Sequence lastSequence;
 
 
     /*********************************/
@@ -294,11 +292,11 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         showWeight = new EzButton("Show weight map", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                DoubleArray imgArray, wgtArray;
+                DoubleArray dataArray, wgtArray;
                 // Preparing parameters and testing input
-                Sequence imgSeq = image.getValue();
-                imgArray =   Icy2TiPi.sequenceToArray(imgSeq, channel.getValue()).toDouble();
-                wgtArray = createWeights(imgArray).toDouble();
+                Sequence dataSeq = image.getValue();
+                dataArray =   Icy2TiPi.sequenceToArray(dataSeq, channel.getValue()).toDouble();
+                wgtArray = createWeights(dataArray).toDouble();
                 show(wgtArray,"Weight map");
                 if (debug) {
                     System.out.println("Weight compute");
@@ -371,7 +369,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 Sequence fSeq;
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(image.getValue(), false);
-                show(solver.getSolution(),fSeq,"Deconvolved image: mu="+solver.getRegularizationLevel() );
+                show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
             }
         });
 
@@ -496,12 +494,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         solver = new EdgePreservingDeconvolution();
 
         // Preparing parameters and testing input
-        Sequence imgSeq = image.getValue();
+        Sequence dataSeq = image.getValue();
         Sequence psfSeq = psf.getValue();
         Sequence restartSeq = restart.getValue();
 
 
-        if (imgSeq == null)
+        if (dataSeq == null)
         {
             throwError("An image should be given");
             return;
@@ -526,10 +524,10 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             return;
         }
 
-        ShapedArray imgArray, psfArray, wgtArray,restartArray;
-        imgArray = Icy2TiPi.sequenceToArray(imgSeq, channel.getValue());
+        ShapedArray dataArray, psfArray, wgtArray,restartArray;
+        dataArray = Icy2TiPi.sequenceToArray(dataSeq, channel.getValue());
         psfArray = Icy2TiPi.sequenceToArray(psfSeq,  channelpsf.getValue());
-        imageShape = imgArray.getShape();
+        imageShape = dataArray.getShape();
         psfShape = psfArray.getShape();
         if (restart.getValue() != null && restartSeq != null){
             restartArray = Icy2TiPi.sequenceToArray(restartSeq, channelRestart.getValue());
@@ -544,20 +542,20 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         }
 
         if(singlePrecision.getValue()){
-            wgtArray = createWeights(imgArray.toFloat()).toFloat();
+            wgtArray = createWeights(dataArray.toFloat()).toFloat();
             solver.setForceSinglePrecision(true);
         }else{
-            wgtArray = createWeights(imgArray.toDouble()).toDouble();
+            wgtArray = createWeights(dataArray.toDouble()).toDouble();
             solver.setForceSinglePrecision(false);
         }
         cursequence = new Sequence("Current Iterate");
-        cursequence.copyMetaDataFrom(imgSeq, false);
+        cursequence.copyMetaDataFrom(dataSeq, false);
 
         solver.setRelativeTolerance(0.0);
         solver.setUseNewCode(false);
         solver.setObjectShape(outputShape);
         solver.setPSF(psfArray);
-        solver.setData(imgArray);
+        solver.setData(dataArray);
         solver.setWeight(wgtArray);
         solver.setEdgeThreshold(epsilon.getValue());
         solver.setRegularizationLevel(mu.getValue());
@@ -597,7 +595,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             }
             solver.iterate();
         }
-        show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),imageShape),cursequence,"Deconvolved image,  mu="+solver.getRegularizationLevel());
+        show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),imageShape),cursequence,"Deconvolved "+ dataSeq.getName() +  " mu="+solver.getRegularizationLevel());
 
         if (isHeadLess()) {
             outputHeadlessImage.setValue(cursequence);
@@ -613,6 +611,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         //throw new IllegalArgumentException(s);
     }
 
+
     /**
      * The goal is to create an array of weights, but it will be created depending
      * the user input so we will have to test each cases:
@@ -625,6 +624,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
      * @param datArray - The data to deconvolve.
      * @return The weights.
      */
+
     private ShapedArray createWeights(ShapedArray datArray) {
         ShapedArray wgtArray = null;
         Sequence seq;
