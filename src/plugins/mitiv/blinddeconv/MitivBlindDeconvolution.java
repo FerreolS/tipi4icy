@@ -543,7 +543,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 Sequence fSeq;
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(image.getValue(), false);
-                show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                if(objArray != null){
+                	show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                }else if(solver != null){
+                	show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                }else {
+                	show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+ mu.getValue() );
+                }
             }
         });
 
@@ -655,8 +661,14 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 }
                 Sequence fSeq;
                 fSeq = new Sequence("Deconvolved image");
-                fSeq.copyMetaDataFrom(image.getValue(), false);
-                show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                fSeq.copyMetaDataFrom(image.getValue(), false); 
+                if(objArray != null){
+                	show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                }else if(solver != null){
+                	show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                }else {
+                	show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+mu.getValue() );
+                }
             }
         });
 
