@@ -1308,6 +1308,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape),cursequence,"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
         //  objArray = ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape);//
         objArray = solver.getBestSolution().asShapedArray();
+        solver = null;
         if (isHeadLess()) {
             if(outputHeadlessImage==null){
                 outputHeadlessImage = new EzVarSequence("Output Image");
