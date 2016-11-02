@@ -48,18 +48,15 @@ import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
-import mitiv.array.Double3D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.cost.EdgePreservingDeconvolution;
 import mitiv.cost.WeightedData;
-import mitiv.linalg.shaped.DoubleShapedVector;
-import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.linalg.shaped.ShapedVector;
 import mitiv.microscopy.MicroscopeMetadata;
-import mitiv.microscopy.MicroscopeModel;
 import mitiv.microscopy.PSF_Estimation;
+import mitiv.microscopy.WideFieldModel;
 import mitiv.optim.OptimTask;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.WeightFactory;
@@ -163,6 +160,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     // Main variables for the deconvolution part
     private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence sizes
     private  int Nxy=512, Nz=128;			 // Output (padded sequence size)
+    private Shape psfShape = new Shape(Nxy, Nxy, Nz);
     private Shape outputShape;
     private Sequence dataSeq;
     private Sequence cursequence; // Sequence containing the current solution
@@ -173,22 +171,23 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     // Main arrays for the psf estimation
     boolean runBdec;
-    private MicroscopeModel pupil=null;
+    private WideFieldModel pupil=null;
     private boolean guessModulus;
     private boolean guessPhase;
     private int nbAlpha=0, nbBeta=1;
-    DoubleShapedVectorSpace defocuSpace = null, alphaSpace=null, betaSpace=null;
-    DoubleShapedVector defocusVector = null, alphaVector = null, betaVector =null;
+    //    DoubleShapedVectorSpace defocuSpace = null, alphaSpace=null, betaSpace=null;
+    //    DoubleShapedVector defocusVector = null, alphaVector = null, betaVector =null;
 
 
 
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = false;      // Show psf steps
-    private boolean verbose = false;    // Show some values, need debug to true
+    private boolean debug = true;      // Show psf steps
+    private boolean verbose = true;    // Show some values, need debug to true
     private EzPanel  debuggingPanel;
     private EzVarText resultCostPrior, resultDefocus, resultPhase, resultModulus;
+
 
 
     private static void throwError(String s){
@@ -203,8 +202,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     protected void updateOutputSize() {
         String text = Nxy+"x"+Nxy+"x"+Nz;
         outputSize.setValue(text);
-        if((1.0*Nxy*Nxy*Nz)>Math.pow(2, 31)){
-            throwError("Padded image is too large (>2^31)");
+        if((1.0*Nxy*Nxy*Nz)>Math.pow(2, 30)){
+            throwError("Padded image is too large (>2^30)");
         }
     }
 
@@ -227,6 +226,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         Nxy = FFTUtils.bestDimension(sizeXY + paddingSizeXY.getValue());
         Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
         outputShape = new Shape(Nxy, Nxy, Nz);
+        psfShape = new Shape(Nxy, Nxy, Nz);
         if(debug){
             System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
         }
@@ -544,11 +544,11 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(image.getValue(), false);
                 if(objArray != null){
-                	show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                    show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
                 }else if(solver != null){
-                	show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                    show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
                 }else {
-                	show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+ mu.getValue() );
+                    show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+ mu.getValue() );
                 }
             }
         });
@@ -637,7 +637,12 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 Thread workerThread = new Thread() {
                     @Override
                     public void run() {
+                        long startTime = System.currentTimeMillis();
                         launch(false);
+
+                        long stopTime = System.currentTimeMillis();
+                        long elapsedTime = stopTime - startTime;
+                        System.out.println("time: "+elapsedTime);
                     }
                 };
                 workerThread.start();
@@ -661,13 +666,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 }
                 Sequence fSeq;
                 fSeq = new Sequence("Deconvolved image");
-                fSeq.copyMetaDataFrom(image.getValue(), false); 
+                fSeq.copyMetaDataFrom(image.getValue(), false);
                 if(objArray != null){
-                	show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                    show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
                 }else if(solver != null){
-                	show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                    show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
                 }else {
-                	show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+mu.getValue() );
+                    show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+mu.getValue() );
                 }
             }
         });
@@ -818,18 +823,18 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     }
 
     protected void resetPSF() {
-        defocuSpace = null;
-        defocusVector= null;
-        alphaSpace = null;
-        alphaVector = null;
-        betaSpace = null;
-        betaVector = null;
         buildpupil();
     }
 
     @Override
     protected void execute() {
+
+        long startTime = System.currentTimeMillis();
         launch(false);
+
+        long stopTime = System.currentTimeMillis();
+        long elapsedTime = stopTime - startTime;
+        System.out.println("time: "+elapsedTime);
     }
 
     protected void launch(boolean runDeconv) {
@@ -886,34 +891,24 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             /*---------------------------------------*/
 
             if (runBdec) {
-                if ((alphaVector==null)||( Integer.parseInt(nbAlphaCoef.getValue()) != nbAlpha)){
+                if ((pupil.getAlpha()==null)||( Integer.parseInt(nbAlphaCoef.getValue()) != nbAlpha)){
                     nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
                     if (nbAlpha==0){
                         guessPhase = false;
                     }else{
                         guessPhase = true;
-                        alphaSpace = new DoubleShapedVectorSpace(new int[]{nbAlpha});
-                        alphaVector = alphaSpace.create();
-                    }
+                        pupil.setNPhase(nbAlpha);                    }
                 }
-                if  ((betaVector==null)||(Integer.parseInt(nbBetaCoef.getValue()) != nbBeta)){
+                if  ((pupil.getBeta()==null)||(Integer.parseInt(nbBetaCoef.getValue()) != nbBeta)){
                     nbBeta = Integer.parseInt(nbBetaCoef.getValue());
                     if (nbBeta==0){
                         guessModulus = false;
                     }else{
                         guessModulus = true;
-                        double[] beta = new double[nbBeta];
-                        beta[0] = 1;
-                        betaSpace = new DoubleShapedVectorSpace(new int[]{beta.length});
-                        betaVector = betaSpace.wrap(beta);
+                        pupil.setNModulus(nbBeta);
                     }
                 }
 
-                if (defocuSpace==null){
-                    double[] defocus = {ni.getValue()/(lambda.getValue()*1E-9), 0., 0.};
-                    defocuSpace = new DoubleShapedVectorSpace(new int[]{defocus.length});
-                    defocusVector = defocuSpace.wrap(defocus);
-                }
 
                 PSFEstimation = new PSF_Estimation(pupil);
 
@@ -925,7 +920,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 PSFEstimation.setAbsoluteTolerance(0.0);
 
                 for(int i = 0; i < totalNbOfBlindDecLoop.getValue(); i++) {
-                    psfArray = ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
+                    psfArray = ArrayUtils.roll(pupil.getPSF());
                     pupil.freePSF();
                     deconv();
 
@@ -940,8 +935,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                         }
                         PSFEstimation.setRelativeTolerance(0.);
                         PSFEstimation.setMaximumIterations(maxIterDefocus.getValue());
-                        PSFEstimation.fitPSF(defocusVector, PSF_Estimation.DEFOCUS);
-                        System.out.println( "Defocus   "+Arrays.toString(PSFEstimation.getPupil().getDefocusMultiplyByLambda())  );
+                        PSFEstimation.fitPSF( PSF_Estimation.DEFOCUS);
+                        System.out.println( "Defocus   "+Arrays.toString(pupil.getDefocusMultiplyByLambda())  );
                     }
 
                     /* Phase estimation */
@@ -952,7 +947,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                         }
                         PSFEstimation.setResult(null);
                         PSFEstimation.setMaximumIterations(maxIterPhase.getValue());
-                        PSFEstimation.fitPSF(alphaVector, PSF_Estimation.ALPHA);
+                        PSFEstimation.fitPSF( PSF_Estimation.ALPHA);
                     }
 
 
@@ -964,7 +959,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                         }
                         PSFEstimation.setResult(null);
                         PSFEstimation.setMaximumIterations(maxIterModulus.getValue());
-                        PSFEstimation.fitPSF(betaVector, PSF_Estimation.BETA);
+                        PSFEstimation.fitPSF( PSF_Estimation.BETA);
                         // MathUtils.normalise(betaVector.getData());
                     }
 
@@ -973,9 +968,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                         return;
                     }
                 }
-                pupil = PSFEstimation.getPupil();
+                // pupil = PSFEstimation.getPupil();
             } else {
-                psfArray = ArrayUtils.roll(Double3D.wrap(pupil.getPSF(), outputShape));
+                psfArray = ArrayUtils.roll( pupil.getPSF() );
                 pupil.freePSF();
                 preProcessing();
                 deconv();
@@ -1044,6 +1039,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             wd.markBadData(badArr);
         }
         return wd.getWeights().asShapedArray();
+
     }
 
     /*****************************************/
@@ -1052,8 +1048,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private void buildpupil()
     {
-        pupil = new MicroscopeModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy_nm.getValue()*1E-9,
-                dz_nm.getValue()*1E-9, Nxy, Nxy, Nz,radial.getValue());
+        //       pupil = new WideFieldModel(na.getValue(), lambda.getValue()*1E-9, ni.getValue(), dxy_nm.getValue()*1E-9,
+        //               dz_nm.getValue()*1E-9, Nxy, Nxy, Nz,radial.getValue());
+
+        pupil = new WideFieldModel(psfShape, na.getValue(),
+                lambda.getValue()*1E-9, ni.getValue(),
+                dxy_nm.getValue()*1E-9, dz_nm.getValue()*1E-9,
+                radial.getValue(), singlePrecision.getValue());
     }
 
     private void psfClicked()
@@ -1064,14 +1065,16 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 if(pupil==null)
                 {
                     buildpupil();
+                    pupil.computePSF();
                 }
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
                         Sequence psfSequence = new Sequence();
-                        psfSequence.copyMetaDataFrom(dataSeq, false);
-                        DoubleArray psf = Double3D.wrap(pupil.getPSF(), outputShape);
-                        show(ArrayUtils.roll(psf),psfSequence,"Estimated PSF");
+                        if(dataSeq!=null){
+                            psfSequence.copyMetaDataFrom(dataSeq, false);
+                        }
+                        show(ArrayUtils.roll(pupil.getPSF()),psfSequence,"Estimated PSF");
                         psfSequence.getFirstViewer().getLut().getLutChannel(0).setColorMap(new IceColorMap(),false);
 
                     }
@@ -1149,29 +1152,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         meta.lambda  = lambda.getValue();
         meta.ni      = ni.getValue();
         return meta;
-    }
-
-    //Copy the input metadata to the output. We may want to change some with our values
-    //So it should be done here
-    private void setMetaData(Sequence seqOld, Sequence seqNew) {
-        OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata(seqOld.getMetadata());
-        //newMetdat.setImageDescription("MyDescription", 0);
-        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
-        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-9), 0);
-        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-9), 0);
-        // seqNew.setMetaData(newMetdat); //FIXME may not working now
-    }
-
-
-    //Copy the input metadata to the output. We may want to change some with our values
-    //So it should be done here
-    private void setMetaData(Sequence seqNew) {
-        OMEXMLMetadataImpl newMetdat = OMEUtil.createOMEMetadata();
-        //newMetdat.setImageDescription("MyDescription", 0);
-        newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
-        newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
-        newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
-        seqNew.setMetaData(newMetdat); //FIXME may not working now
     }
 
     private void updateMetaData() {
@@ -1305,9 +1285,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
             solver.iterate();
         }
-        show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape),cursequence,"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
-        //  objArray = ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape);//
         objArray = solver.getBestSolution().asShapedArray();
+        show(ArrayUtils.crop(objArray,dataShape),cursequence,"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
+        //  objArray = ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape);//
+
         solver = null;
         if (isHeadLess()) {
             if(outputHeadlessImage==null){
