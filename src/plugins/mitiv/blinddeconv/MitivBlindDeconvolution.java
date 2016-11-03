@@ -184,8 +184,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = true;      // Show psf steps
-    private boolean verbose = true;    // Show some values, need debug to true
+    private boolean debug = false;      // Show psf steps
+    private boolean verbose = false;    // Show some values, need debug to true
     private EzPanel  debuggingPanel;
     private EzVarText resultCostPrior, resultDefocus, resultPhase, resultModulus;
 
