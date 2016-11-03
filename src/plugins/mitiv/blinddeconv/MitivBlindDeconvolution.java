@@ -165,6 +165,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private Sequence dataSeq;
     private Sequence cursequence; // Sequence containing the current solution
     private Shape dataShape;
+    //   private Array3D wgtArray, dataArray, psfArray, objArray;
     private ShapedArray wgtArray, dataArray, psfArray, objArray;
     boolean run = true;
 
@@ -884,6 +885,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             if (pupil == null) {
                 buildpupil();
             }
+            pupil.setSingle(singlePrecision.getValue());
+
             preProcessing();
 
             /*---------------------------------------*/
@@ -912,9 +915,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
                 PSFEstimation = new PSF_Estimation(pupil);
 
-
-                PSFEstimation.setWeight(ArrayUtils.pad(wgtArray,outputShape).toDouble());
-                PSFEstimation.setData(ArrayUtils.pad(dataArray,outputShape).toDouble());
+                PSFEstimation.setWeight(  ArrayUtils.pad(wgtArray,outputShape));
+                PSFEstimation.setData(ArrayUtils.pad(dataArray,outputShape));
 
                 PSFEstimation.enablePositivity(false);
                 PSFEstimation.setAbsoluteTolerance(0.0);
