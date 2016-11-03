@@ -299,26 +299,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             }
         });
 
-        /*   expertMode.addVarChangeListener(new EzVarListener<Boolean>() {
-            @Override
-            public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
-                paddingSizeXY.setVisible(newValue);
-                paddingSizeZ.setVisible(newValue);
-                epsilon.setVisible(newValue);
-                visuPSF.setVisible(newValue);
-                scale.setVisible(newValue);
-                singlePrecision.setVisible(newValue);
-
-                nbAlphaCoef.setVisible(newValue);
-                nbBetaCoef.setVisible(newValue);
-                radial.setVisible(newValue);
-                maxIterDefocus.setVisible(newValue);
-                maxIterPhase.setVisible(newValue);
-                maxIterModulus.setVisible(newValue);
-            }
-        });*/
-
-
 
 
         EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
