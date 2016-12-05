@@ -175,7 +175,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private WideFieldModel pupil=null;
     private boolean guessModulus;
     private boolean guessPhase;
-    private int nbAlpha=0, nbBeta=1;
+    // private int nbAlpha=0, nbBeta=1;
     //    DoubleShapedVectorSpace defocuSpace = null, alphaSpace=null, betaSpace=null;
     //    DoubleShapedVector defocusVector = null, alphaVector = null, betaVector =null;
 
@@ -184,8 +184,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = false;      // Show psf steps
-    private boolean verbose = false;    // Show some values, need debug to true
+    private boolean debug = true;      // Show psf steps
+    private boolean verbose = true;    // Show some values, need debug to true
     private EzPanel  debuggingPanel;
     private EzVarText resultCostPrior, resultDefocus, resultPhase, resultModulus;
 
@@ -619,7 +619,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     @Override
                     public void run() {
                         long startTime = System.currentTimeMillis();
-                        launch(false);
+                        if (image.getValue()!=null)
+                            launch(false);
+
 
                         long stopTime = System.currentTimeMillis();
                         long elapsedTime = stopTime - startTime;
@@ -874,21 +876,27 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             /*---------------------------------------*/
 
             if (runBdec) {
-                if ((pupil.getAlpha()==null)||( Integer.parseInt(nbAlphaCoef.getValue()) != nbAlpha)){
-                    nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
+                if ((pupil.getAlpha()==null)||( Integer.parseInt(nbAlphaCoef.getValue()) != pupil.getNPhase())){
+                    int nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
                     if (nbAlpha==0){
                         guessPhase = false;
                     }else{
                         guessPhase = true;
                         pupil.setNPhase(nbAlpha);                    }
                 }
-                if  ((pupil.getBeta()==null)||(Integer.parseInt(nbBetaCoef.getValue()) != nbBeta)){
-                    nbBeta = Integer.parseInt(nbBetaCoef.getValue());
+
+                if  ((pupil.getBeta()==null)||(Integer.parseInt(nbBetaCoef.getValue()) != pupil.getNModulus())){
+                    int nbBeta = Integer.parseInt(nbBetaCoef.getValue());
+                    System.out.println(" nbBetaCoef.getValue()  "+Integer.parseInt(nbBetaCoef.getValue()) + " nbBeta "+nbBeta);
+
                     if (nbBeta==0){
                         guessModulus = false;
                     }else{
                         guessModulus = true;
                         pupil.setNModulus(nbBeta);
+
+                        System.out.println("pupil.setNModulus: " + nbBeta);
+
                     }
                 }
 
@@ -927,7 +935,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                             System.out.println("Phase estimation");
                             System.out.println("------------------");
                         }
-                        PSFEstimation.setResult(null);
+                        //   PSFEstimation.setResult(null);
                         PSFEstimation.setMaximumIterations(maxIterPhase.getValue());
                         PSFEstimation.fitPSF( PSF_Estimation.ALPHA);
                     }
@@ -939,7 +947,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                             System.out.println("Modulus estimation");
                             System.out.println("------------------");
                         }
-                        PSFEstimation.setResult(null);
+                        //    PSFEstimation.setResult(null);
                         PSFEstimation.setMaximumIterations(maxIterModulus.getValue());
                         PSFEstimation.fitPSF( PSF_Estimation.BETA);
                         // MathUtils.normalise(betaVector.getData());
