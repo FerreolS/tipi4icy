@@ -184,8 +184,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = true;      // Show psf steps
-    private boolean verbose = true;    // Show some values, need debug to true
+    private boolean debug = false;      // Show psf steps
+    private boolean verbose = false;    // Show some values, need debug to true
     private EzPanel  debuggingPanel;
     private EzVarText resultCostPrior, resultDefocus, resultPhase, resultModulus;
 
@@ -525,11 +525,16 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(image.getValue(), false);
                 if(objArray != null){
-                    show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                    if(solver != null){
+                        show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " with padding. mu: " +solver.getRegularizationLevel() );
+                    }
+                    else{
+                        show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " with padding. mu " + mu.getValue());
+                    }
                 }else if(solver != null){
-                    show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                    show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + "with padding. mu="+solver.getRegularizationLevel() );
                 }else {
-                    show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+ mu.getValue() );
+                    show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + "with padding. mu="+ mu.getValue() );
                 }
             }
         });
@@ -651,11 +656,16 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(image.getValue(), false);
                 if(objArray != null){
-                    show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                    if(solver != null){
+                        show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " with padding. mu: " +solver.getRegularizationLevel() );
+                    }
+                    else{
+                        show(objArray,fSeq,"Deconvolved "+ image.getValue().getName() + " with padding. mu " + mu.getValue());
+                    }
                 }else if(solver != null){
-                    show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                    show(solver.getSolution(),fSeq,"Deconvolved "+ image.getValue().getName() + "with padding. mu="+solver.getRegularizationLevel() );
                 }else {
-                    show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + " mu="+mu.getValue() );
+                    show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ image.getValue().getName() + "with padding. mu="+ mu.getValue() );
                 }
             }
         });
