@@ -75,7 +75,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private EzVarChannel channel;
     private EzVarSequence psf; // Point Spread Function
 
-    private EzVarInteger    paddingSizeXY, paddingSizeZ;
+    private EzVarInteger    paddingSizeX,paddingSizeY, paddingSizeZ;
     private EzVarText imageSize, outputSize;
     /** weighting tab: **/
     private EzVarText weightsMethod;
@@ -108,7 +108,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence size
     protected int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
     private Shape imageShape ;
-    private  int Nxy=512, Nz=128;            // Output (padded sequence size)
+    private  int Nx=512, Ny=512, Nz=128;            // Output (padded sequence size)
     private Shape outputShape;//, psfShape;
     private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
@@ -121,7 +121,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private EzGroup ezDeconvolutionGroup;
     private EzVarDoubleArrayNative scale;
     private EzGroup ezDeconvolutionGroup2;
-
 
 
     /*********************************/
@@ -147,12 +146,16 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
         imageSize = new EzVarText("Image size:");
         outputSize = new EzVarText("Output size:");
-        paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
+        paddingSizeX = new EzVarInteger("padding x:",0, Integer.MAX_VALUE,1);
+        paddingSizeY = new EzVarInteger("padding y:",0, Integer.MAX_VALUE,1);
         paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
+
+        imageSize.setVisible(false);
+        outputSize.setVisible(false);
 
         image.setNoSequenceSelection();
         psf.setNoSequenceSelection();
-        ezPaddingGroup = new EzGroup("Padding",paddingSizeXY,paddingSizeZ);
+        ezPaddingGroup = new EzGroup("Padding",paddingSizeX,paddingSizeY,paddingSizeZ);
         ezPaddingGroup.setFoldedState(true);
 
         EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
@@ -162,7 +165,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                 updatePaddedSize();
             }
         };
-        paddingSizeXY.addVarChangeListener(zeroPadActionListener);
+        paddingSizeX.addVarChangeListener(zeroPadActionListener);
+        paddingSizeY.addVarChangeListener(zeroPadActionListener);
         paddingSizeZ.addVarChangeListener(zeroPadActionListener);
 
 
@@ -188,6 +192,9 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     System.out.println("Seq ch..."+image.getValue());
                 }
 
+                imageSize.setVisible(false);
+                outputSize.setVisible(false);
+
                 Sequence seq = image.getValue();
                 if (seq != null || (seq != null && seq.isEmpty())) {
 
@@ -195,20 +202,24 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     sizeX =  newValue.getSizeX();
                     sizeY = newValue.getSizeY();
                     sizeZ = newValue.getSizeZ();
+
+
+                    imageSize.setVisible(true);
+                    outputSize.setVisible(true);
+
                     updatePSFSize();
                     updateImageSize();
 
                     imageShape = new Shape(sizeX, sizeY, sizeZ);
 
-                    //  show( IcyBufferedImageUtils.sequenceToArray( image.getValue(),0), "type : "+seq.getDataType_());
-                    //  show( IcyBufferedImageUtils.sequenceToArray( image.getValue(),0).toDouble(), "to double : ");
                     if (debug) {
-                        System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
+                        System.out.println("Seq changed:" + sizeX + "  "+ Nx);
                         show(  sequenceToArray( seq,0));
                     }
                     // setting restart value to the current sequence
                     restart.setValue(newValue);
                     channelRestart.setValue(channel.getValue());
+
                 }
             }
 
@@ -232,9 +243,10 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     psfSizeX = Math.max(1,newValue.getSizeX());
                     psfSizeY =  Math.max(1,newValue.getSizeY());
                     psfSizeZ =  Math.max(1,newValue.getSizeZ());
-                    //  psfShape = new Shape(psfSizeX, psfSizeY, psfSizeZ);
+
                     updatePSFSize();
                     updateImageSize();
+
 
                     if (debug) {
                         System.out.println("PSF changed:" + psfSizeX + "  "+ psfSizeY);
@@ -449,36 +461,58 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     }
 
     protected void updateOutputSize() {
-        String text = Nxy+"x"+Nxy+"x"+Nz;
+
+        String text;
+        if (Nz==1){
+            text= Nx+"x"+Ny;
+            scale.setValue(scaleDef[1]);
+        }else{
+            scale.setValue(scaleDef[2]);
+            text= Nx+"x"+Ny+"x"+Nz;
+        }
         outputSize.setValue(text);
-        if((1.0*Nxy*Nxy*Nz)>Math.pow(2, 31)){
+        if((1.0*Nx*Ny*Nz)>Math.pow(2, 31)){
             throwError("Padded image is too large (>2^31)");
         }
     }
 
     protected void updateImageSize() {
-        String text = sizeX+"x"+sizeY+"x"+sizeZ;
+        String text ;
+        if (Nz==1)
+            text= sizeX+"x"+sizeY;
+        else
+            text= sizeX+"x"+sizeY+"x"+sizeZ;
         imageSize.setValue(text);
     }
 
 
     protected void updatePaddedSize() {
-        int sizeXY = Math.max(sizeX, sizeY);
-        Nxy = FFTUtils.bestDimension(sizeXY + paddingSizeXY.getValue());
-        Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
-        outputShape = new Shape(Nxy, Nxy, Nz);
+
+        Nx = FFTUtils.bestDimension(sizeX + paddingSizeX.getValue());
+        Ny = FFTUtils.bestDimension(sizeY + paddingSizeY.getValue());
+        if ((Nz==1)&&(paddingSizeZ.getValue()==0)){
+            outputShape = new Shape(Nx, Ny);
+        }else{
+            Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
+            outputShape = new Shape(Nx, Ny, Nz);
+        }
         updateOutputSize();
         if(debug){
-            System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
+            System.out.println(" UpdatePaddedSize" + paddingSizeX.getValue()  + outputShape.toString());
         }
     }
 
     protected void updatePSFSize() {
-        paddingSizeXY.setValue( Math.max(psfSizeX, psfSizeY));
-        paddingSizeZ.setValue(  psfSizeZ);
+        paddingSizeX.setValue(psfSizeX);
+        paddingSizeY.setValue(psfSizeY);
+        if( (psfSizeZ==1))
+            paddingSizeZ.setValue(  0);
+        else
+            paddingSizeZ.setValue(  psfSizeZ);
+
         updatePaddedSize();
         if(debug){
-            System.out.println(" UpdatePaddedSize " + paddingSizeXY.getValue()  + outputShape.toString());
+            System.out.println(" UpdatePaddedSize " + paddingSizeX.getValue()  + outputShape.toString());
         }
     }
 
@@ -511,11 +545,15 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         }
 
         // Set the informations about the input
-        if (sizeZ == 1) {
+        if ((sizeZ == 1)&&(sizeY == 1)) {
             throwError("Input data must be 2D or 3D");
             return;
         }
-        if (paddingSizeXY.getValue() < 0.0) {
+        if (paddingSizeX.getValue() < 0.0) {
+            throwError("Padding value cannot be negative");
+            return;
+        }
+        if (paddingSizeY.getValue() < 0.0) {
             throwError("Padding value cannot be negative");
             return;
         }
@@ -559,12 +597,19 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         solver.setWeights(wgtArray);
         solver.setEdgeThreshold(epsilon.getValue());
         solver.setRegularizationLevel(mu.getValue());
-        if (scale.getValue().length !=3){
-            throwError("Pixel scale must have 3 elements");
-            return;
-        }
 
-        solver.setScale(scale.getValue());
+        if(Nz==1){
+            if (scale.getValue().length !=2){
+                throwError("Pixel scale must have 2 elements");
+                return;
+            }
+        }else{
+            if (scale.getValue().length !=3){
+                throwError("Pixel scale must have 3 elements");
+                return;
+            }
+            solver.setScale(scale.getValue());
+        }
         solver.setSaveBest(true);
         solver.setLowerBound(positivity.getValue() ? 0.0 : Double.NEGATIVE_INFINITY);
         solver.setUpperBound(Double.POSITIVE_INFINITY);
@@ -678,7 +723,8 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         inputMap.add("starting point", restart.getVariable());
         inputMap.add("starting point channel", channelRestart.getVariable());
 
-        inputMap.add("Padding XY", paddingSizeXY.getVariable());
+        inputMap.add("Padding X", paddingSizeX.getVariable());
+        inputMap.add("Padding Y", paddingSizeY.getVariable());
         inputMap.add("Padding Z", paddingSizeZ.getVariable());
 
         inputMap.add("deadPixel", deadPixel.getVariable());
