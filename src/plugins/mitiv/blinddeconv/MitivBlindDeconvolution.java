@@ -897,16 +897,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
                 if  ((pupil.getBeta()==null)||(Integer.parseInt(nbBetaCoef.getValue()) != pupil.getNModulus())){
                     int nbBeta = Integer.parseInt(nbBetaCoef.getValue());
-                    System.out.println(" nbBetaCoef.getValue()  "+Integer.parseInt(nbBetaCoef.getValue()) + " nbBeta "+nbBeta);
+
 
                     if (nbBeta==0){
                         guessModulus = false;
                     }else{
                         guessModulus = true;
                         pupil.setNModulus(nbBeta);
-
-                        System.out.println("pupil.setNModulus: " + nbBeta);
-
                     }
                 }
 
@@ -1183,16 +1180,15 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     protected void preProcessing(){
         // Preparing parameters and testing input
-        dataArray =  sequenceToArray(dataSeq, channel.getValue());
-        dataShape = dataArray.getShape();
-
-        // Preparing parameters and testing input
         dataSeq = image.getValue();
         if (dataSeq == null)
         {
             throwError("An image/sequence of images should be given");
             return;
         }
+
+        dataArray =  sequenceToArray(dataSeq, channel.getValue());
+        dataShape = dataArray.getShape();
 
 
 
