@@ -166,14 +166,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private EdgePreservingDeconvolution solver;
 
     // Main variables for the deconvolution part
-    private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence sizes
-    private  int Nxy=512, Nz=128;			 // Output (padded sequence size)
+    private int sizeX=128, sizeY=128, sizeZ=64; // Input sequence sizes
+    private  int Nxy=128, Nz=64;			 // Output (padded sequence size)
     private Shape psfShape = new Shape(Nxy, Nxy, Nz);
     private Shape outputShape;
     private Sequence dataSeq;
     private Sequence cursequence; // Sequence containing the current solution
     private Shape dataShape;
-    //   private Array3D wgtArray, dataArray, psfArray, objArray;
     private ShapedArray wgtArray, dataArray, psfArray, objArray;
     boolean run = true;
 
@@ -183,10 +182,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private WideFieldModel pupil=null;
     private boolean guessModulus;
     private boolean guessPhase;
-    // private int nbAlpha=0, nbBeta=1;
-    //    DoubleShapedVectorSpace defocuSpace = null, alphaSpace=null, betaSpace=null;
-    //    DoubleShapedVector defocusVector = null, alphaVector = null, betaVector =null;
-
 
 
     /*********************************/
@@ -315,7 +310,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 updatePaddedSize();
                 updateImageSize();
                 updateOutputSize();
-                resetPSF();
+                pupil=null;
             }
         };
         paddingSizeXY.addVarChangeListener(zeroPadActionListener);
@@ -351,7 +346,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     updatePaddedSize();
                     updateOutputSize();
                     updateImageSize();
-                    resetPSF();
+                    pupil=null;
 
                     dataShape = new Shape(sizeX, sizeY, sizeZ);
                     if (debug) {
@@ -387,7 +382,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             public void variableChanged(EzVar<Double> source, Double newValue) {
                 scale.setValue(new double[]{1.0 ,1.0,  dz_nm.getValue()/dxy_nm.getValue() } );
                 pupilAxis.setValue(new double[] {ni.getValue()/lambda.getValue()*1E9, 0., 0.});
-                resetPSF();
+                pupil=null;
             };
         };
 
@@ -480,7 +475,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             public void actionPerformed(ActionEvent e) {
                 loadParamClicked();
                 if (debug) {
-                    System.out.println("Save parameters");
+                    System.out.println("Load parameters");
                 }
             }
         });
@@ -572,7 +567,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         pupilAxis.setVisible(false);
         phaseCoefs = new EzVarDoubleArrayNative("phase coefs",null , false);
         phaseCoefs.setVisible(false);
-        modulusCoefs = new EzVarDoubleArrayNative("modulusCoefs", new double[][] { {1.0 } }, false);
+        modulusCoefs = new EzVarDoubleArrayNative("modulusCoefs", new double[][] { {1.0 } },0, false);
         modulusCoefs.setVisible(false);
 
         bdecPanel = new EzPanel("Step 3: Blind dec.");
@@ -594,7 +589,22 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                resetPSF();
+                pupil=null;
+            }
+        });
+
+        nbAlphaCoef.addVarChangeListener(new EzVarListener<String>() {
+            @Override
+            public void variableChanged(EzVar<String> source, String newValue) {
+                pupil=null;
+            }
+        });
+
+
+        nbBetaCoef.addVarChangeListener(new EzVarListener<String>() {
+            @Override
+            public void variableChanged(EzVar<String> source, String newValue) {
+                pupil=null;
             }
         });
 
@@ -602,13 +612,13 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             @Override
             public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
                 if(newValue){
-                    nbAlphaCoef.setDefaultValues(         nAlphaOptionsR,3, false );
-                    nbBetaCoef.setDefaultValues(         nBetaOptionsR,1, false );
-                    resetPSF();
+                    nbAlphaCoef.setDefaultValues( nAlphaOptionsR,3, false );
+                    nbBetaCoef.setDefaultValues( nBetaOptionsR,1, false );
+                    pupil=null;
                 }else{
-                    nbAlphaCoef.setDefaultValues(         nAlphaOptions,7, false );
-                    nbBetaCoef.setDefaultValues(         nBetaOptions,1, false );
-                    resetPSF();
+                    nbAlphaCoef.setDefaultValues( nAlphaOptions,7, false );
+                    nbBetaCoef.setDefaultValues(  nBetaOptions,1, false );
+                    pupil=null;
                 }
 
             }
@@ -843,7 +853,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         updatePaddedSize();
         updateOutputSize();
         updateImageSize();
-        resetPSF();
 
         setDefaultValue();
         if (isHeadLess()) {
@@ -887,9 +896,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         this.saveParameters(pathName);
     }
 
-    protected void resetPSF() {
-        buildpupil();
-    }
 
     @Override
     protected void execute() {
@@ -908,6 +914,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             if (isHeadLess()) { // For a trigger to update all values
                 image.valueChanged(null, null, null);
             }
+
+            buildpupil();
             if (debug) {
                 System.out.println("-------------IMAGE-------------------");
                 System.out.println("File: "+image.getValue());              //Used
@@ -945,12 +953,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             run = true;
             runBdec = !runDeconv;
 
-
-            if (pupil == null) {
-                buildpupil();
-            }
-            pupil.setSingle(singlePrecision.getValue());
-
             preProcessing();
 
             /*---------------------------------------*/
@@ -964,7 +966,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                         guessPhase = false;
                     }else{
                         guessPhase = true;
-                        pupil.setNPhase(nbAlpha);                    }
+                        pupil.setNPhase(nbAlpha);
+                    }
                 }
 
                 if  ((pupil.getBeta()==null)||(Integer.parseInt(nbBetaCoef.getValue()) != pupil.getNModulus())){
@@ -1117,14 +1120,19 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private void buildpupil()
     {
-        pupil = new WideFieldModel(psfShape, na.getValue(),
-                lambda.getValue()*1E-9, ni.getValue(),
-                dxy_nm.getValue()*1E-9, dz_nm.getValue()*1E-9,
-                radial.getValue(), singlePrecision.getValue());
-        pupil.setDefocus(pupilAxis.getValue());
-        pupil.setModulus(modulusCoefs.getValue());
-        if(phaseCoefs.getValue()!=null)
-            pupil.setPhase(phaseCoefs.getValue());
+
+        if(pupil==null)
+        {
+            pupil = new WideFieldModel(psfShape,Integer.parseInt(nbAlphaCoef.getValue()),
+                    Integer.parseInt(nbBetaCoef.getValue()), na.getValue(),
+                    lambda.getValue()*1E-9, ni.getValue(),
+                    dxy_nm.getValue()*1E-9, dz_nm.getValue()*1E-9,
+                    radial.getValue(), singlePrecision.getValue());
+            pupil.setDefocus(pupilAxis.getValue());
+            pupil.setModulus(modulusCoefs.getValue());
+            if(phaseCoefs.getValue()!=null)
+                pupil.setPhase(phaseCoefs.getValue());
+        }
     }
 
     private void psfClicked()
@@ -1132,11 +1140,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         Thread workerThread = new Thread() {
             @Override
             public void run() {
-                if(pupil==null)
-                {
-                    buildpupil();
-                    pupil.computePSF();
-                }
+
+                buildpupil();
+                pupil.computePSF();
+
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
@@ -1144,9 +1151,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                         if(dataSeq!=null){
                             psfSequence.copyMetaDataFrom(dataSeq, false);
                         }
-                        show(ArrayUtils.roll(pupil.getPSF()),psfSequence,"Estimated PSF");
                         psfSequence.getFirstViewer().getLut().getLutChannel(0).setColorMap(new IceColorMap(),false);
-
                     }
                 });
             }
@@ -1158,10 +1163,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     private void phaseClicked()
     {
-        if(pupil==null)
-        {
-            buildpupil();
-        }
+
+        buildpupil();
+
         DoubleArray modulus = Double2D.wrap(pupil.getPhi(), new Shape(Nxy, Nxy));
         show(ArrayUtils.roll(modulus),"Phase of the pupil");
     }
@@ -1169,10 +1173,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
     private void modulusClicked()
     {
         /* PSF initialisation */
-        if(pupil==null)
-        {
-            buildpupil();
-        }
+        buildpupil();
         DoubleArray modulus = Double2D.wrap(pupil.getRho(), new Shape(Nxy, Nxy));
         show(ArrayUtils.roll(modulus),"Modulus of the pupil");
     }
