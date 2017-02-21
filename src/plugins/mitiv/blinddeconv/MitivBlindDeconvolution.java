@@ -35,7 +35,6 @@ import java.awt.event.ActionListener;
 
 import javax.swing.SwingUtilities;
 
-import epifluorescence.WideFieldModel;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.image.colormap.IceColorMap;
@@ -46,8 +45,9 @@ import icy.util.OMEUtil;
 import loci.common.services.ServiceException;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
-import microscopy.MicroscopeMetadata;
-import microscopy.PSF_Estimation;
+import microTiPi.epifluorescence.WideFieldModel;
+import microTiPi.microscopy.MicroscopeMetadata;
+import microTiPi.microscopy.PSF_Estimation;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
