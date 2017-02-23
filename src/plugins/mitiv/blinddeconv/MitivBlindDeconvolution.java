@@ -155,7 +155,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     // PSF parameters
     private EzVarDouble estimatedNi;
-    private EzVarDoubleArrayNative pupilAxis;
+    private EzVarDoubleArrayNative pupilShift;
     private EzVarDoubleArrayNative phaseCoefs, modulusCoefs;
 
     /** headless mode: **/
@@ -328,7 +328,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 // getting meta-data and computing sizes
                 dataSeq = newValue;
                 if (dataSeq != null) {
-                    meta = getMetaData(dataSeq);
                     sizeX = dataSeq.getSizeX();
                     sizeY = dataSeq.getSizeY();
                     sizeZ = dataSeq.getSizeZ();
@@ -337,6 +336,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                         return;
                     }
 
+                    meta = getMetaData(dataSeq);
                     dxy_nm.setValue(    meta.dxy);
                     dz_nm.setValue(     meta.dz);
                     scale.setValue(new double[]{1.0 ,1.0, dxy_nm.getValue()/ dz_nm.getValue() } );
@@ -381,7 +381,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             @Override
             public void variableChanged(EzVar<Double> source, Double newValue) {
                 scale.setValue(new double[]{1.0 ,1.0,  dz_nm.getValue()/dxy_nm.getValue() } );
-                pupilAxis.setValue(new double[] {ni.getValue()/lambda.getValue()*1E9, 0., 0.});
+                pupilShift.setValue(new double[] { 0., 0.});
                 pupil=null;
             };
         };
@@ -468,8 +468,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         ezWeightingGroup.setFoldedState(true);
 
         loadFile = new EzVarFile("Load parameters from", "");
-//        loadFile = new EzVarFile("Load parameters from", "","*.xml");
-
         loadParam = new EzButton("Load parameters", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -563,8 +561,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         /**                      BDEC TAB                  **/
         /****************************************************/
         //Saving variables
-        pupilAxis = new EzVarDoubleArrayNative("pupilAxis", new double[][] { {ni.getValue()/lambda.getValue()*1E9 ,0.0, 0.0} }, false);
-        pupilAxis.setVisible(false);
+        pupilShift = new EzVarDoubleArrayNative("pupilShift", new double[][] { { 0.0, 0.0} }, false); //FIXME use ni and axis
+        pupilShift.setVisible(false);
         phaseCoefs = new EzVarDoubleArrayNative("phase coefs",null , false);
         phaseCoefs.setVisible(false);
         modulusCoefs = new EzVarDoubleArrayNative("modulusCoefs", new double[][] { {1.0 } },0, false);
@@ -709,7 +707,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
 
 
-        visuPSF = new EzGroup("PSF visualization", showFullObject2,showIteration,showPSF2, showPhase, showModulus);
+        visuPSF = new EzGroup("Visualization", showFullObject2,showIteration,showPSF2, showPhase, showModulus);
 
         saveFile = new EzVarFile("Save parameters in", "");
         saveParam = new EzButton("Save parameters", new ActionListener() {
@@ -840,10 +838,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             debuggingPanel.add(resultPhase);
             tabbedPane.add(debuggingPanel);
         }
-       // addEzComponent(logmu);
-       // addEzComponent(mu);
-       // addEzComponent(ezPadGroup);
-        addEzComponent(pupilAxis);
+
+        addEzComponent(pupilShift);
         addEzComponent(phaseCoefs);
         addEzComponent(modulusCoefs);
         addEzComponent(tabbedPane);
@@ -864,22 +860,29 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
     protected void loadParamClicked() {
         this.loadParameters(loadFile.getValue());
-        pupil.setDefocus(pupilAxis.getValue());
+        pupil.setPupilAxis(pupilShift.getValue());
+        pupil.setNi(ni.getValue());
         pupil.setModulus(modulusCoefs.getValue());
         pupil.setPhase(phaseCoefs.getValue());
-        if (debug) {
-            System.out.println("--------------");
-            System.out.println("defocus");
-            MathUtils.printArray( pupil.getDefocus() );
+        if (dataSeq != null) {
+            sizeX = dataSeq.getSizeX();
+            sizeY = dataSeq.getSizeY();
+            sizeZ = dataSeq.getSizeZ();
+            if (sizeZ == 1) {
+                throwError("Input data must be 3D");
+                return;
+            }
+            updatePaddedSize();
+            updateOutputSize();
+            updateImageSize();
+            dataShape = new Shape(sizeX, sizeY, sizeZ);
         }
-
-        //TODO
 
     }
 
     protected void saveParamClicked() {
         if(pupil!=null){
-            pupilAxis.setValue( pupil.getDefocus());
+            pupilShift.setValue( pupil.getPupilShift());
             if(pupil.getAlpha() !=null)
                 phaseCoefs.setValue(pupil.getAlpha().getData());
             modulusCoefs.setValue(pupil.getBeta().getData());
@@ -889,9 +892,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             System.out.println("defocus");
             MathUtils.printArray( pupil.getDefocus() );
         }
-         File pathName = saveFile.getValue();
+        File pathName = saveFile.getValue();
         if (!pathName.getName().endsWith(".xml")){
-        	pathName = new File(pathName.getAbsolutePath()+".xml");
+            pathName = new File(pathName.getAbsolutePath()+".xml");
         }
         this.saveParameters(pathName);
     }
@@ -1053,6 +1056,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 public void run() {
                     restart.setValue(cursequence);
                     channelRestart.setValue(0);
+                    ni.setValue(pupil.getNi());
                 }
             });
         } catch (IllegalArgumentException e) {
@@ -1128,7 +1132,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     lambda.getValue()*1E-9, ni.getValue(),
                     dxy_nm.getValue()*1E-9, dz_nm.getValue()*1E-9,
                     radial.getValue(), singlePrecision.getValue());
-            pupil.setDefocus(pupilAxis.getValue());
+            pupil.setPupilAxis(pupilShift.getValue());
             pupil.setModulus(modulusCoefs.getValue());
             if(phaseCoefs.getValue()!=null)
                 pupil.setPhase(phaseCoefs.getValue());
@@ -1148,9 +1152,11 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                     @Override
                     public void run() {
                         Sequence psfSequence = new Sequence();
+                        Sequence zSequence = new Sequence();
                         if(dataSeq!=null){
                             psfSequence.copyMetaDataFrom(dataSeq, false);
                         }
+                        show(ArrayUtils.roll(pupil.getPSF()),psfSequence,"Estimated PSF");
                         psfSequence.getFirstViewer().getLut().getLutChannel(0).setColorMap(new IceColorMap(),false);
                     }
                 });
@@ -1357,7 +1363,6 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         }
         objArray = solver.getBestSolution().asShapedArray();
         show(ArrayUtils.crop(objArray,dataShape),cursequence,"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
-        //  objArray = ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape);//
 
         solver = null;
         if (isHeadLess()) {
