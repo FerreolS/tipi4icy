@@ -1272,9 +1272,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
 
 
 
-
-        cursequence = new Sequence("Current Iterate");
-        cursequence.copyMetaDataFrom(dataSeq, false);
+        if(cursequence==null){
+            cursequence = new Sequence("Current Iterate");
+            cursequence.copyMetaDataFrom(dataSeq, false);
+        }
 
         Sequence restartSeq = restart.getValue();
         if (restart.getValue() != null && restartSeq != null){
@@ -1311,8 +1312,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             solver.setForceSinglePrecision(false);
         }
 
-        cursequence = new Sequence("Current Iterate");
-        cursequence.copyMetaDataFrom(image.getValue(), false);
+        if(cursequence==null){
+            cursequence = new Sequence("Current Iterate");
+            cursequence.copyMetaDataFrom(image.getValue(), false);
+        }
 
         solver.setRelativeTolerance(0.0);
         solver.setUseNewCode(false);
