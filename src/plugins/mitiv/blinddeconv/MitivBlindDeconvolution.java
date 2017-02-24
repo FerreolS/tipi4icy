@@ -32,6 +32,7 @@ import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 
 import javax.swing.SwingUtilities;
 
@@ -472,6 +473,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         ezWeightingGroup.setFoldedState(true);
 
         loadFile = new EzVarFile("Load parameters from", "");
+//        loadFile = new EzVarFile("Load parameters from", "","*.xml");
+
         loadParam = new EzButton("Load parameters", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -827,9 +830,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             debuggingPanel.add(resultPhase);
             tabbedPane.add(debuggingPanel);
         }
-        addEzComponent(logmu);
-        addEzComponent(mu);
-        addEzComponent(ezPadGroup);
+       // addEzComponent(logmu);
+       // addEzComponent(mu);
+       // addEzComponent(ezPadGroup);
         addEzComponent(pupilAxis);
         addEzComponent(phaseCoefs);
         addEzComponent(modulusCoefs);
@@ -877,7 +880,11 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             System.out.println("defocus");
             MathUtils.printArray( pupil.getDefocus() );
         }
-        this.saveParameters(saveFile.getValue());
+         File pathName = saveFile.getValue();
+        if (!pathName.getName().endsWith(".xml")){
+        	pathName = new File(pathName.getAbsolutePath()+".xml");
+        }
+        this.saveParameters(pathName);
     }
 
     protected void resetPSF() {
