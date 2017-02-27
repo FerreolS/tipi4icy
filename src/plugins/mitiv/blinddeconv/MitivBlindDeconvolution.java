@@ -464,7 +464,7 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weights,gain,noise,deadPixel,showWeight);
         ezWeightingGroup.setFoldedState(true);
 
-        loadFile = new EzVarFile("Load parameters from", "");
+        loadFile = new EzVarFile("Load parameters from", "","*.xml");
         loadParam = new EzButton("Load parameters", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
