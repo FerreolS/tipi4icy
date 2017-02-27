@@ -468,7 +468,9 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         loadParam = new EzButton("Load parameters", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                loadParamClicked();
+                if(loadFile.getValue()!=null){
+                    loadParamClicked();
+                }
                 if (debug) {
                     System.out.println("Load parameters");
                 }
@@ -899,10 +901,12 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
             MathUtils.printArray( pupil.getDefocus() );
         }
         File pathName = saveFile.getValue();
-        if (!pathName.getName().endsWith(".xml")){
-            pathName = new File(pathName.getAbsolutePath()+".xml");
+        if(pathName!=null){
+            if (!pathName.getName().endsWith(".xml")){
+                pathName = new File(pathName.getAbsolutePath()+".xml");
+            }
+            this.saveParameters(pathName);
         }
-        this.saveParameters(pathName);
     }
 
 
