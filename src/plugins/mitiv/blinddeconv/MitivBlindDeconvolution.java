@@ -39,6 +39,7 @@ import javax.swing.SwingUtilities;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.image.colormap.IceColorMap;
+import icy.main.Icy;
 import icy.plugin.interface_.PluginBundled;
 import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
@@ -272,6 +273,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         if (!isHeadLess()) {
             getUI().setParametersIOVisible(false);
             getUI().setActionPanelVisible(false);
+        }else{
+
+            String[] args = Icy.getCommandLinePluginArgs();
+            System.out.println(args);
         }
         tabbedPane = new EzTabs("BlindTabs", TabPlacement.TOP);
 
