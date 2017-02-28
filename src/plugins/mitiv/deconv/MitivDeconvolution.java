@@ -100,7 +100,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
     private EzVarInteger    nbIterDeconv;
 
     private EzButton saveParam, loadParam;
-    private EzVarFile saveFile, loadFile;
+    private EzVarFile saveFile;
     /** headless mode: **/
     private EzVarSequence   outputHeadless;
 
@@ -435,7 +435,6 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
         });
 
 
-        loadFile = new EzVarFile("Load parameters from", "","*.xml");
         loadParam = new EzButton("Load parameters", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -849,6 +848,7 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
 
     private void parseCmdLine(){
         String[] args = Icy.getCommandLinePluginArgs();
+
         loadParameters( new File(args[0]));
         for (int i = 1; i < args.length; i++) {
             switch (args[i]) {
@@ -860,8 +860,12 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     data.setValue(Loader.loadSequence(args[i+1], 0, false));
                     if(i+3 >= args.length)
                         break;
-                    if(args[i+2]=="-c")
+                    if(args[i+2].equalsIgnoreCase("-c")){
                         channel.setValue(Integer.parseInt(args[i+3]));
+                        i=i+3;
+                    }else{
+                        i++;
+                    }
 
 
                     break;
@@ -872,31 +876,48 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
                     psf.setValue(Loader.loadSequence(args[i+1], 0, false));
                     if(i+3 >= args.length)
                         break;
-                    if(args[i+2]=="-c")
-                        channel.setValue(Integer.parseInt(args[i+3]));
+                    if(args[i+2].equalsIgnoreCase("-c")){
+                        channelpsf.setValue(Integer.parseInt(args[i+3]));
+                        i=i+3;
+                    }else{
+                        i++;
+                    }
 
                     break;
                 case "-r":
                     if(i+1 >= args.length)
                         break;
-                    System.out.println("load psf:" + args[i+1]);
+                    System.out.println("load restart:" + args[i+1]);
                     restart.setValue(Loader.loadSequence(args[i+1], 0, false));
+                    if(i+3 >= args.length){
+                        break;}
+                    if(args[i+2].equalsIgnoreCase("-c")){
+                        System.out.println("channel restart:" + Integer.parseInt(args[i+3]));
+                        channelRestart.setValue(Integer.parseInt(args[i+3]));
+                        i=i+3;
+                    }else{
+                        i++;
+                    }
+
 
                     break;
                 case "-o":
                     if(i+1 >= args.length)
                         break;
                     outputPath = args[i+1];
+                    i++;
                     break;
                 case "-badpix":
                     if(i+1 >= args.length)
                         break;
                     deadPixel.setValue(Loader.loadSequence(args[i+1], 0, false));
+                    i++;
                     break;
                 case "-wghtmap":
                     if(i+1 >= args.length)
                         break;
                     weights.setValue(Loader.loadSequence(args[i+1], 0, false));
+                    i++;
                     break;
 
                 default:
