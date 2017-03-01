@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.mitiv.deconv;
+package plugins.demics.deconv;
 
 import static plugins.mitiv.io.Icy2TiPi.arrayToSequence;
 import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
@@ -68,9 +68,9 @@ import plugins.adufour.ezplug.EzVarText;
 
 
 /**
- * MitivDeconvolution implements regularized multi-dimensional deconvolution.
+ * SimpleDEMIC implements regularized multi-dimensional deconvolution.
  */
-public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
+public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
 
 
     /***************************************************/

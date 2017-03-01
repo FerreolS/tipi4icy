@@ -24,7 +24,7 @@
  */
 
 
-package plugins.mitiv.blinddeconv;
+package plugins.demics.blinddeconv;
 
 import static plugins.mitiv.io.Icy2TiPi.arrayToSequence;
 import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
@@ -42,7 +42,6 @@ import icy.gui.frame.progress.AnnounceFrame;
 import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.image.colormap.IceColorMap;
 import icy.main.Icy;
-import icy.plugin.interface_.PluginBundled;
 import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
 import icy.util.OMEUtil;
@@ -84,7 +83,6 @@ import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
-import plugins.mitiv.deconv.MitivDeconvolution;
 
 /**
  * This class implements an Icy plugin for 3D blind deconvolution in wide field fluorescence deconvolution.
@@ -92,7 +90,7 @@ import plugins.mitiv.deconv.MitivDeconvolution;
  * @author Ferréol Soulez & Jonathan Leger
  *
  */
-public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Block, PluginBundled {
+public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
 
 
     /***************************************************/
@@ -1393,8 +1391,8 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
                 outputHeadlessImage = new EzVarSequence("Output Image");
             }
             outputHeadlessImage.setValue(cursequence);
+            saveSequence(cursequence, outputPath);
         }
-
     }
 
     protected  void show(ShapedVector  arr) {
@@ -1472,10 +1470,10 @@ public class MitivBlindDeconvolution extends EzPlug implements EzStoppable, Bloc
         outputMap.add("outputImage", outputHeadlessImage.getVariable());
         outputMap.add("outputPSF", outputHeadlessPSF.getVariable());
     }
-    @Override
+    /*  @Override
     public String getMainPluginClassName() {
-        return MitivDeconvolution.class.getName();
-    }
+        return SimpleDEMIC.class.getName();
+    }*/
 
     private void parseCmdLine(){
         String[] args = Icy.getCommandLinePluginArgs();

@@ -34,15 +34,15 @@ import javax.swing.JSlider;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import mitiv.array.ShapedArray;
-import mitiv.old.CommonUtils;
-import mitiv.old.DeconvUtils;
-import mitiv.old.Deconvolution;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import icy.sequence.SequenceEvent;
 import icy.sequence.SequenceListener;
+import mitiv.array.ShapedArray;
+import mitiv.old.CommonUtils;
+import mitiv.old.DeconvUtils;
+import mitiv.old.Deconvolution;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
@@ -54,17 +54,16 @@ import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
-import plugins.mitiv.blinddeconv.ToolTipText;
 import plugins.mitiv.old.io.IcyBufferedImageUtils;
 
 /**
- * MiTivWiener is a deconvolution tool based on linear methods. It's goal is to offer a simple 
+ * MiTivWiener is a deconvolution tool based on linear methods. It's goal is to offer a simple
  * interface for the user with a minimal amount of parameters to change.
- * 
+ *
  * It includes 3 methods with two of them that are nearly equals: wiener, quad.
- * 
+ *
  * CG is the linear conjugate gradients, for the on linear part see the other plugin: total variation.
- * 
+ *
  * @author Leger Jonathan
  *
  */
@@ -139,18 +138,18 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
         boolean isSplitted = varBoolean.getValue();
         ShapedArray tmp;
         switch (job) {
-        //First value correspond to next job with alpha = 0, not all are equal to 1
-        case DeconvUtils.JOB_WIENER:
-            tmp = deconvolution.firstDeconvolution(muMin, isSplitted);
-            break;
-        case DeconvUtils.JOB_QUAD:
-            tmp = deconvolution.firstDeconvolutionQuad(muMin, isSplitted);
-            break;
-        case DeconvUtils.JOB_CG:
-            tmp = deconvolution.firstDeconvolutionCG(muMin, isSplitted);
-            break;
-        default:
-            throw new IllegalArgumentException("Invalid Job");
+            //First value correspond to next job with alpha = 0, not all are equal to 1
+            case DeconvUtils.JOB_WIENER:
+                tmp = deconvolution.firstDeconvolution(muMin, isSplitted);
+                break;
+            case DeconvUtils.JOB_QUAD:
+                tmp = deconvolution.firstDeconvolutionQuad(muMin, isSplitted);
+                break;
+            case DeconvUtils.JOB_CG:
+                tmp = deconvolution.firstDeconvolutionCG(muMin, isSplitted);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid Job");
         }
         return IcyBufferedImageUtils.arrayToImage(tmp).get(0);
     }
@@ -163,17 +162,17 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
         ShapedArray tmp;
         double mult = 1E9; //HACK While the data uniformization is not done...
         switch (job) {
-        case DeconvUtils.JOB_WIENER:
-            tmp = deconvolution.nextDeconvolution(mu);
-            break;
-        case DeconvUtils.JOB_QUAD:
-            tmp = deconvolution.nextDeconvolutionQuad(mu*mult);
-            break;
-        case DeconvUtils.JOB_CG:
-            tmp = deconvolution.nextDeconvolutionCG(mu*mult);
-            break;
-        default:
-            throw new IllegalArgumentException("Invalid Job");
+            case DeconvUtils.JOB_WIENER:
+                tmp = deconvolution.nextDeconvolution(mu);
+                break;
+            case DeconvUtils.JOB_QUAD:
+                tmp = deconvolution.nextDeconvolutionQuad(mu*mult);
+                break;
+            case DeconvUtils.JOB_CG:
+                tmp = deconvolution.nextDeconvolutionCG(mu*mult);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid Job");
         }
         return IcyBufferedImageUtils.arrayToImage(tmp).get(0);
     }
@@ -185,19 +184,19 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
         boolean isSplitted = false;
         ShapedArray tmp;
         switch (job) {
-        //First value correspond to next job with alpha = 0, not all are equal to 1
-        case DeconvUtils.JOB_WIENER: 
-            tmp = deconvolution.firstDeconvolution(muMin,Deconvolution.PROCESSING_3D,isSplitted);
-            break;
-        case DeconvUtils.JOB_QUAD:
-            tmp = deconvolution.firstDeconvolutionQuad(muMin,Deconvolution.PROCESSING_3D,isSplitted);
-            break;
-        case DeconvUtils.JOB_CG:
-            tmp = deconvolution.firstDeconvolutionCG(muMin,Deconvolution.PROCESSING_3D,isSplitted);
+            //First value correspond to next job with alpha = 0, not all are equal to 1
+            case DeconvUtils.JOB_WIENER:
+                tmp = deconvolution.firstDeconvolution(muMin,Deconvolution.PROCESSING_3D,isSplitted);
+                break;
+            case DeconvUtils.JOB_QUAD:
+                tmp = deconvolution.firstDeconvolutionQuad(muMin,Deconvolution.PROCESSING_3D,isSplitted);
+                break;
+            case DeconvUtils.JOB_CG:
+                tmp = deconvolution.firstDeconvolutionCG(muMin,Deconvolution.PROCESSING_3D,isSplitted);
 
-            break;
-        default:
-            throw new IllegalArgumentException("Invalid Job");
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid Job");
         }
         ArrayList<IcyBufferedImage> list = IcyBufferedImageUtils.arrayToImage(tmp);
         for (int i = 0; i < list.size(); i++) {
@@ -213,17 +212,17 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
         double mult = 1E10; //HACK While the data uniformization is not done...
         ShapedArray tmp;
         switch (job) {
-        case DeconvUtils.JOB_WIENER:
-            tmp = deconvolution.nextDeconvolution(mu,Deconvolution.PROCESSING_3D);
-            break;
-        case DeconvUtils.JOB_QUAD:
-            tmp = deconvolution.nextDeconvolutionQuad(mu*mult,Deconvolution.PROCESSING_3D);
-            break;
-        case DeconvUtils.JOB_CG:
-            tmp = deconvolution.nextDeconvolutionCG(mu*mult,Deconvolution.PROCESSING_3D);
-            break;
-        default:
-            throw new IllegalArgumentException("Invalid Job");
+            case DeconvUtils.JOB_WIENER:
+                tmp = deconvolution.nextDeconvolution(mu,Deconvolution.PROCESSING_3D);
+                break;
+            case DeconvUtils.JOB_QUAD:
+                tmp = deconvolution.nextDeconvolutionQuad(mu*mult,Deconvolution.PROCESSING_3D);
+                break;
+            case DeconvUtils.JOB_CG:
+                tmp = deconvolution.nextDeconvolutionCG(mu*mult,Deconvolution.PROCESSING_3D);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid Job");
         }
         ArrayList<IcyBufferedImage> list = IcyBufferedImageUtils.arrayToImage(tmp);
         for (int i = 0; i < list.size(); i++) {
@@ -235,16 +234,17 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
     protected void initialize()
     {
         slider = new JSlider(0, 100, 0);
-        slider.setEnabled(false);  
+        slider.setEnabled(false);
         label = new JLabel("                     ");
 
+        /*
         sequencePSF.setToolTipText(ToolTipText.sequencePSF);
         sequenceImage.setToolTipText(ToolTipText.sequenceImage);
         options.setToolTipText(ToolTipText.textMethod);
         eZcoef.setToolTipText(ToolTipText.doublePadding);
         slider.setToolTipText(ToolTipText.deconvolutionSlider);
         varBoolean.setToolTipText(ToolTipText.booleanPSFSplitted);
-
+         */
         addEzComponent(sequenceImage);
         addEzComponent(sequencePSF);
         addEzComponent(varBoolean);
@@ -258,11 +258,11 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
 
     public void updateImage(BufferedImage buffered, int value){
         if (isHeadLess()) {
-            myseq.setImage(0, 0, buffered); 
+            myseq.setImage(0, 0, buffered);
             output.setValue(myseq);
         } else {
             myseq.setName(options.getValue()+" "+value);
-            myseq.setImage(0, 0, buffered); 
+            myseq.setImage(0, 0, buffered);
         }
 
     }
@@ -295,7 +295,7 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
                 Sequence seqPsf = sequencePSF.getValue();
                 //If there is a 2D image and a 2D psf
                 myseq = new Sequence();
-                myseq.addListener(this); 
+                myseq.addListener(this);
                 myseq.setName("");
                 if (seqIm.getSizeZ() == 1 && seqPsf.getSizeZ() == 1) {
                     deconvolution = new Deconvolution(seqIm.getFirstNonNullImage(), seqPsf.getFirstNonNullImage(),correct);
@@ -318,6 +318,7 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
                     addSequence(myseq);
                     slider.setEnabled(true);
                     slider.addChangeListener(new ChangeListener(){
+                        @Override
                         public void stateChanged(ChangeEvent event){
                             int sliderValue =(((JSlider)event.getSource()).getValue());
                             updateProgressBarMessage("Computing");
@@ -369,7 +370,7 @@ public class MitivWiener extends EzPlug implements EzStoppable, SequenceListener
         }
     }
 
-    //Just a getter 
+    //Just a getter
     public int getOutputValue(){
         return deconvolution.getOuputValue();
     }

@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.mitiv.blinddeconv;
+package plugins.demics.blinddeconv;
 
 /**
  * In this class is contained all the tooltip texts. It can be usefull for correcting mistakes or

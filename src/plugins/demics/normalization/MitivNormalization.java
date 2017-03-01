@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.mitiv.normalization;
+package plugins.demics.normalization;
 
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
@@ -35,7 +35,7 @@ import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVarSequence;
-import plugins.mitiv.deconv.MitivDeconvolution;
+import plugins.demics.deconv.SimpleDEMIC;
 import plugins.mitiv.old.io.IcyBufferedImageUtils;
 
 /**
@@ -117,7 +117,7 @@ public class MitivNormalization extends EzPlug implements  EzStoppable, Block, P
 
     @Override
     public String getMainPluginClassName() {
-        return  MitivDeconvolution.class.getName();
+        return  SimpleDEMIC.class.getName();
     }
 
 

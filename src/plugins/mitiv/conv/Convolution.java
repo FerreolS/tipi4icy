@@ -27,7 +27,6 @@ package plugins.mitiv.conv;
 
 
 import icy.image.IcyBufferedImage;
-import icy.plugin.interface_.PluginBundled;
 import icy.sequence.Sequence;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
@@ -36,10 +35,10 @@ import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.old.MathUtils;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarSequence;
-import plugins.mitiv.deconv.MitivDeconvolution;
+//import plugins.mitiv.deconv.MitivDeconvolution;
 import plugins.mitiv.old.io.IcyBufferedImageUtils;
 
-public class Convolution extends EzPlug implements   PluginBundled {
+public class Convolution extends EzPlug {
     //Mydata
 
     private EzVarSequence EzVarSequenceImage;
@@ -93,10 +92,10 @@ public class Convolution extends EzPlug implements   PluginBundled {
         addSequence(seqY);
     }
 
-    @Override
+    /*  @Override
     public String getMainPluginClassName() {
-        return MitivDeconvolution.class.getName();
-    }
+        return SimpleDEMIC.class.getName();
+    }*/
 
     @Override
     public void clean() {
