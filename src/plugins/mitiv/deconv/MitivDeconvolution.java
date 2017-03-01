@@ -600,12 +600,9 @@ public class MitivDeconvolution extends EzPlug implements Block, EzStoppable {
             parseCmdLine();
             showIteration.setValue(false);
             System.out.println("Launch it:"+nbIterDeconv.getValue());
-
-            launch();
-
-        }else{
-            launch();
         }
+        launch();
+
     }
 
     protected void launch() {
