@@ -85,7 +85,7 @@ import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 
 /**
- * This class implements an Icy plugin for 3D blind deconvolution in wide field fluorescence deconvolution.
+ * This class implements  EpiDEMIC, an Icy plugin for 3D blind deconvolution in wide field fluorescence microscopy.
  *
  * @author Ferréol Soulez & Jonathan Leger
  *
@@ -96,67 +96,71 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
     /***************************************************/
     /**         Plugin interface variables            **/
     /***************************************************/
-    //   private EzVarBoolean expertMode;      // Tick box to expose expert parameters
-    private EzTabs tabbedPane;
+    private EzTabs tabbedPane;              // The interface is composed of several tabs
 
     /** data tab: **/
-    private EzPanel  dataPanel;
-    private EzVarSequence data;
-    private EzVarChannel channel;
+    private EzPanel         dataPanel;      // data tab
+    private EzVarSequence   data;           // data
+    private EzVarChannel    channel;        // data channel
     // optical parameters
     private EzVarDouble     dxy_nm, dz_nm;  //  pixels size in (x,y) and z
     private EzVarDouble     na;             //  numerical aperture
     private EzVarDouble     lambda;         //  wavelength
     private EzVarDouble     ni;             //  refractive index of the immersion index
     //
-    private EzVarInteger    paddingSizeXY, paddingSizeZ;
-    private EzButton saveMetaData, showPSF;
-    private EzVarText imageSize, outputSize;
-    private MicroscopeMetadata meta = null;     //The image metadata that we will move from one image to another
+    private EzVarInteger    paddingSizeXY, paddingSizeZ; // number of pixels added in each direction
+    private EzButton        saveMetaData, showPSF;
+    private EzVarText       dataSize;       //
+    private EzVarText       outputSize;     // size of the object after padding
+    private MicroscopeMetadata meta = null; // metadata of the data
 
     /** weighting tab: **/
-    private EzVarText weightsMethod;
+    private EzVarText       weightsMethod;  // Combobox for variance estimation
     private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
-    private EzVarDouble  gain, noise;
-    private EzVarSequence weights, deadPixel;
-    private EzButton showWeight;
-    private EzGroup ezWeightingGroup, ezPadGroup;
+    private EzVarDouble     gain, noise;    // gain of the detector in e-/lvl and detector noise in e-
+    private EzVarSequence weights, deadPixel; // maps of inverse variance and bad pixels
+    private EzButton        showWeight;
+    private EzGroup         ezWeightingGroup, ezPadGroup;
 
 
     /** deconvolution tab: **/
-    private EzPanel    deconvPanel;
-    private EzVarDouble logmu, mu, epsilon;
-    private EzVarSequence  restart;
-    private EzVarChannel channelRestart;
-    private EzVarBoolean  positivity;
+    private EzPanel         deconvPanel;
+    private EzVarDouble logmu, mu, epsilon; // deconvolution hyper parameters; mu = 10^(logmu)
+    private EzVarSequence   restart;        // starting point
+    private EzVarChannel    channelRestart; // starting point channel
+    private EzVarBoolean    positivity;     // enforce non negativity
     private EzButton startDec, stopDec,  showFullObject;
-    private EzVarInteger    nbIterDeconv;
-    private EzVarBoolean  singlePrecision;
-    private EzVarDoubleArrayNative scale;
-    private EzGroup ezDeconvolutionGroup;
+    private EzVarInteger    nbIterDeconv;   // number of iteration for the deconvolution stage
+    private EzVarBoolean    singlePrecision;// compute in single precision
+    private EzVarDoubleArrayNative scale;   // scale of a voxel should be [1 1 dz/dxy]
+    private EzGroup         ezDeconvolutionGroup;
 
     /** blind deconvolution tab: **/
-    private EzPanel    bdecPanel;
-    private EzVarText   nbAlphaCoef, nbBetaCoef;
-    private final String[] nAlphaOptions = new String[]{"0","1","3","7","8","12","18","19","25","33","34","42","52","53","63","75","76","88","102","103"};
-    private final String[] nBetaOptions = new String[]{"0","3","4","6","10","11","15","21","22","28","36","37","45","55","56","66","78","79","91","105","106"};
-    private final String[] nAlphaOptionsR = new String[]{"0","1","2","3","4","5","6","7","8","9"};
-    private final String[] nBetaOptionsR = new String[]{"0","1","2","3","4","5","6","7","8","9"};
-    private EzVarBoolean  radial;
-    private EzButton  showPSF2, showModulus, showPhase;
-    private EzButton  startBlind, stopBlind, showFullObject2, resetPSF;
-    private EzButton saveParam, loadParam;
-    private EzVarFile saveFile, loadFile;
-    private EzVarBoolean  showIteration;
+    private EzPanel         bdecPanel;
+    private EzVarText       nbAlphaCoef;    // number of mode to describe the phase
+    private EzVarText       nbBetaCoef;     // number of mode to describe the modulus
+    private final String[]  nAlphaOptions = new String[]{"0","1","3","7","8","12","18","19","25","33","34","42","52","53","63","75","76","88","102","103"};
+    private final String[]  nBetaOptions = new String[]{"0","3","4","6","10","11","15","21","22","28","36","37","45","55","56","66","78","79","91","105","106"};
+    private final String[]  nAlphaOptionsR = new String[]{"0","1","2","3","4","5","6","7","8","9"};
+    private final String[]  nBetaOptionsR = new String[]{"0","1","2","3","4","5","6","7","8","9"};
+    private EzVarBoolean    radial;         // use only radial mode (constraint the PSF to be radially symmetric)
+    private EzButton        showPSF2, showModulus, showPhase;
+    private EzButton        startBlind, stopBlind, showFullObject2, resetPSF;
+    private EzButton        saveParam, loadParam;
+    private EzVarFile       saveFile, loadFile;// xml files to save and load parameters
+    private EzVarBoolean    showIteration;  // show object update at each iteration
     private EzLabel docDec;
-    private EzVarInteger  totalNbOfBlindDecLoop,maxIterDefocus,maxIterPhase,maxIterModulus;
-    private EzLabel docBlind;
-    private EzGroup visuPSF;
-    private EzGroup ezBlindDeconvolutionGroup;
+    private EzVarInteger    totalNbOfBlindDecLoop;// number of outer loop
+    private EzVarInteger    maxIterDefocus; // number of iteration for defocus parameters
+    private EzVarInteger    maxIterPhase;   // number of iteration for phase parameters
+    private EzVarInteger    maxIterModulus; // number of iteration for modulus parameters
+    private EzLabel         docBlind;
+    private EzGroup         visuPSF;
+    private EzGroup         ezBlindDeconvolutionGroup;
 
     // PSF parameters
-    private EzVarDoubleArrayNative pupilShift;
-    private EzVarDoubleArrayNative phaseCoefs, modulusCoefs;
+    private EzVarDoubleArrayNative pupilShift;  // estimated shift of the pupil relatively to the pupil axis
+    private EzVarDoubleArrayNative phaseCoefs, modulusCoefs; // estimated coefs of phase and modulus
 
     /** headless mode: **/
     private EzVarSequence   outputHeadlessImage=null, outputHeadlessPSF=null;
@@ -174,11 +178,11 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
     private Sequence cursequence; // Sequence containing the current solution
     private Shape dataShape;
     private ShapedArray wgtArray, dataArray, psfArray, objArray;
-    boolean run = true;
+    private boolean run = true;
 
 
     // Main arrays for the psf estimation
-    boolean runBdec;
+    private boolean runBdec;
     private WideFieldModel pupil=null;
     private boolean guessModulus;
     private boolean guessPhase;
@@ -192,7 +196,9 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
     private EzPanel  debuggingPanel;
     private EzVarText resultCostPrior, resultDefocus, resultPhase, resultModulus;
 
-    private String outputPath;
+    private String outputPath=null;
+
+    private String psfPath=null;
 
 
 
@@ -215,7 +221,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
 
     protected void updateImageSize() {
         String text = sizeX+"x"+sizeY+"x"+sizeZ;
-        imageSize.setValue(text);
+        dataSize.setValue(text);
     }
 
 
@@ -256,7 +262,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
 
         if (!isHeadLess()) {
             outputSize.setEnabled(false);
-            imageSize.setEnabled(false);
+            dataSize.setEnabled(false);
             mu.setEnabled(false);
             if(debug){
                 resultCostPrior.setEnabled(false);
@@ -275,10 +281,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         if (!isHeadLess()) {
             getUI().setParametersIOVisible(false);
             getUI().setActionPanelVisible(false);
-        }else{
-
-            String[] args = Icy.getCommandLinePluginArgs();
-            System.out.println(args);
         }
         tabbedPane = new EzTabs("BlindTabs", TabPlacement.TOP);
 
@@ -289,7 +291,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         dataPanel = new EzPanel("Step 1: Data");
         data = new EzVarSequence("Sequence:");
         channel = new EzVarChannel("Channel:", data.getVariable(), false);
-        imageSize = new EzVarText("Image size:");
+        dataSize = new EzVarText("Image size:");
         outputSize = new EzVarText("Output size:");
         paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
         paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
@@ -800,7 +802,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         /**** IMAGE ****/
         dataPanel.add(data);
         dataPanel.add(channel);
-        dataPanel.add(imageSize);
+        dataPanel.add(dataSize);
         dataPanel.add(ezPadGroup);
         dataPanel.add(outputSize);
         dataPanel.add(dxy_nm);
@@ -1076,6 +1078,27 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
                     restart.setValue(cursequence);
                     channelRestart.setValue(0);
                     ni.setValue(pupil.getNi());
+                    if (isHeadLess()) {
+                        if(outputHeadlessImage==null){
+                            outputHeadlessImage = new EzVarSequence("Output Image");
+                        }
+                        outputHeadlessImage.setValue(cursequence);
+
+                        if(outputPath!=null){
+                            saveSequence(cursequence, outputPath);
+                        }
+
+                        if(psfPath!=null){
+                            Sequence psfSequence = null;
+                            psfSequence =   arrayToSequence( ArrayUtils.roll(pupil.getPSF()), psfSequence);
+                            pupil.freePSF();
+                            saveSequence(psfSequence, psfPath);
+                        }
+
+                        if(saveFile.getValue()!=null){
+                            saveParamClicked();
+                        }
+                    }
                 }
             });
         } catch (IllegalArgumentException e) {
@@ -1085,7 +1108,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
             }
         } finally {
             startBlind.setText("Guess PSF");
-            // TODO set outputPSF in headless
         }
     }
 
@@ -1319,7 +1341,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         }
     }
 
-    protected void deconv( ) {
+    protected void deconv() {
         solver = new EdgePreservingDeconvolution();
 
         solver.setInitialSolution(objArray);
@@ -1386,13 +1408,15 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         show(ArrayUtils.crop(objArray,dataShape),cursequence,"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
 
         solver = null;
-        if (isHeadLess()) {
+        /*        if (isHeadLess()) {
             if(outputHeadlessImage==null){
                 outputHeadlessImage = new EzVarSequence("Output Image");
             }
             outputHeadlessImage.setValue(cursequence);
             saveSequence(cursequence, outputPath);
-        }
+            saveSequence(cursequence, psfPath);
+
+        }*/
     }
 
     protected  void show(ShapedVector  arr) {
@@ -1484,6 +1508,8 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
                 case "-i":
                     if(i+1 >= args.length)
                         break;
+                    if( args[i+1].startsWith("-"))
+                        break;
 
                     System.out.println("load image:" + args[i+1]);
                     data.setValue(Loader.loadSequence(args[i+1], 0, false));
@@ -1502,6 +1528,8 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
                 case "-r":
                     if(i+1 >= args.length)
                         break;
+                    if( args[i+1].startsWith("-"))
+                        break;
                     System.out.println("load restart:" + args[i+1]);
                     restart.setValue(Loader.loadSequence(args[i+1], 0, false));
                     if(i+3 >= args.length){
@@ -1519,17 +1547,39 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
                 case "-o":
                     if(i+1 >= args.length)
                         break;
+                    if( args[i+1].startsWith("-"))
+                        break;
                     outputPath = args[i+1];
+                    i++;
+                    break;
+                case "-p":
+                    if(i+1 >= args.length)
+                        break;
+                    if( args[i+1].startsWith("-"))
+                        break;
+                    psfPath = args[i+1];
+                    i++;
+                    break;
+                case "-s":
+                    if(i+1 >= args.length)
+                        break;
+                    if( args[i+1].startsWith("-"))
+                        break;
+                    saveFile.setValue(new File( args[i+1]));
                     i++;
                     break;
                 case "-badpix":
                     if(i+1 >= args.length)
+                        break;
+                    if( args[i+1].startsWith("-"))
                         break;
                     deadPixel.setValue(Loader.loadSequence(args[i+1], 0, false));
                     i++;
                     break;
                 case "-wghtmap":
                     if(i+1 >= args.length)
+                        break;
+                    if( args[i+1].startsWith("-"))
                         break;
                     weights.setValue(Loader.loadSequence(args[i+1], 0, false));
                     i++;
@@ -1538,8 +1588,10 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
                 default:
                     System.out.println("Wrong command line");
                     System.out.println("-i input data file");
-                    System.out.println("-p psf file");
                     System.out.println("-r restart file");
+                    System.out.println("-o deconvolved output file");
+                    System.out.println("-p psf output file");
+                    System.out.println("-s parameter output file");
                     System.out.println("-badpix bad pixels file");
                     System.out.println("-wghtmap weight or variance map file");
                     break;

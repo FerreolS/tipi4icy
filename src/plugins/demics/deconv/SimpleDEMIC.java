@@ -857,6 +857,8 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
                     data.setValue(Loader.loadSequence(args[i+1], 0, false));
                     if(i+3 >= args.length)
                         break;
+                    if( args[i+1].startsWith("-"))
+                        break;
                     if(args[i+2].equalsIgnoreCase("-c")){
                         channel.setValue(Integer.parseInt(args[i+3]));
                         i=i+3;
@@ -868,6 +870,8 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
                     break;
                 case "-p":
                     if(i+1 >= args.length)
+                        break;
+                    if( args[i+1].startsWith("-"))
                         break;
                     System.out.println("load psf:" + args[i+1]);
                     psf.setValue(Loader.loadSequence(args[i+1], 0, false));
@@ -883,6 +887,8 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
                     break;
                 case "-r":
                     if(i+1 >= args.length)
+                        break;
+                    if( args[i+1].startsWith("-"))
                         break;
                     System.out.println("load restart:" + args[i+1]);
                     restart.setValue(Loader.loadSequence(args[i+1], 0, false));
@@ -907,11 +913,15 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
                 case "-badpix":
                     if(i+1 >= args.length)
                         break;
+                    if( args[i+1].startsWith("-"))
+                        break;
                     deadPixel.setValue(Loader.loadSequence(args[i+1], 0, false));
                     i++;
                     break;
                 case "-wghtmap":
                     if(i+1 >= args.length)
+                        break;
+                    if( args[i+1].startsWith("-"))
                         break;
                     weights.setValue(Loader.loadSequence(args[i+1], 0, false));
                     i++;
@@ -922,6 +932,7 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
                     System.out.println("-i input data file");
                     System.out.println("-p psf file");
                     System.out.println("-r restart file");
+                    System.out.println("-o deconvolved output file");
                     System.out.println("-badpix bad pixels file");
                     System.out.println("-wghtmap weight or variance map file");
                     break;
