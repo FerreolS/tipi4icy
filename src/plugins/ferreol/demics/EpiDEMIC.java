@@ -90,7 +90,7 @@ import plugins.adufour.ezplug.EzVarText;
  * @author Ferréol Soulez & Jonathan Leger
  *
  */
-public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
+public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME should extend a broader DEMICS class
 
 
     /***************************************************/
@@ -218,7 +218,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         }
 
     }
-    @Override
+    @Override //FIXME should be in another class
     public void clean() {
     }
 

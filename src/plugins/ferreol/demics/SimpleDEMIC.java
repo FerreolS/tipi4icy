@@ -855,6 +855,7 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
 
                     System.out.println("load image:" + args[i+1]);
                     data.setValue(Loader.loadSequence(args[i+1], 0, false));
+                    data.valueChanged(data.getVariable(), null, data.getValue());
                     if(i+3 >= args.length)
                         break;
                     if( args[i+1].startsWith("-"))
