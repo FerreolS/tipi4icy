@@ -361,19 +361,20 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
                     System.out.println("Seq ch..."+newValue);
                 }
                 dataChanged() ;
-
-                meta = getMetaData(dataSeq);
-                dxy_nm.setValue(    meta.dxy);
-                dz_nm.setValue(     meta.dz);
-                scale.setValue(new double[]{1.0 ,1.0, dxy_nm.getValue()/ dz_nm.getValue() } );
-                na.setValue(     meta.na);
-                lambda.setValue( meta.lambda);
-                ni.setValue(     meta.ni);
-                if (debug) {
-                    System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
+                if(dataSeq!=null){
+                    meta = getMetaData(dataSeq);
+                    dxy_nm.setValue(    meta.dxy);
+                    dz_nm.setValue(     meta.dz);
+                    scale.setValue(new double[]{1.0 ,1.0, dxy_nm.getValue()/ dz_nm.getValue() } );
+                    na.setValue(     meta.na);
+                    lambda.setValue( meta.lambda);
+                    ni.setValue(     meta.ni);
+                    if (debug) {
+                        System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
+                    }
+                    // setting restart value to the current sequence
+                    restart.setValue(newValue);
                 }
-                // setting restart value to the current sequence
-                restart.setValue(newValue);
 
             }
 
@@ -1613,19 +1614,20 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
      */
     private void dataChanged() {
         dataSeq = data.getValue();
-
-        sizeX = dataSeq.getSizeX();
-        sizeY = dataSeq.getSizeY();
-        sizeZ = dataSeq.getSizeZ();
-        if (sizeZ == 1) {
-            throwError("Input data must be 3D");
-            return;
+        if(dataSeq!=null){
+            sizeX = dataSeq.getSizeX();
+            sizeY = dataSeq.getSizeY();
+            sizeZ = dataSeq.getSizeZ();
+            if (sizeZ == 1) {
+                throwError("Input data must be 3D");
+                return;
+            }
+            updatePaddedSize();
+            updateOutputSize();
+            updateImageSize();
+            pupil=null;
+            dataShape = new Shape(sizeX, sizeY, sizeZ);
         }
-        updatePaddedSize();
-        updateOutputSize();
-        updateImageSize();
-        pupil=null;
-        dataShape = new Shape(sizeX, sizeY, sizeZ);
     }
 
     private void saveSequence(Sequence seq, String path) //FIXME should be elsewhere
