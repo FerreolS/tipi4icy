@@ -208,10 +208,16 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
      * @param s
      * the error message
      */
-    private static void throwError(String s){
-        new FailedAnnounceFrame(s);
-    }
+    private  void throwError(String s){ //FIXME should be in another class
+        if(isHeadLess()){
+            throw new IllegalArgumentException(s);
+        }
+        else{
+            new FailedAnnounceFrame(s);
 
+        }
+
+    }
     @Override
     public void clean() {
     }
@@ -354,36 +360,21 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
                 if (debug) {
                     System.out.println("Seq ch..."+newValue);
                 }
-                // getting meta-data and computing sizes
-                dataSeq = newValue;
-                if (dataSeq != null) {
-                    sizeX = dataSeq.getSizeX();
-                    sizeY = dataSeq.getSizeY();
-                    sizeZ = dataSeq.getSizeZ();
-                    if (sizeZ == 1) {
-                        throwError("Input data must be 3D");
-                        return;
-                    }
+                dataChanged() ;
 
-                    meta = getMetaData(dataSeq);
-                    dxy_nm.setValue(    meta.dxy);
-                    dz_nm.setValue(     meta.dz);
-                    scale.setValue(new double[]{1.0 ,1.0, dxy_nm.getValue()/ dz_nm.getValue() } );
-                    na.setValue(     meta.na);
-                    lambda.setValue( meta.lambda);
-                    ni.setValue(     meta.ni);
-                    updatePaddedSize();
-                    updateOutputSize();
-                    updateImageSize();
-                    pupil=null;
-
-                    dataShape = new Shape(sizeX, sizeY, sizeZ);
-                    if (debug) {
-                        System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
-                    }
-                    // setting restart value to the current sequence
-                    restart.setValue(newValue);
+                meta = getMetaData(dataSeq);
+                dxy_nm.setValue(    meta.dxy);
+                dz_nm.setValue(     meta.dz);
+                scale.setValue(new double[]{1.0 ,1.0, dxy_nm.getValue()/ dz_nm.getValue() } );
+                na.setValue(     meta.na);
+                lambda.setValue( meta.lambda);
+                ni.setValue(     meta.ni);
+                if (debug) {
+                    System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                 }
+                // setting restart value to the current sequence
+                restart.setValue(newValue);
+
             }
 
         });
@@ -969,9 +960,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
     private void launch(boolean runDeconv) {
         try {
             startBlind.setText("Computing...");
-            if (isHeadLess()) { // For a trigger to update all values
-                //  data.valueChanged(null, null, null);
-            }
 
             buildpupil();
             if (debug|| isHeadLess()) {
@@ -1101,6 +1089,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
             }
             if(pupil!=null)
                 pupil.freePSF();// TODO free some memory
+
             SwingUtilities.invokeLater(new Runnable() {
                 @Override
                 public void run() {
@@ -1153,7 +1142,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
      * @return The weights.
      */
 
-    private ShapedArray createWeights(ShapedArray datArray) {
+    private ShapedArray createWeights(ShapedArray datArray) { //FIXME should be elsewhere
         ShapedArray wgtArray = null;
         Sequence seq;
         WeightedData wd = new WeightedData(datArray);
@@ -1272,7 +1261,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
      * @param seq
      * @return
      */
-    private MicroscopeMetadata getMetaData(Sequence seq){
+    private MicroscopeMetadata getMetaData(Sequence seq){ // Should be elsewhere
         OMEXMLMetadata metDat = seq.getMetadata();
         if (meta == null) {
             meta = new MicroscopeMetadata();
@@ -1435,7 +1424,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         }
         objArray = solver.getBestSolution().asShapedArray();
         show(ArrayUtils.crop(objArray,dataShape),cursequence,"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
-
         solver = null;
     }
 
@@ -1514,14 +1502,14 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         outputMap.add("outputImage", outputHeadlessImage.getVariable());
         outputMap.add("outputPSF", outputHeadlessPSF.getVariable());
     }
-    /*  @Override
-    public String getMainPluginClassName() {
-        return SimpleDEMIC.class.getName();
-    }*/
+
 
     private void parseCmdLine(){
         String[] args = Icy.getCommandLinePluginArgs();
-        //   loadParameters( new File(args[0]));
+
+        loadFile.setValue(new File(args[0]));
+        loadParamClicked();
+        System.out.println("Load Param... "+args[0]);
         for (int i = 1; i < args.length; i++) {
             switch (args[i]) {
                 case "-i":
@@ -1532,6 +1520,8 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
 
                     System.out.println("load image:" + args[i+1]);
                     data.setValue(Loader.loadSequence(args[i+1], 0, false));
+
+                    dataChanged();
                     if(i+3 >= args.length)
                         break;
                     if(args[i+2].equalsIgnoreCase("-c")){
@@ -1617,11 +1607,28 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
             }
         }
 
-        loadFile.setValue(new File(args[0]));
-        loadParamClicked();
-
     }
-    public void saveSequence(Sequence seq, String path)
+    /**
+     *
+     */
+    private void dataChanged() {
+        dataSeq = data.getValue();
+
+        sizeX = dataSeq.getSizeX();
+        sizeY = dataSeq.getSizeY();
+        sizeZ = dataSeq.getSizeZ();
+        if (sizeZ == 1) {
+            throwError("Input data must be 3D");
+            return;
+        }
+        updatePaddedSize();
+        updateOutputSize();
+        updateImageSize();
+        pupil=null;
+        dataShape = new Shape(sizeX, sizeY, sizeZ);
+    }
+
+    private void saveSequence(Sequence seq, String path) //FIXME should be elsewhere
     {
         File f = new File(path);
         if (f.isDirectory())
