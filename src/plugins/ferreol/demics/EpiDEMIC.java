@@ -37,39 +37,25 @@ import java.io.File;
 import javax.swing.SwingUtilities;
 
 import icy.file.Loader;
-import icy.file.Saver;
 import icy.gui.frame.progress.AnnounceFrame;
-import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.image.colormap.IceColorMap;
 import icy.main.Icy;
-import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
-import icy.util.OMEUtil;
-import loci.common.services.ServiceException;
-import loci.formats.ome.OMEXMLMetadata;
-import loci.formats.ome.OMEXMLMetadataImpl;
 import microTiPi.epifluorescence.WideFieldModel;
-import microTiPi.microscopy.MicroscopeMetadata;
 import microTiPi.microscopy.PSF_Estimation;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
-import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.cost.EdgePreservingDeconvolution;
-import mitiv.cost.WeightedData;
-import mitiv.linalg.shaped.ShapedVector;
 import mitiv.old.MathUtils;
 import mitiv.optim.OptimTask;
-import mitiv.utils.FFTUtils;
-import mitiv.utils.WeightFactory;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzGroup;
 import plugins.adufour.ezplug.EzLabel;
 import plugins.adufour.ezplug.EzPanel;
-import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzTabs;
 import plugins.adufour.ezplug.EzTabs.TabPlacement;
@@ -90,7 +76,7 @@ import plugins.adufour.ezplug.EzVarText;
  * @author Ferréol Soulez & Jonathan Leger
  *
  */
-public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME should extend a broader DEMICS class
+public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXME should extend a broader DEMICS class
 
 
     /***************************************************/
@@ -100,26 +86,9 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
 
     /** data tab: **/
     private EzPanel         dataPanel;      // data tab
-    private EzVarSequence   data;           // data
-    private EzVarChannel    channel;        // data channel
-    // optical parameters
-    private EzVarDouble     dxy_nm, dz_nm;  //  pixels size in (x,y) and z
-    private EzVarDouble     na;             //  numerical aperture
-    private EzVarDouble     lambda;         //  wavelength
-    private EzVarDouble     ni;             //  refractive index of the immersion index
-    //
-    private EzVarInteger    paddingSizeXY, paddingSizeZ; // number of pixels added in each direction
     private EzButton        saveMetaData, showPSF;
-    private EzVarText       dataSize;       //
-    private EzVarText       outputSize;     // size of the object after padding
-    private MicroscopeMetadata meta = null; // metadata of the data
 
     /** weighting tab: **/
-    private EzVarText       weightsMethod;  // Combobox for variance estimation
-    private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
-    private EzVarDouble     gain, noise;    // gain of the detector in e-/lvl and detector noise in e-
-    private EzVarSequence weights, deadPixel; // maps of inverse variance and bad pixels
-    private EzButton        showWeight;
     private EzGroup         ezWeightingGroup, ezPadGroup;
 
 
@@ -130,9 +99,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
     private EzVarChannel    channelRestart; // starting point channel
     private EzVarBoolean    positivity;     // enforce non negativity
     private EzButton startDec, stopDec,  showFullObject;
-    private EzVarInteger    nbIterDeconv;   // number of iteration for the deconvolution stage
-    private EzVarBoolean    singlePrecision;// compute in single precision
-    private EzVarDoubleArrayNative scale;   // scale of a voxel should be [1 1 dz/dxy]
     private EzGroup         ezDeconvolutionGroup;
 
     /** blind deconvolution tab: **/
@@ -169,16 +135,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
     private PSF_Estimation psfEstimation;
     private EdgePreservingDeconvolution solver;
 
-    // Main variables for the deconvolution part
-    private int sizeX=128, sizeY=128, sizeZ=64; // Input sequence sizes
-    private  int Nxy=128, Nz=64;			 // Output (padded sequence size)
-    private Shape psfShape = new Shape(Nxy, Nxy, Nz);
-    private Shape outputShape;
-    private Sequence dataSeq;
-    private Sequence cursequence; // Sequence containing the current solution
-    private Shape dataShape;
-    private ShapedArray wgtArray, dataArray, psfArray, objArray;
-    private boolean run = true;
 
 
     // Main arrays for the psf estimation
@@ -202,68 +158,24 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
 
 
 
-    /**
-     * print error message
-     *
-     * @param s
-     * the error message
-     */
-    private  void throwError(String s){ //FIXME should be in another class
-        if(isHeadLess()){
-            throw new IllegalArgumentException(s);
-        }
-        else{
-            new FailedAnnounceFrame(s);
 
-        }
-
-    }
     @Override //FIXME should be in another class
     public void clean() {
     }
 
 
-    /**
-     * Print the size of the deconvolved image  in the plugin
-     */
-    private void updateOutputSize() {
-        String text = Nxy+"x"+Nxy+"x"+Nz;
-        outputSize.setValue(text);
-        if((1.0*Nxy*Nxy*Nz)>Math.pow(2, 30)){
-            throwError("Padded image is too large (>2^30)");
-        }
-    }
 
-    /**
-     * Print the size of the original input  in the plugin
-     */
-    private void updateImageSize() {
-        String text = sizeX+"x"+sizeY+"x"+sizeZ;
-        dataSize.setValue(text);
-    }
 
 
     /**
      * Update the size of the deconvolved image according the size of the input and the padding rounded to the next best fft size
      *
      */
-    private void updatePaddedSize() {
-        if (paddingSizeXY.getValue() < 0.0) {
-            throwError("Padding value cannot be negative");
-            return;
-        }
-        if (paddingSizeZ.getValue() < 0.0) {
-            throwError("Padding value cannot be negative");
-            return;
-        }
-        int sizeXY = Math.max(sizeX, sizeY);
-        Nxy = FFTUtils.bestDimension(sizeXY + paddingSizeXY.getValue());
-        Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
-        outputShape = new Shape(Nxy, Nxy, Nz);
+    @Override
+    protected void updatePaddedSize() {
+        super.updatePaddedSize();
         psfShape = new Shape(Nxy, Nxy, Nz);
-        if(debug){
-            System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
-        }
+
     }
 
 
@@ -1130,53 +1042,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
         }
     }
 
-    /**
-     * The goal is to create an array of weights, but it will be created depending
-     * the user input so we will have to test each cases:
-     *  	- None
-     *  	- A given map
-     *  	- A variance map
-     *  	- A computed variance
-     * Then we apply the dead pixel map
-     *
-     * @param datArray - The data to deconvolve.
-     * @return The weights.
-     */
-
-    private ShapedArray createWeights(ShapedArray datArray) { //FIXME should be elsewhere
-        ShapedArray wgtArray = null;
-        Sequence seq;
-        WeightedData wd = new WeightedData(datArray);
-
-        if (weightsMethod.getValue() == weightOptions[1]) {
-            // A map of weights is provided.
-            if ((seq = weights.getValue()) != null) {
-                wgtArray =  sequenceToArray(seq);
-                wd.setWeights(wgtArray);
-            }
-        } else if (weightsMethod.getValue() == weightOptions[2]) {
-            // A variance map is provided. FIXME: check shape and values.
-            if ((seq = weights.getValue()) != null) {
-                ShapedArray varArray =  sequenceToArray(seq);
-                wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
-                wd.setWeights(wgtArray);
-            }
-        } else if (weightsMethod.getValue() == weightOptions[3]) {
-            // Weights are computed given the gain and the readout noise of the detector.
-            double gamma = gain.getValue();
-            double sigma = noise.getValue();
-            double alpha = 1/gamma;
-            double beta = (sigma/gamma)*(sigma/gamma);
-            wd.computeWeightsFromData(alpha, beta);
-        }
-        if ((seq = deadPixel.getValue()) != null) {
-            // Account for bad data.
-            ShapedArray badArr =  sequenceToArray(seq);
-            wd.markBadData(badArr);
-        }
-        return wd.getWeights().asShapedArray();
-
-    }
 
     /*****************************************/
     /** All the PSF buttons call are here   **/
@@ -1252,60 +1117,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
         show(wgtArray,"Weight map");
     }
 
-    /**
-     * Here we get the informations given by the users but not all.
-     * In fact we trust only a few data that we know that are given by Icy.
-     * Else we are trying to keep them for the next run.
-     *
-     * Remember: if users may lie, they will !
-     *
-     * @param seq
-     * @return
-     */
-    private MicroscopeMetadata getMetaData(Sequence seq){ // Should be elsewhere
-        OMEXMLMetadata metDat = seq.getMetadata();
-        if (meta == null) {
-            meta = new MicroscopeMetadata();
-            if (metDat.getInstrumentCount() > 0) {
-                try {
-                    meta.na      = metDat.getObjectiveLensNA(0, 0);
-                    //meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
-                } catch(Exception e){
-                    System.out.println("Failed to get some metadatas, will use default values for na, lambda");
-                }
-            } else {
-                if (debug && verbose) {
-                    System.out.println("INFO: Metadata: No instrument so no metadata.");
-                }
-            }
-        }
-        //If no instrument found, at least we have the right image size
-        meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
-        meta.nz      = seq.getSizeZ();
-        meta.dxy     = seq.getPixelSizeX()*1E3;
-        meta.dz      = seq.getPixelSizeZ()*1E3;
-        meta.na      = na.getValue();
-        meta.lambda  = lambda.getValue();
-        meta.ni      = ni.getValue();
-        return meta;
-    }
-
-    private void updateMetaData() {
-        Sequence seq = data.getValue();
-        if (seq != null) {
-            try {
-                OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
-                newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
-                newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
-                newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
-                seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
-            } catch (ServiceException e) {
-                e.printStackTrace();
-            }
-        } else {
-            new AnnounceFrame("Nothing to save");
-        }
-    }
 
     @Override
     public void stopExecution() {
@@ -1428,44 +1239,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
         solver = null;
     }
 
-    protected  void show(ShapedVector  arr) {
-        show(  arr.asShapedArray(),  null,  "" ) ;
-    }
-    protected  void show(ShapedVector  arr,  String title ) {
-        show(  arr.asShapedArray(),  null,  title ) ;
-    }
-    protected  void show(ShapedArray  arr,  String title ) {
-        show(  arr,  null,  title ) ;
-    }
-    protected void show(ShapedVector  arr, Sequence sequence, String title ) {
-        show(  arr.asShapedArray(),  sequence,  title ) ;
-    }
-    protected  void show(ShapedArray  arr) {
-        show(  arr,  null,  "" ) ;
-    }
-    protected void show(ShapedArray  arr, Sequence sequence, String title ) {
-        if (sequence == null )  {
-
-            sequence = new Sequence();
-            if (!isHeadLess()){
-                addSequence(sequence);
-            }
-        }
-        sequence.beginUpdate();
-        sequence =   arrayToSequence(arr, sequence);
-
-        if( sequence.getFirstViewer() == null){
-            if (!isHeadLess()){
-                addSequence(sequence);
-            }
-        }
-
-        sequence.endUpdate();
-        sequence.setName(title);
-
-
-
-    }
 
     @Override
     public void declareInput(VarList inputMap) {// FIXME Use subclasses for protocols
@@ -1612,32 +1385,11 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block { //FIXME sho
     /**
      *
      */
-    private void dataChanged() {
-        dataSeq = data.getValue();
-        if(dataSeq!=null){
-            sizeX = dataSeq.getSizeX();
-            sizeY = dataSeq.getSizeY();
-            sizeZ = dataSeq.getSizeZ();
-            if (sizeZ == 1) {
-                throwError("Input data must be 3D");
-                return;
-            }
-            updatePaddedSize();
-            updateOutputSize();
-            updateImageSize();
-            pupil=null;
-            dataShape = new Shape(sizeX, sizeY, sizeZ);
-        }
+    @Override
+    protected void dataChanged() {
+        super.dataChanged();
+        pupil=null;
     }
-
-    private void saveSequence(Sequence seq, String path) //FIXME should be elsewhere
-    {
-        File f = new File(path);
-        if (f.isDirectory())
-        {
-            f = new File(f.getAbsolutePath() + File.separator + seq + ".tif");
-        }
-        Saver.save(seq, f, false, false);
-    }
-
 }
+
+

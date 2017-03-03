@@ -25,7 +25,6 @@
 
 package plugins.ferreol.demics;
 
-import static plugins.mitiv.io.Icy2TiPi.arrayToSequence;
 import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
 
 import java.awt.event.ActionEvent;
@@ -36,7 +35,6 @@ import javax.swing.SwingUtilities;
 
 import icy.file.Loader;
 import icy.file.Saver;
-import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.main.Icy;
 import icy.sequence.Sequence;
 import mitiv.array.ArrayUtils;
@@ -44,16 +42,12 @@ import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.cost.EdgePreservingDeconvolution;
-import mitiv.cost.WeightedData;
-import mitiv.linalg.shaped.ShapedVector;
 import mitiv.optim.OptimTask;
 import mitiv.utils.FFTUtils;
-import mitiv.utils.WeightFactory;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzGroup;
-import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVar;
 import plugins.adufour.ezplug.EzVarBoolean;
@@ -68,9 +62,9 @@ import plugins.adufour.ezplug.EzVarText;
 
 
 /**
- * SimpleDEMIC implements regularized multi-dimensional deconvolution.
+ * SimpleDEMIC implements a TV regularized multi-dimensional deconvolution.
  */
-public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
+public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
 
     /***************************************************/
@@ -113,7 +107,7 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
     static boolean debug =false;
 
     private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence size
-    protected int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
+    private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
     private Shape dataShape ;
     private  int Nx=512, Ny=512, Nz=128;            // Output (padded sequence size)
     private Shape outputShape;//, psfShape;
@@ -493,45 +487,9 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
 
     }
 
-    protected  void show(ShapedVector  arr) {
-        show(  arr.asShapedArray(),  null,  "" ) ;
-    }
-    protected  void show(ShapedVector  arr,  String title ) {
-        show(  arr.asShapedArray(),  null,  title ) ;
-    }
-    protected  void show(ShapedArray  arr,  String title ) {
-        show(  arr,  null,  title ) ;
-    }
-    protected void show(ShapedVector  arr, Sequence sequence, String title ) {
-        show(  arr.asShapedArray(),  sequence,  title ) ;
-    }
-    protected  void show(ShapedArray  arr) {
-        show(  arr,  null,  "" ) ;
-    }
-    protected void show(ShapedArray  arr, Sequence sequence, String title ) {
-        if (sequence == null )  {
-
-            sequence = new Sequence();
-            if (!isHeadLess()){
-                addSequence(sequence);
-            }
-        }
-        sequence.beginUpdate();
-        sequence =   arrayToSequence(arr, sequence);
-
-        if( sequence.getFirstViewer() == null){
-            if (!isHeadLess()){
-                addSequence(sequence);
-            }
-        }
-
-        sequence.endUpdate();
-        sequence.setName(title);
 
 
-
-    }
-
+    @Override
     protected void updateOutputSize() {
 
         String text;
@@ -548,16 +506,10 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
         }
     }
 
-    protected void updateImageSize() {
-        String text ;
-        if (Nz==1)
-            text= sizeX+"x"+sizeY;
-        else
-            text= sizeX+"x"+sizeY+"x"+sizeZ;
-        dataSize.setValue(text);
-    }
 
 
+
+    @Override
     protected void updatePaddedSize() {
 
         Nx = FFTUtils.bestDimension(sizeX + paddingSizeX.getValue());
@@ -733,67 +685,8 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
 
     }
 
-    /****************************************************/
-    /**                  UTILS FUNCTIONS               **/
-    /****************************************************/
-    private  void throwError(String s){
-        if(isHeadLess()){
-            throw new IllegalArgumentException(s);
-        }
-        else{
-            new FailedAnnounceFrame(s);
-
-        }
-
-    }
 
 
-    /**
-     * The goal is to create an array of weights, but it will be created depending
-     * the user input so we will have to test each cases:
-     *      - None
-     *      - A given map
-     *      - A variance map
-     *      - A computed variance
-     * Then we apply the dead pixel map
-     *
-     * @param datArray - The data to deconvolve.
-     * @return The weights.
-     */
-
-    private ShapedArray createWeights(ShapedArray datArray) {
-        ShapedArray wgtArray = null;
-        Sequence seq;
-        WeightedData wd = new WeightedData(datArray);
-
-        if (weightsMethod.getValue() == weightOptions[1]) {
-            // A map of weights is provided.
-            if ((seq = weights.getValue()) != null) {
-                wgtArray =  sequenceToArray(seq);
-                wd.setWeights(wgtArray);
-            }
-        } else if (weightsMethod.getValue() == weightOptions[2]) {
-            // A variance map is provided. FIXME: check shape and values.
-            if ((seq = weights.getValue()) != null) {
-                ShapedArray varArray =  sequenceToArray(seq);
-                wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
-                wd.setWeights(wgtArray);
-            }
-        } else if (weightsMethod.getValue() == weightOptions[3]) {
-            // Weights are computed given the gain and the readout noise of the detector.
-            double gamma = gain.getValue();
-            double sigma = noise.getValue();
-            double alpha = 1/gamma;
-            double beta = (sigma/gamma)*(sigma/gamma);
-            wd.computeWeightsFromData(alpha, beta);
-        }
-        if ((seq = deadPixel.getValue()) != null) {
-            // Account for bad data.
-            ShapedArray badArr =  sequenceToArray(seq);
-            wd.markBadData(badArr);
-        }
-        return wd.getWeights().asShapedArray();
-    }
 
 
     //If the user call the stop button
@@ -942,6 +835,7 @@ public class SimpleDEMIC extends EzPlug implements Block, EzStoppable {
 
 
     }
+    @Override
     public void saveSequence(Sequence seq, String path)
     {
         File f = new File(path);
