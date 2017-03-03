@@ -902,7 +902,10 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
      * Load the parameter file and perform parameter update
      */
     private void loadParamClicked() {
+        File saveName = saveFile.getValue();
         this.loadParameters(loadFile.getValue());
+        saveFile.setValue(saveName);    // FIX saving file name erasing during load
+
         buildpupil();
         pupil.setPupilAxis(pupilShift.getValue());
         pupil.setNi(ni.getValue());
