@@ -38,6 +38,11 @@ import plugins.adufour.ezplug.EzVarSequence;
 //import plugins.mitiv.deconv.MitivDeconvolution;
 import plugins.mitiv.old.io.IcyBufferedImageUtils;
 
+/**
+ * Icy plugin for convolution
+ * @author ferreol
+ *
+ */
 public class Convolution extends EzPlug {
     //Mydata
 
@@ -67,9 +72,9 @@ public class Convolution extends EzPlug {
 
         Shape myShape;
         if (d != 1) {
-            myShape = Shape.make(w, h, d);
+            myShape = new Shape(w, h, d);
         } else {
-            myShape = Shape.make(w, h);
+            myShape = new Shape(w, h);
         }
 
         ShapedArray imgArray =  IcyBufferedImageUtils.imageToArray(seqImg,0);
@@ -91,11 +96,6 @@ public class Convolution extends EzPlug {
         }
         addSequence(seqY);
     }
-
-    /*  @Override
-    public String getMainPluginClassName() {
-        return SimpleDEMIC.class.getName();
-    }*/
 
     @Override
     public void clean() {

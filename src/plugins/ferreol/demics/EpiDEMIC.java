@@ -85,7 +85,7 @@ import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 
 /**
- * This class implements  EpiDEMIC, an Icy plugin for 3D blind deconvolution in wide field fluorescence microscopy.
+ * This class implements  EpiDEMIC, an Icy plugin for 3D blind deconvolution in epifluorescence (wide field) fluorescence microscopy.
  *
  * @author Ferréol Soulez & Jonathan Leger
  *
@@ -459,7 +459,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
                     weights.setVisible(false);
                     gain.setVisible(false);
                     noise.setVisible(false);
-                } else if (weightsMethod.getValue() == weightOptions[1] || weightsMethod.getValue() == weightOptions[2]) {  //Personnalized map ou Variance map
+                } else if (weightsMethod.getValue() == weightOptions[1] || weightsMethod.getValue() == weightOptions[2]) {  //Personalized map or Variance map
                     weights.setVisible(true);
                     gain.setVisible(false);
                     noise.setVisible(false);
@@ -601,7 +601,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         /**                      BDEC TAB                  **/
         /****************************************************/
         //Saving variables
-        pupilShift = new EzVarDoubleArrayNative("pupilShift", new double[][] { { 0.0, 0.0} }, false); //FIXME use ni and axis
+        pupilShift = new EzVarDoubleArrayNative("pupilShift", new double[][] { { 0.0, 0.0} }, false);
         pupilShift.setVisible(false);
         phaseCoefs = new EzVarDoubleArrayNative("phase coefs",null , false);
         phaseCoefs.setVisible(false);
@@ -973,11 +973,10 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
             buildpupil();
             if (debug|| isHeadLess()) {
                 System.out.println("-------------IMAGE-------------------");
-                System.out.println("File: "+data.getValue());              //Used
+                System.out.println("File: "+data.getValue());
                 System.out.println("Canal: "+channel.getValue());
                 System.out.println("image size: "+ dataSize.getValue());
                 System.out.println("--------------PSF------------------");
-                //         System.out.println("PSF: "+psf.getValue());                 //Used
                 System.out.println("dxy: "+dxy_nm.getValue()*1E-9);
                 System.out.println("dz: "+dz_nm.getValue()*1E-9);
                 System.out.println("Nxy: "+Nxy);
@@ -1001,9 +1000,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
                 System.out.println("--------------BDEC------------------");
                 System.out.println("output size: "+ outputSize.getValue());
                 System.out.println("nbIter: "+nbIterDeconv.getValue());
-                /*System.out.println("nbIterZern: "+grtolPhase.getValue());
-                System.out.println("module: "+grtolModulus.getValue());
-                System.out.println("defoc: "+grtolDefocus.getValue());*/
                 System.out.println("Number of total iterations: "+totalNbOfBlindDecLoop.getValue());
                 System.out.println("------------------------------------");
                 System.out.println("");
@@ -1438,15 +1434,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         show(ArrayUtils.crop(objArray,dataShape),cursequence,"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
 
         solver = null;
-        /*        if (isHeadLess()) {
-            if(outputHeadlessImage==null){
-                outputHeadlessImage = new EzVarSequence("Output Image");
-            }
-            outputHeadlessImage.setValue(cursequence);
-            saveSequence(cursequence, outputPath);
-            saveSequence(cursequence, psfPath);
-
-        }*/
     }
 
     protected  void show(ShapedVector  arr) {
