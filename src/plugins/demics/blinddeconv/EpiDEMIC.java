@@ -202,6 +202,12 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
 
 
 
+    /**
+     * print error message
+     *
+     * @param s
+     * the error message
+     */
     private static void throwError(String s){
         new FailedAnnounceFrame(s);
     }
@@ -211,7 +217,10 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
     }
 
 
-    protected void updateOutputSize() {
+    /**
+     * Print the size of the deconvolved image  in the plugin
+     */
+    private void updateOutputSize() {
         String text = Nxy+"x"+Nxy+"x"+Nz;
         outputSize.setValue(text);
         if((1.0*Nxy*Nxy*Nz)>Math.pow(2, 30)){
@@ -219,13 +228,20 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         }
     }
 
-    protected void updateImageSize() {
+    /**
+     * Print the size of the original input  in the plugin
+     */
+    private void updateImageSize() {
         String text = sizeX+"x"+sizeY+"x"+sizeZ;
         dataSize.setValue(text);
     }
 
 
-    protected void updatePaddedSize() {
+    /**
+     * Update the size of the deconvolved image according the size of the input and the padding rounded to the next best fft size
+     *
+     */
+    private void updatePaddedSize() {
         if (paddingSizeXY.getValue() < 0.0) {
             throwError("Padding value cannot be negative");
             return;
@@ -244,6 +260,10 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         }
     }
 
+
+    /**
+     *  set default values of the plugin
+     */
     private void setDefaultValue() {
         weightsMethod.setValue( weightOptions[3]);
         radial.setValue(false);
@@ -276,6 +296,9 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
     /*********************************/
     /**      Initialization         **/
     /*********************************/
+    /* (non-Javadoc)
+     * @see plugins.adufour.ezplug.EzPlug#initialize()
+     */
     @Override
     protected void initialize() {
         if (!isHeadLess()) {
@@ -875,8 +898,12 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
 
     }
 
-    protected void loadParamClicked() {
+    /**
+     * Load the parameter file and perform parameter update
+     */
+    private void loadParamClicked() {
         this.loadParameters(loadFile.getValue());
+        buildpupil();
         pupil.setPupilAxis(pupilShift.getValue());
         pupil.setNi(ni.getValue());
         pupil.setModulus(modulusCoefs.getValue());
@@ -897,7 +924,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
 
     }
 
-    protected void saveParamClicked() {
+    private void saveParamClicked() {
         if(pupil!=null){
             pupilShift.setValue( pupil.getPupilShift());
             if(pupil.getAlpha() !=null)
@@ -914,6 +941,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
             if (!pathName.getName().endsWith(".xml")){
                 pathName = new File(pathName.getAbsolutePath()+".xml");
             }
+
             this.saveParameters(pathName);
         }
     }
@@ -926,7 +954,6 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
             initialize();
             parseCmdLine();
             showIteration.setValue(false);
-            System.out.println("Launch it:"+nbIterDeconv.getValue());
         }
         long startTime = System.currentTimeMillis();
         launch(false);
@@ -936,18 +963,19 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         System.out.println("time: "+elapsedTime);
     }
 
-    protected void launch(boolean runDeconv) {
+    private void launch(boolean runDeconv) {
         try {
             startBlind.setText("Computing...");
             if (isHeadLess()) { // For a trigger to update all values
-                data.valueChanged(null, null, null);
+                //  data.valueChanged(null, null, null);
             }
 
             buildpupil();
-            if (debug) {
+            if (debug|| isHeadLess()) {
                 System.out.println("-------------IMAGE-------------------");
                 System.out.println("File: "+data.getValue());              //Used
                 System.out.println("Canal: "+channel.getValue());
+                System.out.println("image size: "+ dataSize.getValue());
                 System.out.println("--------------PSF------------------");
                 //         System.out.println("PSF: "+psf.getValue());                 //Used
                 System.out.println("dxy: "+dxy_nm.getValue()*1E-9);
@@ -958,19 +986,21 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
                 System.out.println("\u03BB: "+lambda.getValue()*1E-9);
                 System.out.println("ni: "+ni.getValue());
                 System.out.println("--------------Variance------------------");
+                System.out.println("Weights method: "+weightsMethod.getValue());
                 System.out.println("Weights: "+weights.getValue());
                 System.out.println("Gain: "+gain.getValue());
                 System.out.println("Noise: "+noise.getValue());
                 System.out.println("deadPix: "+deadPixel.getValue());
                 System.out.println("--------------DECONV------------------");
+
                 System.out.println("zeroPad xy: "+paddingSizeXY.getValue());
                 System.out.println("zeroPad z: "+paddingSizeZ.getValue());
                 System.out.println("nbIter: "+nbIterDeconv.getValue());
                 System.out.println("Restart: "+restart.getValue());
                 System.out.println("Positivity: "+positivity.getValue());
                 System.out.println("--------------BDEC------------------");
+                System.out.println("output size: "+ outputSize.getValue());
                 System.out.println("nbIter: "+nbIterDeconv.getValue());
-                System.out.println("zeroPad: "+paddingSizeXY.getValue());
                 /*System.out.println("nbIterZern: "+grtolPhase.getValue());
                 System.out.println("module: "+grtolModulus.getValue());
                 System.out.println("defoc: "+grtolDefocus.getValue());*/
@@ -1298,7 +1328,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
     }
 
 
-    protected void preProcessing(){
+    private void preProcessing(){
         // Preparing parameters and testing input
         dataSeq = data.getValue();
         if (dataSeq == null)
@@ -1341,7 +1371,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
         }
     }
 
-    protected void deconv() {
+    private void deconv() {
         solver = new EdgePreservingDeconvolution();
 
         solver.setInitialSolution(objArray);
@@ -1501,8 +1531,7 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
 
     private void parseCmdLine(){
         String[] args = Icy.getCommandLinePluginArgs();
-
-        loadParameters( new File(args[0]));
+        //   loadParameters( new File(args[0]));
         for (int i = 1; i < args.length; i++) {
             switch (args[i]) {
                 case "-i":
@@ -1598,6 +1627,8 @@ public class EpiDEMIC extends EzPlug implements EzStoppable, Block {
             }
         }
 
+        loadFile.setValue(new File(args[0]));
+        loadParamClicked();
 
     }
     public void saveSequence(Sequence seq, String path)
