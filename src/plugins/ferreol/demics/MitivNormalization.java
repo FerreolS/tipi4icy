@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.demics.normalization;
+package plugins.ferreol.demics;
 
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.IcyBufferedImage;
@@ -35,7 +35,6 @@ import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVarSequence;
-import plugins.demics.deconv.SimpleDEMIC;
 import plugins.mitiv.old.io.IcyBufferedImageUtils;
 
 /**

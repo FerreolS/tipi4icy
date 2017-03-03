@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.mitiv.conv;
+package plugins.ferreol.demics;
 
 
 import icy.image.IcyBufferedImage;

@@ -1,4 +1,4 @@
-package plugins.demics.blinddeconv;
+package plugins.ferreol.demics;
 
 public class BlindDeconvolution {
 

@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.demics.deconv;
+package plugins.ferreol.demics;
 
 import static plugins.mitiv.io.Icy2TiPi.arrayToSequence;
 import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;

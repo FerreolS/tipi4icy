@@ -24,7 +24,7 @@
  */
 
 
-package plugins.demics.blinddeconv;
+package plugins.ferreol.demics;
 
 import static plugins.mitiv.io.Icy2TiPi.arrayToSequence;
 import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;

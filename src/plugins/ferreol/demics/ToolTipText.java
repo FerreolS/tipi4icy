@@ -23,7 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package plugins.demics.blinddeconv;
+package plugins.ferreol.demics;
 
 /**
  * In this class is contained all the tooltip texts. It can be usefull for correcting mistakes or
