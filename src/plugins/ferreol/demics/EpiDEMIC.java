@@ -94,12 +94,11 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
 
     /** deconvolution tab: **/
     private EzPanel         deconvPanel;
-    private EzVarDouble logmu, mu, epsilon; // deconvolution hyper parameters; mu = 10^(logmu)
-    private EzVarSequence   restart;        // starting point
-    private EzVarChannel    channelRestart; // starting point channel
-    private EzVarBoolean    positivity;     // enforce non negativity
-    private EzButton startDec, stopDec,  showFullObject;
+    private EzVarDouble     epsilon; // deconvolution hyper parameters; mu = 10^(logmu)
+
     private EzGroup         ezDeconvolutionGroup;
+    protected  int          Nxy=128; // Output (padded sequence size)
+
 
     /** blind deconvolution tab: **/
     private EzPanel         bdecPanel;
@@ -174,7 +173,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
     @Override
     protected void updatePaddedSize() {
         super.updatePaddedSize();
+        Nxy = Math.max(Nx, Ny);
         psfShape = new Shape(Nxy, Nxy, Nz);
+        outputShape = new Shape(Nxy, Nxy, Nz);
 
     }
 

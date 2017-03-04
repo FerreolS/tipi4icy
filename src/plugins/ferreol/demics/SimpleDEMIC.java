@@ -63,6 +63,8 @@ import plugins.adufour.ezplug.EzVarText;
 
 /**
  * SimpleDEMIC implements a TV regularized multi-dimensional deconvolution.
+ * @author ferreol
+ *
  */
 public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
@@ -70,28 +72,15 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     /***************************************************/
     /**         Plugin interface variables            **/
     /***************************************************/
-    private EzVarSequence data;
-    private EzVarChannel channel;
+
     private EzVarSequence psf; // Point Spread Function
 
     private EzVarInteger    paddingSizeX,paddingSizeY, paddingSizeZ;
-    private EzVarText dataSize, outputSize;
-    /** weighting tab: **/
-    private EzVarText weightsMethod;
-    private final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
-    private EzVarDouble  gain, noise;
-    private EzVarSequence weights, deadPixel;
-    private EzButton showWeight;
 
 
     /** deconvolution tab: **/
-    private EzVarDouble logmu, mu, epsilon;
-    private EzVarSequence  restart;
-    private EzVarBoolean  positivity;
-    private EzVarBoolean  singlePrecision;
+    private EzVarDouble  epsilon;
     private EzVarBoolean  showIteration;
-    private EzButton startDec, stopDec, showFull;
-    private EzVarInteger    nbIterDeconv;
 
     private EzButton saveParam, loadParam;
     private EzVarFile saveFile;
@@ -106,25 +95,21 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
     static boolean debug =false;
 
-    private int sizeX=512, sizeY=512, sizeZ=128; // Input sequence size
     private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
-    private Shape dataShape ;
-    private  int Nx=512, Ny=512, Nz=128;            // Output (padded sequence size)
-    private Shape outputShape;//, psfShape;
+    //   private Shape dataShape ;
+    //   private  int Nx=512, Ny=512, Nz=128;            // Output (padded sequence size)
     private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
-    private Sequence cursequence=null;
     private EdgePreservingDeconvolution solver =  new EdgePreservingDeconvolution();
     private boolean run;
     private EzVarChannel channelpsf, channelRestart;
     private EzGroup ezPaddingGroup;
     private EzGroup ezWeightingGroup;
     private EzGroup ezDeconvolutionGroup;
-    private EzVarDoubleArrayNative scale;
     private EzGroup ezDeconvolutionGroup2;
 
 
-    Sequence dataSeq = null;
+    // Sequence dataSeq = null;
     Sequence psfSeq = null;
     Sequence restartSeq = null;
     private String outputPath;
@@ -386,11 +371,11 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             }
         });
 
-        showFull = new EzButton("Show the full (padded) object", new ActionListener() {
+        showFullObject = new EzButton("Show the full (padded) object", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if(debug){
-                    System.out.println("showFull");
+                    System.out.println("showFullObject");
                 }
                 Sequence fSeq;
                 fSeq = new Sequence("Deconvolved image");
@@ -407,7 +392,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         };
         logmu.addVarChangeListener(logmuActionListener);
 
-        EzGroup groupVisu  = new EzGroup("Visualization", showIteration,showFull);
+        EzGroup groupVisu  = new EzGroup("Visualization", showIteration,showFullObject);
         groupVisu.setFoldedState(true);
 
         saveFile = new EzVarFile("Save parameters in", "");

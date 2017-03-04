@@ -36,6 +36,15 @@ public abstract class DEMICSPlug extends TiPiPlug {
 
     protected EzVarSequence   data;           // data
     protected EzVarChannel    channel;        // data channel
+
+
+    protected EzVarDouble logmu, mu; // deconvolution hyper parameters; mu = 10^(logmu)
+    protected EzVarSequence   restart;        // starting point
+    protected EzVarChannel    channelRestart; // starting point channel
+    protected EzVarBoolean    positivity;     // enforce non negativity
+    protected EzButton startDec, stopDec,  showFullObject;
+
+
     protected EzVarText       dataSize;       //
     protected EzVarText       outputSize;     // size of the object after padding
     // optical parameters
@@ -52,8 +61,8 @@ public abstract class DEMICSPlug extends TiPiPlug {
 
     // Main variables for the deconvolution part
     protected int sizeX=128, sizeY=128, sizeZ=64; // Input sequence sizes
-    protected  int Nxy=128, Nz=64;             // Output (padded sequence size)
-    protected Shape psfShape = new Shape(Nxy, Nxy, Nz);
+    protected  int Nx=128,Ny=128, Nz=64;             // Output (padded sequence size)
+    protected Shape psfShape = new Shape(Nx, Ny, Nz);
     protected Shape outputShape;
     protected Sequence dataSeq;
     protected Sequence cursequence; // Sequence containing the current solution
@@ -214,9 +223,9 @@ public abstract class DEMICSPlug extends TiPiPlug {
      * Print the size of the deconvolved image  in the plugin
      */
     protected void updateOutputSize() {
-        String text = Nxy+"x"+Nxy+"x"+Nz;
+        String text = Nx+"x"+Ny+"x"+Nz;
         outputSize.setValue(text);
-        if((1.0*Nxy*Nxy*Nz)>Math.pow(2, 30)){
+        if((1.0*Nx*Ny*Nz)>Math.pow(2, 30)){
             throwError("Padded image is too large (>2^30)");
         }
     }
@@ -235,10 +244,11 @@ public abstract class DEMICSPlug extends TiPiPlug {
             throwError("Padding value cannot be negative");
             return;
         }
-        int sizeXY = Math.max(sizeX, sizeY);
-        Nxy = FFTUtils.bestDimension(sizeXY + paddingSizeXY.getValue());
+
+        Nx = FFTUtils.bestDimension(sizeX + paddingSizeXY.getValue());
+        Ny = FFTUtils.bestDimension(sizeY + paddingSizeXY.getValue());
         Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
-        outputShape = new Shape(Nxy, Nxy, Nz);
+        outputShape = new Shape(Nx, Ny, Nz);
         if(debug){
             System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
         }
