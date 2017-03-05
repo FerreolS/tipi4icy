@@ -13,7 +13,7 @@ before_install:
 # Then build TiPi.jar
 - git clone --quiet --branch=master https://github.com/emmt/TiPi.git
 - cd TiPi && wget --no-check-certificate http://mitiv.univ-lyon1.fr/TiPi.zip && unzip TiPi.zip && rm TiPi.zip
-- ant build #	&& ant build-jar
+- ant build && ant build-jar
 - mv lib/TiPi.jar ../lib && cd ..
 script:
 - ant build
