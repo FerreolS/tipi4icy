@@ -21,7 +21,7 @@ before_install:
 - cd TiPi && ant build && ant jar
 - mv TiPi*.jar ../lib && cd ..
 # Then build microtipi
-- git clone --quiet --branch=ferreol-devel https://github.com/FerreolS/microTiPi.git
+- git clone --quiet --branch=master https://github.com/FerreolS/microTiPi.git
 - cp -r microTiPi/src/* src/
 - cp -r TiPi/lib/* lib/ 
 script:
