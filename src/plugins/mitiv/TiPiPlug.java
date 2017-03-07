@@ -79,12 +79,15 @@ public abstract class TiPiPlug extends EzPlug  {
 
     protected void saveSequence(Sequence seq, String path) //FIXME should be elsewhere
     {
-        File f = new File(path);
-        if (f.isDirectory())
-        {
-            f = new File(f.getAbsolutePath() + File.separator + seq + ".tif");
+
+        if(path!=null){
+            File f = new File(path);
+            if (f.isDirectory())
+            {
+                f = new File(f.getAbsolutePath() + File.separator + seq + ".tif");
+            }
+            Saver.save(seq, f, false, false);
         }
-        Saver.save(seq, f, false, false);
     }
 
 

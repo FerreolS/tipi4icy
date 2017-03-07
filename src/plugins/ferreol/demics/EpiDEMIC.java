@@ -114,7 +114,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
     private EzButton        saveParam, loadParam;
     private EzVarFile       saveFile, loadFile;// xml files to save and load parameters
     private EzVarBoolean    showIteration;  // show object update at each iteration
-    private EzLabel docDec;
+    private EzLabel         docDec;
     private EzVarInteger    totalNbOfBlindDecLoop;// number of outer loop
     private EzVarInteger    maxIterDefocus; // number of iteration for defocus parameters
     private EzVarInteger    maxIterPhase;   // number of iteration for phase parameters
@@ -151,7 +151,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
     private EzPanel  debuggingPanel;
     private EzVarText resultCostPrior, resultDefocus, resultPhase, resultModulus;
 
-    private String outputPath=null;
 
     private String psfPath=null;
 
@@ -859,8 +858,11 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
     protected void execute() {
 
         if (isHeadLess()){
-            initialize();
-            parseCmdLine();
+
+            if(  Icy.getCommandLinePluginArgs().length!=0){
+                initialize();
+                parseCmdLine();
+            }
             showIteration.setValue(false);
         }
         long startTime = System.currentTimeMillis();
@@ -1014,16 +1016,21 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
                         if(outputHeadlessImage==null){
                             outputHeadlessImage = new EzVarSequence("Output Image");
                         }
-                        outputHeadlessImage.setValue(cursequence);
+                        if(outputHeadlessPSF==null){
+                            outputHeadlessPSF = new EzVarSequence("Output PSF");
+                        }
 
+                        Sequence psfSequence = null;
+                        psfSequence =   arrayToSequence( ArrayUtils.roll(pupil.getPSF()), psfSequence);
+
+
+                        outputHeadlessPSF.setValue(psfSequence);
+                        outputHeadlessImage.setValue(cursequence);
                         if(outputPath!=null){
                             saveSequence(cursequence, outputPath);
                         }
 
                         if(psfPath!=null){
-                            Sequence psfSequence = null;
-                            psfSequence =   arrayToSequence( ArrayUtils.roll(pupil.getPSF()), psfSequence);
-                            pupil.freePSF();
                             saveSequence(psfSequence, psfPath);
                         }
 
@@ -1276,6 +1283,11 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
         outputMap.add("outputSize", outputSize.getVariable());
         outputMap.add("outputImage", outputHeadlessImage.getVariable());
         outputMap.add("outputPSF", outputHeadlessPSF.getVariable());
+
+        outputMap.add("restart", restart.getVariable());
+        outputMap.add("pupilShift",pupilShift.getVariable());
+        outputMap.add("phaseCoefs",phaseCoefs.getVariable());
+        outputMap.add("modulusCoefs",modulusCoefs.getVariable());
     }
 
 

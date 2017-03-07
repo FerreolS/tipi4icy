@@ -38,11 +38,11 @@ public abstract class DEMICSPlug extends TiPiPlug {
     protected EzVarChannel    channel;        // data channel
 
 
-    protected EzVarDouble logmu, mu; // deconvolution hyper parameters; mu = 10^(logmu)
+    protected EzVarDouble     logmu, mu;      // deconvolution hyper parameters; mu = 10^(logmu)
     protected EzVarSequence   restart;        // starting point
     protected EzVarChannel    channelRestart; // starting point channel
     protected EzVarBoolean    positivity;     // enforce non negativity
-    protected EzButton startDec, stopDec,  showFullObject;
+    protected EzButton        startDec, stopDec,  showFullObject;
 
 
     protected EzVarText       dataSize;       //
@@ -80,6 +80,7 @@ public abstract class DEMICSPlug extends TiPiPlug {
     protected EzButton        showWeight;
 
 
+    protected String outputPath=null;
 
     /*********************************/
     /**            DEBUG            **/

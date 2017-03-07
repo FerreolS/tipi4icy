@@ -34,7 +34,6 @@ import java.io.File;
 import javax.swing.SwingUtilities;
 
 import icy.file.Loader;
-import icy.file.Saver;
 import icy.main.Icy;
 import icy.sequence.Sequence;
 import mitiv.array.ArrayUtils;
@@ -85,7 +84,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     private EzButton saveParam, loadParam;
     private EzVarFile saveFile;
     /** headless mode: **/
-    private EzVarSequence   outputHeadless;
+    private EzVarSequence   outputHeadless=null;
 
 
 
@@ -96,8 +95,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     static boolean debug =false;
 
     private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
-    //   private Shape dataShape ;
-    //   private  int Nx=512, Ny=512, Nz=128;            // Output (padded sequence size)
     private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
     private EdgePreservingDeconvolution solver =  new EdgePreservingDeconvolution();
@@ -109,10 +106,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     private EzGroup ezDeconvolutionGroup2;
 
 
-    // Sequence dataSeq = null;
-    Sequence psfSeq = null;
-    Sequence restartSeq = null;
-    private String outputPath;
+
     /*********************************/
     /**      Initialization         **/
     /*********************************/
@@ -121,12 +115,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         if (!isHeadLess()) {
             getUI().setParametersIOVisible(false);
             getUI().setActionPanelVisible(false);
-        }else{
-            outputHeadless = new EzVarSequence("Output Image");
-            String[] args = Icy.getCommandLinePluginArgs();
-            System.out.println(args[0]);
         }
-
 
         data = new EzVarSequence("Data:");
         channel = new EzVarChannel("Data channel:", data.getVariable(), false);
@@ -349,16 +338,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                     public void run() {
                         launch();
 
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() {
-                                if(debug){
-                                    System.out.println("invoke later");
-                                }
-                                restart.setValue(cursequence);
-                                channelRestart.setValue(0);
-                            }
-                        });
+
                     }
                 };
                 workerThread.start();
@@ -400,13 +380,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             @Override
             public void actionPerformed(ActionEvent e) {
 
-                File pathName = saveFile.getValue();
-                if(pathName!=null){
-                    if (!pathName.getName().endsWith(".xml")){
-                        pathName = new File(pathName.getAbsolutePath()+".xml");
-                    }
-                    saveParameters(pathName);
-                }
+                saveParamClicked();
                 if (debug) {
                     System.out.println("Save parameters");
                 }
@@ -468,8 +442,26 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             outputSize.setEnabled(false);
             dataSize.setEnabled(false);
             mu.setEnabled(false);
+        }else{
+            outputHeadless = new EzVarSequence("Output Image");
         }
 
+
+    }
+
+
+
+    /**
+     *
+     */
+    private void saveParamClicked() {
+        File pathName = saveFile.getValue();
+        if(pathName!=null){
+            if (!pathName.getName().endsWith(".xml")){
+                pathName = new File(pathName.getAbsolutePath()+".xml");
+            }
+            saveParameters(pathName);
+        }
     }
 
 
@@ -532,9 +524,10 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     protected void execute() {
 
         if (isHeadLess()){
-            outputHeadless = new EzVarSequence("Output Image");
-            initialize();
-            parseCmdLine();
+            if(  Icy.getCommandLinePluginArgs().length!=0){
+                initialize();
+                parseCmdLine();
+            }
             showIteration.setValue(false);
             System.out.println("Launch it:"+nbIterDeconv.getValue());
         }
@@ -546,13 +539,8 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         solver = new EdgePreservingDeconvolution();
 
         dataSeq = data.getValue();
-        psfSeq = psf.getValue();
-        restartSeq = restart.getValue();
-        if (!isHeadLess()){
-            // Preparing parameters and testing input
-        }else{
-
-        }
+        Sequence psfSeq = psf.getValue();
+        Sequence restartSeq = restart.getValue();
 
 
         if (dataSeq == null)
@@ -588,7 +576,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         dataArray =  sequenceToArray(dataSeq, channel.getValue());
         psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue());
         dataShape = dataArray.getShape();
-        // psfShape = psfArray.getShape();
         if (restart.getValue() != null && restartSeq != null){
             restartArray =  sequenceToArray(restartSeq, channelRestart.getValue());
             if(debug){
@@ -664,9 +651,32 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         }
         show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape),cursequence,"Deconvolved "+ dataSeq.getName() +  " mu="+solver.getRegularizationLevel());
 
-        if (isHeadLess()) {
-            saveSequence(cursequence, outputPath);
-        }
+
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                if(true){
+                    System.out.println("invoke later");
+                }
+                restart.setValue(cursequence);
+                channelRestart.setValue(0);
+
+                if (isHeadLess()) {
+                    if(outputHeadless==null){
+                        outputHeadless  = new EzVarSequence("Output Image");
+                    }
+                    outputHeadless.setValue(cursequence);
+
+                    if(outputPath!=null){
+                        saveSequence(cursequence, outputPath);
+                    }
+
+                    if(saveFile.getValue()!=null){
+                        saveParamClicked();
+                    }
+                }
+            }
+        });
 
     }
 
@@ -820,15 +830,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
 
     }
-    @Override
-    public void saveSequence(Sequence seq, String path)
-    {
-        File f = new File(path);
-        if (f.isDirectory())
-        {
-            f = new File(f.getAbsolutePath() + File.separator + seq + ".tif");
-        }
-        Saver.save(seq, f, false, false);
-    }
+
 
 }
