@@ -18,11 +18,14 @@ import mitiv.base.Shape;
 import mitiv.cost.WeightedData;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.WeightFactory;
+import plugins.adufour.blocks.lang.Block;
+import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarChannel;
 import plugins.adufour.ezplug.EzVarDouble;
 import plugins.adufour.ezplug.EzVarDoubleArrayNative;
+import plugins.adufour.ezplug.EzVarFile;
 import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
@@ -32,7 +35,7 @@ import plugins.mitiv.TiPiPlug;
  * @author ferreol
  *
  */
-public abstract class DEMICSPlug extends TiPiPlug {
+public abstract class DEMICSPlug extends TiPiPlug  implements Block{
 
     protected EzVarSequence   data;           // data
     protected EzVarChannel    channel;        // data channel
@@ -74,10 +77,15 @@ public abstract class DEMICSPlug extends TiPiPlug {
 
 
     protected EzVarText       weightsMethod;  // Combobox for variance estimation
-    protected final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
+    protected final String[]  weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
     protected EzVarDouble     gain, noise;    // gain of the detector in e-/lvl and detector noise in e-
-    protected EzVarSequence weights, deadPixel; // maps of inverse variance and bad pixels
+    protected EzVarSequence   weights, deadPixel; // maps of inverse variance and bad pixels
     protected EzButton        showWeight;
+
+    protected EzVarFile       saveFile, loadFile;// xml files to save and load parameters
+    protected EzVarBoolean    showIteration;  // show object update at each iteration
+    protected EzVarSequence   outputHeadlessImage=null;
+    protected EzVarSequence   outputHeadlessWght=null;
 
 
     protected String outputPath=null;
@@ -253,5 +261,66 @@ public abstract class DEMICSPlug extends TiPiPlug {
         if(debug){
             System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
         }
+
+
     }
+
+    /**
+     *  set default values of the plugin
+     */
+    protected void setDefaultValue() {
+        weightsMethod.setValue( weightOptions[3]);
+        data.setNoSequenceSelection();
+        deadPixel.setNoSequenceSelection();
+
+
+        paddingSizeZ.setValue(30);
+        deadPixel.setNoSequenceSelection();
+
+
+        if (!isHeadLess()) {
+            outputSize.setEnabled(false);
+            dataSize.setEnabled(false);
+            mu.setEnabled(false);
+        }
+    }
+
+
+    //The input variable for the protocol
+    @Override
+    public void declareInput(VarList inputMap) {
+        inputMap.add("image", data.getVariable());
+        inputMap.add("image channel", channel.getVariable());
+        inputMap.add("starting point", restart.getVariable());
+        channelRestart = new EzVarChannel("Initialization channel :", restart.getVariable(), false);
+
+        inputMap.add("starting point channel", channelRestart.getVariable());
+
+        inputMap.add("weights Method",weightsMethod.getVariable());
+        inputMap.add("deadPixel", deadPixel.getVariable());
+        inputMap.add("gain", gain.getVariable());
+        inputMap.add("noise", noise.getVariable());
+
+        inputMap.add("mu", mu.getVariable());
+        inputMap.add("scale", scale.getVariable());
+
+        inputMap.add("Postivity", positivity.getVariable());
+        inputMap.add("nbIteration", nbIterDeconv.getVariable());
+        inputMap.add("positivity", positivity.getVariable());
+        inputMap.add("single precision", singlePrecision.getVariable());
+
+        saveFile = new EzVarFile("Save parameters in", "");
+        inputMap.add("saveFile",  saveFile.getVariable());
+
+    }
+
+    //The output variable for the protocol
+    @Override
+    public void declareOutput(VarList outputMap) {
+        outputMap.add("outputSize", outputSize.getVariable());
+        outputMap.add("output", outputHeadlessImage.getVariable());
+        outputMap.add("weightmap", outputHeadlessWght.getVariable());
+    }
+
+
 }

@@ -112,8 +112,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
     private EzButton        showPSF2, showModulus, showPhase;
     private EzButton        startBlind, stopBlind, showFullObject2, resetPSF;
     private EzButton        saveParam, loadParam;
-    private EzVarFile       saveFile, loadFile;// xml files to save and load parameters
-    private EzVarBoolean    showIteration;  // show object update at each iteration
     private EzLabel         docDec;
     private EzVarInteger    totalNbOfBlindDecLoop;// number of outer loop
     private EzVarInteger    maxIterDefocus; // number of iteration for defocus parameters
@@ -128,7 +126,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
     private EzVarDoubleArrayNative phaseCoefs, modulusCoefs; // estimated coefs of phase and modulus
 
     /** headless mode: **/
-    private EzVarSequence   outputHeadlessImage=null, outputHeadlessPSF=null;
+    private EzVarSequence   outputHeadlessPSF=null;
 
     // Global solvers
     private PSF_Estimation psfEstimation;
@@ -153,6 +151,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
 
 
     private String psfPath=null;
+
 
 
 
@@ -182,14 +181,11 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
     /**
      *  set default values of the plugin
      */
-    private void setDefaultValue() {
-        weightsMethod.setValue( weightOptions[3]);
+    @Override
+    protected void setDefaultValue() {
+        super.setDefaultValue();
         radial.setValue(false);
-        data.setNoSequenceSelection();
-
         paddingSizeXY.setValue(30);
-        paddingSizeZ.setValue(30);
-        deadPixel.setNoSequenceSelection();
 
         if(debug){
             resultCostPrior.setValue(   "No results yet");
@@ -199,9 +195,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
         }
 
         if (!isHeadLess()) {
-            outputSize.setEnabled(false);
-            dataSize.setEnabled(false);
-            mu.setEnabled(false);
             if(debug){
                 resultCostPrior.setEnabled(false);
                 resultDefocus.setEnabled(false);
@@ -790,14 +783,17 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
         // Must be added to global panel first
         visuPSF.setFoldedState(true);
 
+
+        setDefaultValue();
+
         updatePaddedSize();
         updateOutputSize();
         updateImageSize();
 
-        setDefaultValue();
         if (isHeadLess()) {
             outputHeadlessImage = new EzVarSequence("Output Image");
             outputHeadlessPSF = new EzVarSequence("Output PSF");
+            outputHeadlessWght = new EzVarSequence("Computed weight");
         }
 
     }
@@ -1020,12 +1016,18 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
                             outputHeadlessPSF = new EzVarSequence("Output PSF");
                         }
 
+                        if (outputHeadlessWght==null) {
+                            outputHeadlessWght = new EzVarSequence("Computed weights");
+                        }
+
                         Sequence psfSequence = null;
                         psfSequence =   arrayToSequence( ArrayUtils.roll(pupil.getPSF()), psfSequence);
 
 
                         outputHeadlessPSF.setValue(psfSequence);
                         outputHeadlessImage.setValue(cursequence);
+                        outputHeadlessWght.setValue(arrayToSequence(wgtArray));
+
                         if(outputPath!=null){
                             saveSequence(cursequence, outputPath);
                         }
@@ -1251,23 +1253,19 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
     @Override
     public void declareInput(VarList inputMap) {// FIXME Use subclasses for protocols
         initialize();
-        inputMap.add("image", data.getVariable());
-        inputMap.add("channel", channel.getVariable());
+        super.declareInput(inputMap);
         inputMap.add("dxy", dxy_nm.getVariable());
         inputMap.add("dz", dz_nm.getVariable());
         inputMap.add("NA", na.getVariable());
         inputMap.add("ni", ni.getVariable());
         inputMap.add("lambda", lambda.getVariable());
 
-        inputMap.add("deadPixel", deadPixel.getVariable());
-        inputMap.add("gain", gain.getVariable());
-        inputMap.add("noise", noise.getVariable());
 
-        inputMap.add("mu", mu.getVariable());
+
         inputMap.add("espilon", epsilon.getVariable());
-        inputMap.add("Postivity", positivity.getVariable());
-        inputMap.add("nbIteration", nbIterDeconv.getVariable());
-        inputMap.add("restart", restart.getVariable());
+
+        inputMap.add("padding xy", paddingSizeXY.getVariable());
+        inputMap.add("padding z", paddingSizeZ.getVariable());
 
         inputMap.add("radial",radial.getVariable());
         inputMap.add("nbAlphaCoef", nbAlphaCoef.getVariable());
@@ -1277,14 +1275,15 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
         inputMap.add("modulusMaxIter", maxIterModulus.getVariable());
         inputMap.add("bDecTotalIteration", totalNbOfBlindDecLoop.getVariable());
 
+        inputMap.add("loadFile", loadFile.getVariable());
+
+        deadPixel.setNoSequenceSelection();
     }
     @Override
     public void declareOutput(VarList outputMap) {
-        outputMap.add("outputSize", outputSize.getVariable());
-        outputMap.add("outputImage", outputHeadlessImage.getVariable());
+        super.declareOutput(outputMap);
         outputMap.add("outputPSF", outputHeadlessPSF.getVariable());
 
-        outputMap.add("restart", restart.getVariable());
         outputMap.add("pupilShift",pupilShift.getVariable());
         outputMap.add("phaseCoefs",phaseCoefs.getVariable());
         outputMap.add("modulusCoefs",modulusCoefs.getVariable());

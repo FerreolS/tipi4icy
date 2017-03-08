@@ -25,6 +25,7 @@
 
 package plugins.ferreol.demics;
 
+import static plugins.mitiv.io.Icy2TiPi.arrayToSequence;
 import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
 
 import java.awt.event.ActionEvent;
@@ -38,7 +39,6 @@ import icy.main.Icy;
 import icy.sequence.Sequence;
 import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
-import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.cost.EdgePreservingDeconvolution;
 import mitiv.optim.OptimTask;
@@ -74,7 +74,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
     private EzVarSequence psf; // Point Spread Function
 
-    private EzVarInteger    paddingSizeX,paddingSizeY, paddingSizeZ;
+    private EzVarInteger    paddingSizeX,paddingSizeY;
 
 
     /** deconvolution tab: **/
@@ -82,9 +82,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     private EzVarBoolean  showIteration;
 
     private EzButton saveParam, loadParam;
-    private EzVarFile saveFile;
     /** headless mode: **/
-    private EzVarSequence   outputHeadless=null;
 
 
 
@@ -99,7 +97,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
     private EdgePreservingDeconvolution solver =  new EdgePreservingDeconvolution();
     private boolean run;
-    private EzVarChannel channelpsf, channelRestart;
+    private EzVarChannel channelpsf;
     private EzGroup ezPaddingGroup;
     private EzGroup ezWeightingGroup;
     private EzGroup ezDeconvolutionGroup;
@@ -112,6 +110,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     /*********************************/
     @Override
     protected void initialize() {
+
         if (!isHeadLess()) {
             getUI().setParametersIOVisible(false);
             getUI().setActionPanelVisible(false);
@@ -124,7 +123,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         restart = new EzVarSequence("Starting point:");
         restart.setNoSequenceSelection();
         channelRestart = new EzVarChannel("Initialization channel :", restart.getVariable(), false);
-
+        System.out.println("initialize()");
         dataSize = new EzVarText("Data size:");
         outputSize = new EzVarText("Output size:");
         paddingSizeX = new EzVarInteger("padding x:",0, Integer.MAX_VALUE,1);
@@ -289,7 +288,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         showWeight = new EzButton("Show weight map", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                DoubleArray dataArray, wgtArray;
+                DoubleArray dataArray;
                 // Preparing parameters and testing input
 
                 Sequence dataSeq = data.getValue();
@@ -324,7 +323,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             showIteration.setValue(false);
         }
 
-        scale = new EzVarDoubleArrayNative("Aspect ratio of a voxel", scaleDef, 2,true); //FIXME SCALE
+        scale = new EzVarDoubleArrayNative("Aspect ratio of a voxel", scaleDef, 2,true);
         ezDeconvolutionGroup2 = new EzGroup("More  parameters",epsilon,scale,positivity,singlePrecision);
         ezDeconvolutionGroup2.setFoldedState(true);
         ezDeconvolutionGroup = new EzGroup("Deconvolution parameters",logmu,mu,nbIterDeconv,ezDeconvolutionGroup2);
@@ -391,7 +390,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         loadParam = new EzButton("Load parameters", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                System.out.println("file"+ saveFile.getValue().getAbsolutePath());
                 if(saveFile.getValue()!=null){
                     System.out.println("gain"+ gain.getValue());
                     loadParameters(saveFile.getValue());
@@ -438,12 +436,19 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         addEzComponent(loadParam);
         addEzComponent(groupStop1);
 
+        setDefaultValue();
+
+        updatePaddedSize();
+        updateOutputSize();
+        updateImageSize();
+
         if (!isHeadLess()) {
             outputSize.setEnabled(false);
             dataSize.setEnabled(false);
             mu.setEnabled(false);
         }else{
-            outputHeadless = new EzVarSequence("Output Image");
+            outputHeadlessImage = new EzVarSequence("Output Image");
+            outputHeadlessWght = new EzVarSequence("Computed weight");
         }
 
 
@@ -572,16 +577,15 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             return;
         }
 
-        ShapedArray dataArray, psfArray, wgtArray,restartArray;
         dataArray =  sequenceToArray(dataSeq, channel.getValue());
         psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue());
         dataShape = dataArray.getShape();
         if (restart.getValue() != null && restartSeq != null){
-            restartArray =  sequenceToArray(restartSeq, channelRestart.getValue());
+            objArray =  sequenceToArray(restartSeq, channelRestart.getValue());
             if(debug){
                 System.out.println("restart seq:" +restartSeq.getName());
             }
-            solver.setInitialSolution(restartArray);
+            solver.setInitialSolution(objArray);
         }else{
             if(debug){
                 System.out.println("restart seq is null:");
@@ -662,14 +666,19 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                 channelRestart.setValue(0);
 
                 if (isHeadLess()) {
-                    if(outputHeadless==null){
-                        outputHeadless  = new EzVarSequence("Output Image");
+                    if(outputHeadlessImage==null){
+                        outputHeadlessImage  = new EzVarSequence("Output Image");
                     }
-                    outputHeadless.setValue(cursequence);
+                    outputHeadlessImage.setValue(cursequence);
+                    if (outputHeadlessWght==null) {
+                        outputHeadlessWght = new EzVarSequence("Computed weights");
+                    }
+                    outputHeadlessWght.setValue(arrayToSequence(wgtArray));
 
                     if(outputPath!=null){
                         saveSequence(cursequence, outputPath);
                     }
+
 
                     if(saveFile.getValue()!=null){
                         saveParamClicked();
@@ -690,40 +699,35 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         run = false;
 
     }
+    /**
+     *  set default values of the plugin
+     */
+    @Override
+    protected void setDefaultValue() {
+        super.setDefaultValue();
+        paddingSizeX.setValue(10);
+        paddingSizeY.setValue(10);
+
+    }
 
     //The input variable for the protocol
     @Override
     public void declareInput(VarList inputMap) {
         initialize();
-        inputMap.add("image", data.getVariable());
-        inputMap.add("image channel", channel.getVariable());
+
+        super.declareInput(inputMap);
         inputMap.add("psf", psf.getVariable());
         inputMap.add("psf channel", channelpsf.getVariable());
-        inputMap.add("starting point", restart.getVariable());
-        inputMap.add("starting point channel", channelRestart.getVariable());
 
         inputMap.add("Padding X", paddingSizeX.getVariable());
         inputMap.add("Padding Y", paddingSizeY.getVariable());
         inputMap.add("Padding Z", paddingSizeZ.getVariable());
 
-        inputMap.add("deadPixel", deadPixel.getVariable());
-        inputMap.add("gain", gain.getVariable());
-        inputMap.add("noise", noise.getVariable());
 
-        inputMap.add("mu", mu.getVariable());
         inputMap.add("espilon", epsilon.getVariable());
-        inputMap.add("Postivity", positivity.getVariable());
-        inputMap.add("nbIteration", nbIterDeconv.getVariable());
-        inputMap.add("positivity", positivity.getVariable());
-        inputMap.add("single precision", singlePrecision.getVariable());
     }
 
-    //The output variable for the protocol
-    @Override
-    public void declareOutput(VarList outputMap) {
-        outputMap.add("outputSize", outputSize.getVariable());
-        outputMap.add("output", outputHeadless.getVariable());
-    }
+
 
     @Override
     public void clean() {
