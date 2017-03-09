@@ -8,18 +8,16 @@
     <property environment="env"/>
     <property name="tipi4icy.location" value="../tipi4icy"/>
     <property name="debuglevel" value="source,lines,vars"/>
-    <property name="target" value="1.6"/>
-    <property name="source" value="1.6"/>
+    <property name="target" value="1.8"/>
+    <property name="source" value="1.8"/>
     <property name="source.dir" location="src"/>
     <property name="doc.dir" location="doc"/>
     <path id="tipi4icy.classpath">
         <pathelement location="bin"/>
-        <pathelement location="lib/Blocks.jar"/>
-        <pathelement location="lib/EzPlug.jar"/>
-        <pathelement location="lib/icy.jar"/>
-        <pathelement location="lib/Protocols.jar"/>
-        <pathelement location="lib/TiPi.jar"/>
-        <pathelement location="lib/bioformats.jar"/>
+        <pathelement location="lib"/>
+        <fileset dir="lib">
+            <include name="*.jar"/>
+        </fileset>
     </path>
     <target name="init">
         <mkdir dir="bin"/>

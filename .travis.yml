@@ -1,9 +1,15 @@
 language: java
 jdk:
-- openjdk6
+- oraclejdk8
 before_install:
 # First icy dependies
 - wget http://www.icy.bioimageanalysis.org/downloadIcy/icy.zip && unzip icy.zip -d icy && rm icy.zip
+- wget https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip 
+- unzip jar.zip 
+- mv IcyHLPluginInstaller-jar/IcyHLPluginInstaller.jar icy/plugins/. 
+- cd icy 
+- java -jar icy.jar -hl -x plugins.ferreol.icyhlplugininstaller.IcyHLPluginInstaller plugins.adufour.ezplug.EzPlug 
+- cd ..
 - mkdir lib
 - mv icy/icy.jar lib/
 - mv icy/lib/bioformats.jar lib/
@@ -12,9 +18,12 @@ before_install:
 - mv icy/plugins/adufour/protocols/Protocols.jar lib/
 # Then build TiPi.jar
 - git clone --quiet --branch=master https://github.com/emmt/TiPi.git
-- cd TiPi && wget --no-check-certificate http://mitiv.univ-lyon1.fr/TiPi.zip && unzip TiPi.zip && rm TiPi.zip
-- ant build && ant jar
-- mv lib/TiPi.jar ../lib && cd ..
+- cd TiPi && ant build && ant jar
+- mv TiPi*.jar ../lib && cd ..
+# Then build microtipi
+- git clone --quiet --branch=master https://github.com/FerreolS/microTiPi.git
+- cp -r microTiPi/src/* src/
+- cp -r TiPi/lib/* lib/ 
 script:
 - ant build
 - ant doc > /dev/null
