@@ -391,7 +391,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weights,gain,noise,deadPixel,showWeight);
         ezWeightingGroup.setFoldedState(true);
 
-        loadFile = new EzVarFile("Load parameters from", "*.xml");
+        loadFile = new EzVarFile("Load parameters from", "","*.xml");
         loadParam = new EzButton("Load parameters", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
