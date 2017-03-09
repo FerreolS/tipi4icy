@@ -32,6 +32,8 @@ import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.TiPiPlug;
 
 /**
+ * Plugin class for all plugins of DEconvolution MIcroscopy Studio
+ * (DEMICS)
  * @author ferreol
  *
  */
@@ -97,68 +99,6 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
     private boolean verbose = false;    // Show some values, need debug to true
 
     /**
-     * Here we get the informations given by the users but not all.
-     * In fact we trust only a few data that we know that are given by Icy.
-     * Else we are trying to keep them for the next run.
-     *
-     * Remember: if users may lie, they will !
-     *
-     * @param seq
-     * @return
-     */
-    protected MicroscopeMetadata getMetaData(Sequence seq){ // Should be elsewhere
-        OMEXMLMetadata metDat = seq.getMetadata();
-        if (meta == null) {
-            meta = new MicroscopeMetadata();
-            if (metDat.getInstrumentCount() > 0) {
-                try {
-                    meta.na      = metDat.getObjectiveLensNA(0, 0);
-                    //meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
-                } catch(Exception e){
-                    System.out.println("Failed to get some metadatas, will use default values for na, lambda");
-                }
-            }
-        }
-        //If no instrument found, at least we have the right image size
-        meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
-        meta.nz      = seq.getSizeZ();
-        meta.dxy     = seq.getPixelSizeX()*1E3;
-        meta.dz      = seq.getPixelSizeZ()*1E3;
-        meta.na      = na.getValue();
-        meta.lambda  = lambda.getValue();
-        meta.ni      = ni.getValue();
-        return meta;
-    }
-
-    protected void updateMetaData() {
-        Sequence seq = data.getValue();
-        if (seq != null) {
-            try {
-                OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
-                newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
-                newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
-                newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
-                seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
-            } catch (ServiceException e) {
-                e.printStackTrace();
-            }
-        } else {
-            new AnnounceFrame("Nothing to save");
-        }
-    }
-
-
-
-    protected void updateImageSize() {
-        String text ;
-        if (Nz==1)
-            text= sizeX+"x"+sizeY;
-        else
-            text= sizeX+"x"+sizeY+"x"+sizeZ;
-        dataSize.setValue(text);
-    }
-
-    /**
      * The goal is to create an array of weights, but it will be created depending
      * the user input so we will have to test each cases:
      *      - None
@@ -206,8 +146,9 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
 
     }
 
-
     /**
+     * Function triggered when the data sequence change.
+     * Change parameters according to metadata of the data sequence
      *
      */
     protected void dataChanged() {
@@ -228,65 +169,12 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
 
     }
 
-    /**
-     * Print the size of the deconvolved image  in the plugin
+
+
+    /* (non-Javadoc)
+     * The input variable for the protocol
+     * @see plugins.adufour.blocks.lang.Block#declareInput(plugins.adufour.blocks.util.VarList)
      */
-    protected void updateOutputSize() {
-        String text = Nx+"x"+Ny+"x"+Nz;
-        outputSize.setValue(text);
-        if((1.0*Nx*Ny*Nz)>Math.pow(2, 30)){
-            throwError("Padded image is too large (>2^30)");
-        }
-    }
-
-
-    /**
-     *
-     */
-    protected void updatePaddedSize() {
-
-        if (paddingSizeXY.getValue() < 0.0) {
-            throwError("Padding value cannot be negative");
-            return;
-        }
-        if (paddingSizeZ.getValue() < 0.0) {
-            throwError("Padding value cannot be negative");
-            return;
-        }
-
-        Nx = FFTUtils.bestDimension(sizeX + paddingSizeXY.getValue());
-        Ny = FFTUtils.bestDimension(sizeY + paddingSizeXY.getValue());
-        Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
-        outputShape = new Shape(Nx, Ny, Nz);
-        if(debug){
-            System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
-        }
-
-
-    }
-
-    /**
-     *  set default values of the plugin
-     */
-    protected void setDefaultValue() {
-        weightsMethod.setValue( weightOptions[3]);
-        data.setNoSequenceSelection();
-        deadPixel.setNoSequenceSelection();
-
-
-        paddingSizeZ.setValue(30);
-        deadPixel.setNoSequenceSelection();
-
-
-        if (!isHeadLess()) {
-            outputSize.setEnabled(false);
-            dataSize.setEnabled(false);
-            mu.setEnabled(false);
-        }
-    }
-
-
-    //The input variable for the protocol
     @Override
     public void declareInput(VarList inputMap) {
         inputMap.add("image", data.getVariable());
@@ -314,12 +202,145 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
 
     }
 
-    //The output variable for the protocol
+    /* (non-Javadoc)
+     * output variable for the protocol
+     * @see plugins.adufour.blocks.lang.Block#declareOutput(plugins.adufour.blocks.util.VarList)
+     */
     @Override
     public void declareOutput(VarList outputMap) {
         outputMap.add("outputSize", outputSize.getVariable());
         outputMap.add("output", outputHeadlessImage.getVariable());
         outputMap.add("weightmap", outputHeadlessWght.getVariable());
+    }
+
+
+    /**
+     * Here we get the informations given by the users but not all.
+     * In fact we trust only a few data that we know that are given by Icy.
+     * Else we are trying to keep them for the next run.
+     *
+     * Remember: if users may lie, they will !
+     *
+     * @param seq
+     * @return
+     */
+    protected MicroscopeMetadata getMetaData(Sequence seq){ // Should be elsewhere
+        OMEXMLMetadata metDat = seq.getMetadata();
+        if (meta == null) {
+            meta = new MicroscopeMetadata();
+            if (metDat.getInstrumentCount() > 0) {
+                try {
+                    meta.na      = metDat.getObjectiveLensNA(0, 0);
+                    //meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
+                } catch(Exception e){
+                    System.out.println("Failed to get some metadatas, will use default values for na, lambda");
+                }
+            }
+        }
+        //If no instrument found, at least we have the right image size
+        meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
+        meta.nz      = seq.getSizeZ();
+        meta.dxy     = seq.getPixelSizeX()*1E3;
+        meta.dz      = seq.getPixelSizeZ()*1E3;
+        meta.na      = na.getValue();
+        meta.lambda  = lambda.getValue();
+        meta.ni      = ni.getValue();
+        return meta;
+    }
+
+    /**
+     *  set default values of the plugin
+     */
+    protected void setDefaultValue() {
+        weightsMethod.setValue( weightOptions[3]);
+        data.setNoSequenceSelection();
+        deadPixel.setNoSequenceSelection();
+
+
+        paddingSizeZ.setValue(30);
+        deadPixel.setNoSequenceSelection();
+
+
+        if (!isHeadLess()) {
+            outputSize.setEnabled(false);
+            dataSize.setEnabled(false);
+            mu.setEnabled(false);
+        }
+    }
+
+
+    /**
+     * Update the text indicating the size of the data
+     */
+    protected void updateImageSize() {
+        String text ;
+        if (Nz==1)
+            text= sizeX+"x"+sizeY;
+        else
+            text= sizeX+"x"+sizeY+"x"+sizeZ;
+        dataSize.setValue(text);
+    }
+
+    /**
+     * update metaData of the data sequence using the value indicated in the plugin
+     */
+    protected void updateMetaData() {
+        Sequence seq = data.getValue();
+        if (seq != null) {
+            try {
+                OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
+                newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
+                newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
+                newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
+                seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
+            } catch (ServiceException e) {
+                e.printStackTrace();
+            }
+        } else {
+            new AnnounceFrame("Nothing to save");
+        }
+    }
+
+
+    /**
+     * Print the size of the deconvolved image  in the plugin
+     * throwError if the number of pixel is to high to indexed with int
+     */
+    protected void updateOutputSize() {
+        String text = Nx+"x"+Ny+"x"+Nz;
+        outputSize.setValue(text);
+        if((1.0*Nx*Ny*Nz)>Math.pow(2, 30)){
+            throwError("Padded image is too large (>2^30)");
+        }
+    }
+
+
+    /**
+     * Update the size of the output image according to padding size
+     * indicated in the pluging. This output size is rounded to the
+     * next integer suitable for fast FFT computation
+     *
+     */
+    protected void updatePaddedSize() {
+
+        if (paddingSizeXY.getValue() < 0.0) {
+            throwError("Padding value cannot be negative");
+            return;
+        }
+        if (paddingSizeZ.getValue() < 0.0) {
+            throwError("Padding value cannot be negative");
+            return;
+        }
+
+        Nx = FFTUtils.bestDimension(sizeX + paddingSizeXY.getValue());
+        Ny = FFTUtils.bestDimension(sizeY + paddingSizeXY.getValue());
+        Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
+        outputShape = new Shape(Nx, Ny, Nz);
+        if(debug){
+            System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
+        }
+
+
     }
 
 

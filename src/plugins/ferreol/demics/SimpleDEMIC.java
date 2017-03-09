@@ -62,7 +62,7 @@ import plugins.adufour.ezplug.EzVarText;
 
 /**
  * SimpleDEMIC implements a TV regularized multi-dimensional deconvolution.
- * @author ferreol
+ * @author Ferréol
  *
  */
 public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
@@ -659,7 +659,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                if(true){
+                if(debug){
                     System.out.println("invoke later");
                 }
                 restart.setValue(cursequence);

@@ -204,10 +204,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
         }
     }
 
-    /*********************************/
-    /**      Initialization         **/
-    /*********************************/
+
     /* (non-Javadoc)
+     *      Initialization  of the plugin
      * @see plugins.adufour.ezplug.EzPlug#initialize()
      */
     @Override
