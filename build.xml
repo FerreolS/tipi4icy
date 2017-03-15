@@ -20,6 +20,8 @@
         </fileset>
     </path>
     <target name="init">
+        <property name="jar.dir" location="."/>
+        <property name="bin.dir" location="bin"/>
         <mkdir dir="bin"/>
         <copy includeemptydirs="false" todir="bin">
             <fileset dir="src">
@@ -62,6 +64,16 @@
         <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
         <antcall target="build"/>
     </target>
+    <!-- Generate launchable JAR for TiPi tool -->
+       <target name="epidemic" depends="init" description="generate launchable jar for TiPi deconvolution tool">
+           <jar destfile="${jar.dir}/EpiDEMIC.jar" filesetmanifest="mergewithoutmain">
+               <manifest>
+                   <attribute name="Main-Class" value="plugins.ferreol.demics.EpiDEMIC"/>
+                   <attribute name="Class-Path" value="."/>
+               </manifest>
+               <fileset dir="bin"/>
+           </jar>
+       </target>
      <!-- Generate javadocs for current project into ${doc.dir} -->
     <target name="doc" depends="init" description="generate documentation">
     <javadoc encoding="UTF-8" charset="UTF-8" docencoding="UTF-8" additionalparam="-notimestamp" sourcepath="${source.dir}" destdir="${doc.dir}"/>
