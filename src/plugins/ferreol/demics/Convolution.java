@@ -41,8 +41,10 @@ import plugins.mitiv.old.io.IcyBufferedImageUtils;
 /**
  * Icy plugin for convolution
  * @author ferreol
+ * @deprecated
  *
  */
+@Deprecated
 public class Convolution extends EzPlug {
     //Mydata
 
