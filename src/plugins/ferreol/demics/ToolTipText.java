@@ -26,12 +26,13 @@
 package plugins.ferreol.demics;
 
 /**
- * In this class is contained all the tooltip texts. It can be usefull for correcting mistakes or
+ * In this class is contained all the tooltip texts. It can be usefully for correcting mistakes or
  * new languages.
  *
  * @author light
  *
  */
+@SuppressWarnings("javadoc")
 public class ToolTipText {
 
     public static final String deconvolutionSlider = "Update Mu value";

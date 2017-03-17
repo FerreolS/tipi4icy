@@ -34,7 +34,7 @@ import plugins.mitiv.TiPiPlug;
 /**
  * Plugin class for all plugins of DEconvolution MIcroscopy Studio
  * (DEMICS)
- * @author ferreol
+ * @author Ferréol
  *
  */
 public abstract class DEMICSPlug extends TiPiPlug  implements Block{
@@ -96,6 +96,7 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
     /**            DEBUG            **/
     /*********************************/
     private boolean debug = false;      // Show psf steps
+    @SuppressWarnings("unused")
     private boolean verbose = false;    // Show some values, need debug to true
 
     /**

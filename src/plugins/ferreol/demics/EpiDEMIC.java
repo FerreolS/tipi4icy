@@ -829,9 +829,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
     private void saveParamClicked() {
         if(pupil!=null){
             pupilShift.setValue( pupil.getPupilShift());
-            if(pupil.getAlpha() !=null)
-                phaseCoefs.setValue(pupil.getAlpha().getData());
-            modulusCoefs.setValue(pupil.getBeta().getData());
+            if(pupil.getPhaseCoefs() !=null)
+                phaseCoefs.setValue(pupil.getPhaseCoefs().getData());
+            modulusCoefs.setValue(pupil.getModulusCoefs().getData());
         }
         if (debug) {
             System.out.println("--------------");
@@ -916,7 +916,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
             /*---------------------------------------*/
 
             if (runBdec) {
-                if ((pupil.getAlpha()==null)||( Integer.parseInt(nbAlphaCoef.getValue()) != pupil.getNPhase())){
+                if ((pupil.getPhaseCoefs()==null)||( Integer.parseInt(nbAlphaCoef.getValue()) != pupil.getNPhase())){
                     int nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
                     if (nbAlpha==0){
                         guessPhase = false;
@@ -926,7 +926,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
                     }
                 }
 
-                if  ((pupil.getBeta()==null)||(Integer.parseInt(nbBetaCoef.getValue()) != pupil.getNModulus())){
+                if  ((pupil.getModulusCoefs()==null)||(Integer.parseInt(nbBetaCoef.getValue()) != pupil.getNModulus())){
                     int nbBeta = Integer.parseInt(nbBetaCoef.getValue());
 
 
@@ -963,7 +963,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
                         }
                         psfEstimation.setRelativeTolerance(0.);
                         psfEstimation.setMaximumIterations(maxIterDefocus.getValue());
-                        psfEstimation.fitPSF( PSF_Estimation.DEFOCUS);
+                        psfEstimation.fitPSF( WideFieldModel.DEFOCUS);
                     }
 
                     /* Phase estimation */
@@ -973,7 +973,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
                             System.out.println("------------------");
                         }
                         psfEstimation.setMaximumIterations(maxIterPhase.getValue());
-                        psfEstimation.fitPSF( PSF_Estimation.ALPHA);
+                        psfEstimation.fitPSF( WideFieldModel.PHASE);
                     }
 
 
@@ -984,7 +984,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
                             System.out.println("------------------");
                         }
                         psfEstimation.setMaximumIterations(maxIterModulus.getValue());
-                        psfEstimation.fitPSF( PSF_Estimation.BETA);
+                        psfEstimation.fitPSF( WideFieldModel.MODULUS);
                     }
 
                     //Emergency stop
