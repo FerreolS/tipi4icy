@@ -48,7 +48,6 @@ import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
 import mitiv.base.Shape;
 import mitiv.cost.EdgePreservingDeconvolution;
-import mitiv.old.MathUtils;
 import mitiv.optim.OptimTask;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
@@ -76,7 +75,7 @@ import plugins.adufour.ezplug.EzVarText;
  * @author Ferréol Soulez & Jonathan Leger
  *
  */
-public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXME should extend a broader DEMICS class
+public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
 
     /***************************************************/
@@ -836,7 +835,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
         if (debug) {
             System.out.println("--------------");
             System.out.println("defocus");
-            MathUtils.printArray( pupil.getDefocus() );
+            System.out.println( pupil.getDefocus().toString() );
         }
         File pathName = saveFile.getValue();
         if(pathName!=null){
@@ -999,7 +998,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block { //FIXM
                 deconv();
             }
             if(pupil!=null)
-                pupil.freePSF();// TODO free some memory
+                pupil.freePSF();// TODO free more memory
 
             SwingUtilities.invokeLater(new Runnable() {
                 @Override

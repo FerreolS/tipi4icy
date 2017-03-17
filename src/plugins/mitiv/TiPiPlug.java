@@ -19,7 +19,7 @@ import plugins.adufour.ezplug.EzPlug;
  *
  * @author ferreol
  */
-public abstract class TiPiPlug extends EzPlug {
+public abstract class TiPiPlug extends EzPlug  {
 
     /**
      * Save a sequence in the file pointed by path
@@ -34,9 +34,9 @@ public abstract class TiPiPlug extends EzPlug {
             File f = new File(path);
             if (f.isDirectory()) {
                 f = new File(f.getAbsolutePath() + File.separator + seq + ".tif");
-            }
+    }
             Saver.save(seq, f, false, false);
-        }
+    }
     }
 
     /**
@@ -46,7 +46,7 @@ public abstract class TiPiPlug extends EzPlug {
      *            ShapedArray to show
      */
     protected void show(final ShapedArray arr) {
-        show(arr, null, "");
+        show(  arr,  null,  "" ) ;
     }
 
     /**
@@ -60,18 +60,18 @@ public abstract class TiPiPlug extends EzPlug {
      *            title of the plot
      */
     protected void show(final ShapedArray arr, Sequence sequence, final String title) {
-        if (sequence == null) {
+        if (sequence == null )  {
 
             sequence = new Sequence();
-            if (!isHeadLess()) {
+            if (!isHeadLess()){
                 addSequence(sequence);
             }
         }
         sequence.beginUpdate();
-        sequence = arrayToSequence(arr, sequence);
+        sequence =   arrayToSequence(arr, sequence);
 
-        if (sequence.getFirstViewer() == null) {
-            if (!isHeadLess()) {
+        if( sequence.getFirstViewer() == null){
+            if (!isHeadLess()){
                 addSequence(sequence);
             }
         }
@@ -133,10 +133,10 @@ public abstract class TiPiPlug extends EzPlug {
      * print error message
      *
      * @param s
-     *            the error message
+     * the error message
      */
     protected void throwError(final String s) {
-        if (isHeadLess()) {
+        if(isHeadLess()){
             throw new IllegalArgumentException(s);
         } else {
             new FailedAnnounceFrame(s);
@@ -145,4 +145,4 @@ public abstract class TiPiPlug extends EzPlug {
 
     }
 
-}
+            }

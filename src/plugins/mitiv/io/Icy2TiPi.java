@@ -10,6 +10,13 @@ import mitiv.array.ArrayFactory;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 
+/**
+ * TiPi ShapedArray <->Icy Sequence conversion class
+ * @author Ferréol ferreol.soulez@epfl.ch
+ * @see mitiv.array.ShapedArray
+ * @see icy.sequence
+ *
+ */
 public class Icy2TiPi {
     static final byte czt = (byte) 0x0; // 0b00000000;
     static final byte Czt = (byte) 0x1; // 0b00000001;
@@ -22,15 +29,41 @@ public class Icy2TiPi {
     /*Ferréol */
 
 
+    /**
+     * Convert sequence to array
+     * @param seq input sequence
+     * @return ShapedArray
+     */
     public static ShapedArray sequenceToArray(Sequence seq) {
         return sequenceToArray( seq,-1, -1, -1);
     }
+    /**
+     * Convert sequence to array
+     * @param   seq     input sequence
+     * @param   c       channel index
+     * @return  ShapedArray
+     */
     public static ShapedArray sequenceToArray(Sequence seq,int c) {
         return sequenceToArray( seq,c, -1, -1);
     }
+    /**
+     * Convert sequence to array
+     * @param seq   input sequence
+     * @param c     channel index
+     * @param t     time index
+     * @return ShapedArray
+     */
     public static ShapedArray sequenceToArray(Sequence seq,int c,int t) {
         return sequenceToArray( seq,c, -1, t);
     }
+    /**
+     * Convert sequence to array
+     * @param seq input sequence
+     * @param c     channel index
+     * @param z     depth index
+     * @param t     time index
+     * @return ShapedArray
+     */
     public static ShapedArray sequenceToArray(Sequence seq,int c, int z, int t) {
         int nx, ny, nz, nc, nt;
 
@@ -157,11 +190,23 @@ public class Icy2TiPi {
         return ArrayFactory.wrap(data, shape);
     }
 
+    /**
+     * Convert ShapedArray to Sequence
+     * @param array     ShapedArray
+     * @return          Sequence
+     */
     public static Sequence arrayToSequence(ShapedArray array)
     {
         return arrayToSequence( array,null);
     }
 
+    /**
+     * Copy a ShapedArray into a Sequence
+     * Create a new sequence if the input sequence is null
+     * @param array     ShapedArray
+     * @param sequence  Input sequence
+     * @return          Resulting sequence
+     */
     public static Sequence arrayToSequence(ShapedArray array,Sequence sequence)
     {
         if (sequence == null )  {

@@ -79,9 +79,9 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
 
 
     protected EzVarText       weightsMethod;  // Combobox for variance estimation
-    protected final String[]  weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
+    protected final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
     protected EzVarDouble     gain, noise;    // gain of the detector in e-/lvl and detector noise in e-
-    protected EzVarSequence   weights, deadPixel; // maps of inverse variance and bad pixels
+    protected EzVarSequence weights, deadPixel; // maps of inverse variance and bad pixels
     protected EzButton        showWeight;
 
     protected EzVarFile       saveFile, loadFile;// xml files to save and load parameters
@@ -112,7 +112,7 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
      * @return The weights.
      */
 
-    protected ShapedArray createWeights(ShapedArray datArray) { //FIXME should be elsewhere
+    protected ShapedArray createWeights(ShapedArray datArray) {
         ShapedArray wgtArray = null;
         Sequence seq;
         WeightedData wd = new WeightedData(datArray);

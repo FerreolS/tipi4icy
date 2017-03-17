@@ -26,26 +26,20 @@
 package plugins.ferreol.demics;
 
 
-import icy.image.IcyBufferedImage;
 import icy.sequence.Sequence;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
-import mitiv.old.MathUtils;
-import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.mitiv.io.Icy2TiPi;
 
 /**
  * Icy plugin for convolution
- * @author ferreol
- * @deprecated
+ * @author light
  *
  */
-@Deprecated
-public class Convolution extends EzPlug {
-    //Mydata
+public class Convolution extends TiPiPlug {
 
     private EzVarSequence EzVarSequenceImage;
     private EzVarSequence EzVarSequencePSF;
@@ -90,12 +84,8 @@ public class Convolution extends EzPlug {
         H.apply( y,xVector);
 
         Sequence seqY = new Sequence();
-        seqY.setName(seqImg.getName()+"*"+seqPSF.getName());
-        for(int k = 0; k < d; k++)
-        {
-            seqY.setImage(0, k, new IcyBufferedImage(w, h, MathUtils.getArray(y.getData(), w, h, k)));
-        }
-        addSequence(seqY);
+        show(y.asShapedArray(),seqY,seqImg.getName()+"*"+seqPSF.getName());
+
     }
 
     @Override
