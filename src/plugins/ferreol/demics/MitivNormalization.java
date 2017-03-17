@@ -35,7 +35,7 @@ import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVarSequence;
-import plugins.mitiv.old.io.IcyBufferedImageUtils;
+import plugins.mitiv.io.Icy2TiPi;
 
 /**
  * This plugin is normalizing all the data so that the sum of all pixels
@@ -75,7 +75,7 @@ public class MitivNormalization extends EzPlug implements  EzStoppable, Block, P
             int sizeZ = seq.getSizeZ();
             double count = 0.0;
             //Icy to double
-            ShapedArray tmp1 =  IcyBufferedImageUtils.imageToArray(seq, 0); //By default we take the first canal
+            ShapedArray tmp1 =  Icy2TiPi.sequenceToArray(seq); //By default we take the first canal
             double[] out = tmp1.toDouble().flatten();
             for (int i = 0; i < out.length; i++) {
                 count += out[i];

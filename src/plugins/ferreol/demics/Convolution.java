@@ -35,8 +35,7 @@ import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.old.MathUtils;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarSequence;
-//import plugins.mitiv.deconv.MitivDeconvolution;
-import plugins.mitiv.old.io.IcyBufferedImageUtils;
+import plugins.mitiv.io.Icy2TiPi;
 
 /**
  * Icy plugin for convolution
@@ -79,8 +78,8 @@ public class Convolution extends EzPlug {
             myShape = new Shape(w, h);
         }
 
-        ShapedArray imgArray =  IcyBufferedImageUtils.imageToArray(seqImg,0);
-        ShapedArray psfArray =   IcyBufferedImageUtils.imageToArray(seqPSF , 0);
+        ShapedArray imgArray =   Icy2TiPi.sequenceToArray(seqImg);
+        ShapedArray psfArray =   Icy2TiPi.sequenceToArray(seqPSF );
 
         DoubleShapedVectorSpace space = new DoubleShapedVectorSpace(myShape);
         DoubleShapedVector xVector = space.create(imgArray);
