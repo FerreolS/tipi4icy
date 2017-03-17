@@ -340,9 +340,5 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
         if(debug){
             System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
         }
-
-
     }
-
-
 }

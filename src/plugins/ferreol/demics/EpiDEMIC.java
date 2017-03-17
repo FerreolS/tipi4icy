@@ -154,8 +154,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
 
 
-
-    @Override //FIXME should be in another class
+    @Override
     public void clean() {
     }
 
