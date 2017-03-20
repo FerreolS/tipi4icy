@@ -32,6 +32,7 @@ import mitiv.base.Shape;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import plugins.adufour.ezplug.EzVarSequence;
+import plugins.mitiv.TiPiPlug;
 import plugins.mitiv.io.Icy2TiPi;
 
 /**
