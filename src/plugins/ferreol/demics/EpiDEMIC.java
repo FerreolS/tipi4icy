@@ -915,26 +915,26 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             /*---------------------------------------*/
 
             if (runBdec) {
-                System.out.println("pupil.getAlpha() :"+ pupil.getAlpha() + " nbAlphaCoef.getValue() : "+ nbAlphaCoef.getValue() + "pupil.getNPhase()) "+ pupil.getNPhase());
-
-                {     int nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
-                if (nbAlpha==0){
-                    guessPhase = false;
-                }else{
-                    guessPhase = true;
-                    pupil.setNPhase(nbAlpha);
+                if ((pupil.getPhaseCoefs()==null)||( Integer.parseInt(nbAlphaCoef.getValue()) != pupil.getNPhase())){
+                    int nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
+                    if (nbAlpha==0){
+                        guessPhase = false;
+                    }else{
+                        guessPhase = true;
+                        pupil.setNPhase(nbAlpha);
+                    }
                 }
-                }
 
-                {     int nbBeta = Integer.parseInt(nbBetaCoef.getValue());
+                if  ((pupil.getModulusCoefs()==null)||(Integer.parseInt(nbBetaCoef.getValue()) != pupil.getNModulus())){
+                    int nbBeta = Integer.parseInt(nbBetaCoef.getValue());
 
 
-                if (nbBeta==0){
-                    guessModulus = false;
-                }else{
-                    guessModulus = true;
-                    pupil.setNModulus(nbBeta);
-                }
+                    if (nbBeta==0){
+                        guessModulus = false;
+                    }else{
+                        guessModulus = true;
+                        pupil.setNModulus(nbBeta);
+                    }
                 }
 
 
