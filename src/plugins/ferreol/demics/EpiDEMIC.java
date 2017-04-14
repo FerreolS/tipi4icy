@@ -914,8 +914,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             /*---------------------------------------*/
 
             if (runBdec) {
-                System.out.println("pupil.getAlpha() :"+ pupil.getAlpha() + " nbAlphaCoef.getValue() : "+ nbAlphaCoef.getValue() + "pupil.getNPhase()) "+ pupil.getNPhase());
-
                 {     int nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
                 if (nbAlpha==0){
                     guessPhase = false;
@@ -935,7 +933,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     pupil.setNModulus(nbBeta);
                 }
                 }
-
 
                 psfEstimation = new PSF_Estimation(pupil);
 

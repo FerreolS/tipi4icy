@@ -289,7 +289,7 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
         Sequence seq = data.getValue();
         if (seq != null) {
             try {
-                OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
+                ome.xml.meta.OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
                 newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
                 newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
                 newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
