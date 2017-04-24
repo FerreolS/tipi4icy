@@ -827,9 +827,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private void saveParamClicked() {
         if(pupil!=null){
             pupilShift.setValue( pupil.getPupilShift());
-            if(pupil.getAlpha() !=null)
-                phaseCoefs.setValue(pupil.getAlpha().getData());
-            modulusCoefs.setValue(pupil.getBeta().getData());
+            if(pupil.getPhaseCoefs() !=null)
+                phaseCoefs.setValue(pupil.getPhaseCoefs().getData());
+            modulusCoefs.setValue(pupil.getModulusCoefs().getData());
         }
         if (debug) {
             System.out.println("--------------");
@@ -958,7 +958,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         }
                         psfEstimation.setRelativeTolerance(0.);
                         psfEstimation.setMaximumIterations(maxIterDefocus.getValue());
-                        psfEstimation.fitPSF( PSF_Estimation.DEFOCUS);
+                        psfEstimation.fitPSF( WideFieldModel.DEFOCUS);
                     }
 
                     /* Phase estimation */
@@ -968,7 +968,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                             System.out.println("------------------");
                         }
                         psfEstimation.setMaximumIterations(maxIterPhase.getValue());
-                        psfEstimation.fitPSF( PSF_Estimation.ALPHA);
+                        psfEstimation.fitPSF( WideFieldModel.PHASE);
                     }
 
 
@@ -979,7 +979,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                             System.out.println("------------------");
                         }
                         psfEstimation.setMaximumIterations(maxIterModulus.getValue());
-                        psfEstimation.fitPSF( PSF_Estimation.BETA);
+                        psfEstimation.fitPSF( WideFieldModel.MODULUS);
                     }
 
                     //Emergency stop
