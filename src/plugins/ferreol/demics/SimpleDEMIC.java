@@ -38,7 +38,7 @@ import icy.file.Loader;
 import icy.main.Icy;
 import icy.sequence.Sequence;
 import microTiPi.microUtils.DEMICSHook;
-import microTiPi.microUtils.MicroDeconvolution;
+import microTiPi.microUtils.DeconvolutionJob;
 import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
 import mitiv.base.Shape;
@@ -625,7 +625,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
         DEMICSHook dHook = new DEMICSHook(curImager, dataShape,null, debug);
         DEMICSHook dHookfinal = new DEMICSHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
-        MicroDeconvolution deconvolver = new MicroDeconvolution(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
+        DeconvolutionJob deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
 
 
         objArray = deconvolver.deconv(objArray);
