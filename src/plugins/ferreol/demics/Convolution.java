@@ -32,15 +32,15 @@ import mitiv.base.Shape;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import plugins.adufour.ezplug.EzVarSequence;
-import plugins.mitiv.TiPiPlug;
 import plugins.mitiv.io.Icy2TiPi;
+import plugins.mitiv.io.IcyImager;
 
 /**
  * Icy plugin for convolution
  * @author light
  *
  */
-public class Convolution extends TiPiPlug {
+public class Convolution extends DEMICSPlug {
 
     private EzVarSequence EzVarSequenceImage;
     private EzVarSequence EzVarSequencePSF;
@@ -85,7 +85,7 @@ public class Convolution extends TiPiPlug {
         H.apply( y,xVector);
 
         Sequence seqY = new Sequence();
-        show(y.asShapedArray(),seqY,seqImg.getName()+"*"+seqPSF.getName());
+        IcyImager.show(y.asShapedArray(),seqY,seqImg.getName()+"*"+seqPSF.getName(),isHeadLess() );
 
     }
 

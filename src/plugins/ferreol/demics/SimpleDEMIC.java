@@ -58,6 +58,7 @@ import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
+import plugins.mitiv.io.IcyImager;
 
 
 /**
@@ -194,7 +195,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
                     if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nx);
-                        show(  sequenceToArray( seq,0));
                     }
                     // setting restart value to the current sequence
                     restart.setValue(newValue);
@@ -295,7 +295,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                 if(dataSeq!=null){
                     dataArray =    sequenceToArray(dataSeq, channel.getValue()).toDouble();
                     wgtArray = createWeights(dataArray).toDouble();
-                    show(wgtArray,"Weight map");
+                    IcyImager.show(wgtArray,null,"Weight map",false);
                 }
                 if (debug) {
                     System.out.println("Weight compute");
@@ -359,7 +359,12 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                 Sequence fSeq;
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(data.getValue(), false);
-                show(solver.getSolution(),fSeq,"Deconvolved "+ data.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                //     show(solver.getSolution(),fSeq,"Deconvolved "+ data.getValue().getName() + " mu="+solver.getRegularizationLevel() );
+                if(solver != null){
+                    IcyImager.show(solver.getSolution(),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+solver.getRegularizationLevel() ,isHeadLess());
+                }else {
+                    IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
+                }
             }
         });
 
@@ -602,6 +607,8 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         cursequence = new Sequence("Current Iterate");
         cursequence.copyMetaDataFrom(dataSeq, false);
 
+        IcyImager curImager = new IcyImager(cursequence, isHeadLess());
+
         solver.setRelativeTolerance(0.0);
         solver.setUseNewCode(false);
         solver.setObjectShape(outputShape);
@@ -642,7 +649,8 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             }
             if (task == OptimTask.NEW_X || task == OptimTask.FINAL_X) {
                 if(showIteration.getValue()){
-                    show(ArrayUtils.crop(solver.getSolution(),dataShape),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                    curImager.show(ArrayUtils.crop(solver.getSolution(),dataShape) ,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
+                    // show(ArrayUtils.crop(solver.getSolution(),dataShape),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
                 }
                 if (task == OptimTask.FINAL_X) {
                     break;
@@ -653,7 +661,8 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             }
             solver.iterate();
         }
-        show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape),cursequence,"Deconvolved "+ dataSeq.getName() +  " mu="+solver.getRegularizationLevel());
+        //   show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape),cursequence,"Deconvolved "+ dataSeq.getName() +  " mu="+solver.getRegularizationLevel());
+        curImager.show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape),"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
 
 
         SwingUtilities.invokeLater(new Runnable() {
@@ -676,7 +685,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                     outputHeadlessWght.setValue(arrayToSequence(wgtArray));
 
                     if(outputPath!=null){
-                        saveSequence(cursequence, outputPath);
+                        IcyImager.save(cursequence, outputPath);
                     }
 
 

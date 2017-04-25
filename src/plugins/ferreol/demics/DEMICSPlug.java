@@ -6,6 +6,7 @@ package plugins.ferreol.demics;
 import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
 
 import icy.gui.frame.progress.AnnounceFrame;
+import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
 import icy.util.OMEUtil;
@@ -21,6 +22,7 @@ import mitiv.utils.WeightFactory;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
+import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarChannel;
 import plugins.adufour.ezplug.EzVarDouble;
@@ -29,7 +31,6 @@ import plugins.adufour.ezplug.EzVarFile;
 import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
-import plugins.mitiv.TiPiPlug;
 
 /**
  * Plugin class for all plugins of DEconvolution MIcroscopy Studio
@@ -37,7 +38,7 @@ import plugins.mitiv.TiPiPlug;
  * @author Ferréol
  *
  */
-public abstract class DEMICSPlug extends TiPiPlug  implements Block{
+public abstract class DEMICSPlug extends EzPlug  implements Block{
 
     protected EzVarSequence   data;           // data
     protected EzVarChannel    channel;        // data channel
@@ -340,5 +341,22 @@ public abstract class DEMICSPlug extends TiPiPlug  implements Block{
         if(debug){
             System.out.println(" UpdatePaddedSize" + paddingSizeXY.getValue()  + outputShape.toString());
         }
+    }
+
+
+    /**
+     * print error message
+     *
+     * @param s
+     * the error message
+     */
+    protected void throwError(final String s) {
+        if(isHeadLess()){
+            throw new IllegalArgumentException(s);
+        } else {
+            new FailedAnnounceFrame(s);
+
+        }
+
     }
 }
