@@ -42,13 +42,13 @@ import icy.image.colormap.IceColorMap;
 import icy.main.Icy;
 import icy.sequence.Sequence;
 import microTiPi.epifluorescence.WideFieldModel;
+import microTiPi.microUtils.DEMICSHook;
+import microTiPi.microUtils.MicroDeconvolution;
 import microTiPi.microscopy.PSF_Estimation;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
 import mitiv.base.Shape;
-import mitiv.cost.EdgePreservingDeconvolution;
-import mitiv.optim.OptimTask;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
@@ -130,7 +130,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     // Global solvers
     private PSF_Estimation psfEstimation;
-    private EdgePreservingDeconvolution solver;
 
 
 
@@ -473,14 +472,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(data.getValue(), false);
                 if(objArray != null){
-                    if(solver != null){
-                        IcyImager.show(objArray,fSeq,"Deconvolved "+ data.getValue().getName() + " with padding. mu: " +solver.getRegularizationLevel(),isHeadLess() );
-                    }
-                    else{
-                        IcyImager.show(objArray,fSeq,"Deconvolved "+ data.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess() );
-                    }
-                }else if(solver != null){
-                    IcyImager.show(solver.getSolution(),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+solver.getRegularizationLevel() ,isHeadLess());
+                    IcyImager.show(objArray,fSeq,"Deconvolved "+ data.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess() );
                 }else {
                     IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
                 }
@@ -626,14 +618,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(data.getValue(), false);
                 if(objArray != null){
-                    if(solver != null){
-                        IcyImager.show(objArray,fSeq,"Deconvolved "+ data.getValue().getName() + " with padding. mu: " +solver.getRegularizationLevel(),isHeadLess() );
-                    }
-                    else{
-                        IcyImager.show(objArray,fSeq,"Deconvolved "+ data.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess());
-                    }
-                }else if(solver != null){
-                    IcyImager.show(solver.getSolution(),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+solver.getRegularizationLevel(),isHeadLess() );
+                    IcyImager.show(objArray,fSeq,"Deconvolved "+ data.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess());
                 }else {
                     IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
                 }
@@ -1177,14 +1162,13 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     }
 
     private void deconv() {
-        solver = new EdgePreservingDeconvolution();
+        if (debug){
+            System.out.println("Launch it:"+nbIterDeconv.getValue());
+        }
 
-        solver.setInitialSolution(objArray);
-
-        if(singlePrecision.getValue()){
-            solver.setForceSinglePrecision(true);
-        }else{
-            solver.setForceSinglePrecision(false);
+        if (scale.getValue().length !=3){
+            throwError("Pixel scale must have 3 elements");
+            return;
         }
 
         if(cursequence==null){
@@ -1192,56 +1176,13 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             cursequence.copyMetaDataFrom(data.getValue(), false);
         }
         IcyImager curImager = new IcyImager(cursequence, isHeadLess());
-        solver.setRelativeTolerance(0.0);
-        solver.setUseNewCode(false);
-        solver.setObjectShape(outputShape);
-        solver.setPSF(psfArray);
-        solver.setData(dataArray);
-        solver.setWeights(wgtArray);
-        solver.setEdgeThreshold(epsilon.getValue());
-        solver.setRegularizationLevel(mu.getValue());
-        if (scale.getValue().length !=3){
-            throwError("Pixel scale must have 3 elements");
-            return;
-        }
 
-        solver.setScale(scale.getValue());
-        solver.setSaveBest(true);
-        solver.setLowerBound(positivity.getValue() ? 0.0 : Double.NEGATIVE_INFINITY);
-        solver.setUpperBound(Double.POSITIVE_INFINITY);
-        solver.setMaximumIterations(nbIterDeconv.getValue());
-        solver.setMaximumEvaluations(2*nbIterDeconv.getValue());
-        if (debug){
-            System.out.println("Launch it:"+nbIterDeconv.getValue());
-        }
-        run = true;
-        OptimTask task = solver.start();
+        DEMICSHook dHook = new DEMICSHook(curImager, dataShape,null, debug);
+        DEMICSHook dHookfinal = new DEMICSHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
+        MicroDeconvolution deconvolver = new MicroDeconvolution(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
 
-        while (run) {
-            task = solver.getTask();
-            if (task == OptimTask.ERROR) {
-                System.err.format("Error: %s\n", solver.getReason());
-                break;
-            }
-            if (task == OptimTask.NEW_X || task == OptimTask.FINAL_X) {
-                if(showIteration.getValue()){
-                    curImager.show(ArrayUtils.crop(solver.getSolution(),dataShape) ,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
-                }
-                if (debug){
-                    System.out.println("Cost "+solver.getCost() );
-                }
-                if (task == OptimTask.FINAL_X) {
-                    break;
-                }
-            }
-            if (task == OptimTask.WARNING) {
-                break;
-            }
-            solver.iterate();
-        }
-        objArray = solver.getBestSolution().asShapedArray();
-        curImager.show(ArrayUtils.crop(objArray,dataShape),"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
-        solver = null;
+
+        objArray = deconvolver.deconv(objArray);
     }
 
 

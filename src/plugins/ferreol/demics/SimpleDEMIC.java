@@ -37,11 +37,11 @@ import javax.swing.SwingUtilities;
 import icy.file.Loader;
 import icy.main.Icy;
 import icy.sequence.Sequence;
+import microTiPi.microUtils.DEMICSHook;
+import microTiPi.microUtils.MicroDeconvolution;
 import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
 import mitiv.base.Shape;
-import mitiv.cost.EdgePreservingDeconvolution;
-import mitiv.optim.OptimTask;
 import mitiv.utils.FFTUtils;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
@@ -96,7 +96,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
     private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
-    private EdgePreservingDeconvolution solver =  new EdgePreservingDeconvolution();
+    //    private EdgePreservingDeconvolution solver =  new EdgePreservingDeconvolution();
     private boolean run;
     private EzVarChannel channelpsf;
     private EzGroup ezPaddingGroup;
@@ -360,8 +360,8 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(data.getValue(), false);
                 //     show(solver.getSolution(),fSeq,"Deconvolved "+ data.getValue().getName() + " mu="+solver.getRegularizationLevel() );
-                if(solver != null){
-                    IcyImager.show(solver.getSolution(),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+solver.getRegularizationLevel() ,isHeadLess());
+                if(objArray != null){
+                    IcyImager.show(objArray,fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+ mu.getValue() ,isHeadLess());
                 }else {
                     IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
                 }
@@ -546,7 +546,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     }
 
     protected void launch() {
-        solver = new EdgePreservingDeconvolution();
+        //       solver = new EdgePreservingDeconvolution();
 
         dataSeq = data.getValue();
         Sequence psfSeq = psf.getValue();
@@ -590,8 +590,8 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             if(debug){
                 System.out.println("restart seq:" +restartSeq.getName());
             }
-            solver.setInitialSolution(objArray);
         }else{
+            objArray = sequenceToArray(dataSeq, channel.getValue());
             if(debug){
                 System.out.println("restart seq is null:");
             }
@@ -599,24 +599,12 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
         if(singlePrecision.getValue()){
             wgtArray = createWeights(dataArray.toFloat()).toFloat();
-            solver.setForceSinglePrecision(true);
         }else{
             wgtArray = createWeights(dataArray.toDouble()).toDouble();
-            solver.setForceSinglePrecision(false);
         }
         cursequence = new Sequence("Current Iterate");
         cursequence.copyMetaDataFrom(dataSeq, false);
 
-        IcyImager curImager = new IcyImager(cursequence, isHeadLess());
-
-        solver.setRelativeTolerance(0.0);
-        solver.setUseNewCode(false);
-        solver.setObjectShape(outputShape);
-        solver.setPSF(psfArray);
-        solver.setData(dataArray);
-        solver.setWeights(wgtArray);
-        solver.setEdgeThreshold(epsilon.getValue());
-        solver.setRegularizationLevel(mu.getValue());
 
         if(Nz==1){
             if (scale.getValue().length !=2){
@@ -628,41 +616,19 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                 throwError("Pixel scale must have 3 elements");
                 return;
             }
-            solver.setScale(scale.getValue());
         }
-        solver.setSaveBest(true);
-        solver.setLowerBound(positivity.getValue() ? 0.0 : Double.NEGATIVE_INFINITY);
-        solver.setUpperBound(Double.POSITIVE_INFINITY);
-        solver.setMaximumIterations(nbIterDeconv.getValue());
-        solver.setMaximumEvaluations(2*nbIterDeconv.getValue());
         if (debug){
             System.out.println("Launch it:"+nbIterDeconv.getValue());
         }
-        run = true;
-        OptimTask task = solver.start();
 
-        while (run) {
-            task = solver.getTask();
-            if (task == OptimTask.ERROR) {
-                System.err.format("Error: %s\n", solver.getReason());
-                break;
-            }
-            if (task == OptimTask.NEW_X || task == OptimTask.FINAL_X) {
-                if(showIteration.getValue()){
-                    curImager.show(ArrayUtils.crop(solver.getSolution(),dataShape) ,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
-                    // show(ArrayUtils.crop(solver.getSolution(),dataShape),cursequence,"Current mu="+solver.getRegularizationLevel() +"it:"+solver.getIterations());
-                }
-                if (task == OptimTask.FINAL_X) {
-                    break;
-                }
-            }
-            if (task == OptimTask.WARNING) {
-                break;
-            }
-            solver.iterate();
-        }
-        //   show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape),cursequence,"Deconvolved "+ dataSeq.getName() +  " mu="+solver.getRegularizationLevel());
-        curImager.show(ArrayUtils.crop(solver.getBestSolution().asShapedArray(),dataShape),"Deconvolved "+ dataSeq.getName() + " mu="+solver.getRegularizationLevel());
+        IcyImager curImager = new IcyImager(cursequence, isHeadLess());
+
+        DEMICSHook dHook = new DEMICSHook(curImager, dataShape,null, debug);
+        DEMICSHook dHookfinal = new DEMICSHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
+        MicroDeconvolution deconvolver = new MicroDeconvolution(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
+
+
+        objArray = deconvolver.deconv(objArray);
 
 
         SwingUtilities.invokeLater(new Runnable() {
