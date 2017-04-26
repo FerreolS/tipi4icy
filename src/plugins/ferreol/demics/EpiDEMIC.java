@@ -929,8 +929,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 psfEstimation.setAbsoluteTolerance(0.0);
 
                 for(int i = 0; i < totalNbOfBlindDecLoop.getValue(); i++) {
-                    psfArray = ArrayUtils.roll(pupil.getPSF());
-                    pupil.freePSF();
+                    psfArray = ArrayUtils.roll(pupil.getPsf());
+                    pupil.freeMem();
                     deconv();
 
                     psfEstimation.setObj(objArray);
@@ -974,13 +974,13 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     }
                 }
             } else {
-                psfArray = ArrayUtils.roll( pupil.getPSF() );
-                pupil.freePSF();
+                psfArray = ArrayUtils.roll( pupil.getPsf() );
+                pupil.freeMem();
                 preProcessing();
                 deconv();
             }
             if(pupil!=null)
-                pupil.freePSF();// TODO free more memory
+                pupil.freeMem();// TODO free more memory
 
             SwingUtilities.invokeLater(new Runnable() {
                 @Override
@@ -1001,7 +1001,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         }
 
                         Sequence psfSequence = null;
-                        psfSequence =   arrayToSequence( ArrayUtils.roll(pupil.getPSF()), psfSequence);
+                        psfSequence =   arrayToSequence( ArrayUtils.roll(pupil.getPsf()), psfSequence);
 
 
                         outputHeadlessPSF.setValue(psfSequence);
@@ -1070,7 +1070,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         if(dataSeq!=null){
                             psfSequence.copyMetaDataFrom(dataSeq, false);
                         }
-                        IcyImager.show(ArrayUtils.roll(pupil.getPSF()),psfSequence,"Estimated PSF",isHeadLess());
+                        IcyImager.show(ArrayUtils.roll(pupil.getPsf()),psfSequence,"Estimated PSF",isHeadLess());
                         psfSequence.getFirstViewer().getLut().getLutChannel(0).setColorMap(new IceColorMap(),false);
                     }
                 });
