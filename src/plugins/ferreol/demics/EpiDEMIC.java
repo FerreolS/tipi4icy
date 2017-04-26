@@ -130,7 +130,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     // Global solvers
     private PSF_Estimation psfEstimation;
-
+    private DeconvolutionJob deconvolver ;
 
 
     // Main arrays for the psf estimation
@@ -1110,7 +1110,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     @Override
     public void stopExecution() {
-
+        deconvolver.abort();
         run = false;
         if (psfEstimation != null) {
             psfEstimation.stop();
@@ -1179,7 +1179,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         DEMICSHook dHook = new DEMICSHook(curImager, dataShape,null, debug);
         DEMICSHook dHookfinal = new DEMICSHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
-        DeconvolutionJob deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
+        deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
 
 
         objArray = deconvolver.deconv(objArray);

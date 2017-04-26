@@ -96,15 +96,13 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
     private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
-    //    private EdgePreservingDeconvolution solver =  new EdgePreservingDeconvolution();
-    private boolean run;
     private EzVarChannel channelpsf;
     private EzGroup ezPaddingGroup;
     private EzGroup ezWeightingGroup;
     private EzGroup ezDeconvolutionGroup;
     private EzGroup ezDeconvolutionGroup2;
 
-
+    private DeconvolutionJob deconvolver;
 
     /*********************************/
     /**      Initialization         **/
@@ -124,7 +122,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         restart = new EzVarSequence("Starting point:");
         restart.setNoSequenceSelection();
         channelRestart = new EzVarChannel("Initialization channel :", restart.getVariable(), false);
-        System.out.println("initialize()");
         dataSize = new EzVarText("Data size:");
         outputSize = new EzVarText("Output size:");
         paddingSizeX = new EzVarInteger("padding x:",0, Integer.MAX_VALUE,1);
@@ -254,10 +251,12 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         weightsMethod.addVarChangeListener(new EzVarListener<String>() {
             @Override
             public void variableChanged(EzVar<String> source, String newValue) {
-                System.out.println("weight:" + weightsMethod.getValue()+".");
-                System.out.println("weight:" + newValue+".");
-                System.out.println("weight:" + weightOptions[3]+".");
-                System.out.println("weight:" + weightOptions[3]==newValue);
+                if(debug){
+                    System.out.println("weight:" + weightsMethod.getValue()+".");
+                    System.out.println("weight:" + newValue+".");
+                    System.out.println("weight:" + weightOptions[3]+".");
+                    System.out.println("weight:" + weightOptions[3]==newValue);
+                }
                 if (weightsMethod.getValue() == weightOptions[0]) { //None
                     weights.setVisible(false);
                     gain.setVisible(false);
@@ -396,9 +395,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if(saveFile.getValue()!=null){
-                    System.out.println("gain"+ gain.getValue());
                     loadParameters(saveFile.getValue());
-                    System.out.println("gain"+ gain.getValue());
                     Sequence dataSeq = data.getValue();
                     if (dataSeq != null) {
                         sizeX = dataSeq.getSizeX();
@@ -539,7 +536,9 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                 parseCmdLine();
             }
             showIteration.setValue(false);
-            System.out.println("Launch it:"+nbIterDeconv.getValue());
+            if(debug){
+                System.out.println("Launch it:"+nbIterDeconv.getValue());
+            }
         }
         launch();
 
@@ -625,7 +624,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
         DEMICSHook dHook = new DEMICSHook(curImager, dataShape,null, debug);
         DEMICSHook dHookfinal = new DEMICSHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
-        DeconvolutionJob deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
+        deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
 
 
         objArray = deconvolver.deconv(objArray);
@@ -671,8 +670,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     //If the user call the stop button
     @Override
     public void stopExecution() {
-        run = false;
-
+        deconvolver.abort();
     }
     /**
      *  set default values of the plugin
