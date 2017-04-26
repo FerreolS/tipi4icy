@@ -1061,7 +1061,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             public void run() {
 
                 buildpupil();
-                pupil.computePSF();
+                pupil.computePsf();
 
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
