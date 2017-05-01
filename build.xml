@@ -75,7 +75,9 @@
         <copy todir="src-TiPiSDK"> <fileset dir="src"/></copy>
         <delete dir="src-TiPiSDK/plugins/ferreol/demics"/>
         <delete dir="src-TiPiSDK/plugins/demics"/>     
-            <delete dir="src-TiPiSDK/mitiv/old"/>
+        <delete dir="src-TiPiSDK/mitiv/old/commands"/>
+        <delete dir="src-TiPiSDK/mitiv/old/invpb"/>
+            <delete dir="src-TiPiSDK/mitiv/old/reconstruction"/>
         <delete dir="src-TiPiSDK/mitiv/invpb"/>
         <delete dir="src-TiPiSDK/mitiv/io"/>
         <delete dir="src-TiPiSDK/mitiv/jobs"/>
