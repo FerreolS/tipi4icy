@@ -23,6 +23,7 @@ before_install:
 - mv TiPi.zip ../ && cd ..
 - cp -r TiPi/lib/* lib/ 
 - ant tipi-sdk 
+- cp TiPiSDK.jar lib/.
 # Then build microtipi
 - git clone --quiet --branch=master https://github.com/FerreolS/microTiPi.git
 - cp -r microTiPi/src/* src/
