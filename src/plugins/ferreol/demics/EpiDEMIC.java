@@ -42,6 +42,7 @@ import icy.image.colormap.IceColorMap;
 import icy.main.Icy;
 import icy.sequence.Sequence;
 import microTiPi.epifluorescence.WideFieldModel;
+import microTiPi.microUtils.BlindDeconvJob;
 import microTiPi.microUtils.DEMICSHook;
 import microTiPi.microUtils.DeconvolutionJob;
 import microTiPi.microscopy.PSF_Estimation;
@@ -136,20 +137,22 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     // Main arrays for the psf estimation
     private boolean runBdec;
     private WideFieldModel pupil=null;
-    private boolean guessModulus;
-    private boolean guessPhase;
+    //  private boolean guessModulus;
+    //  private boolean guessPhase;
 
 
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
-    private boolean debug = true;      // Show psf steps
-    private boolean verbose = true;    // Show some values, need debug to true
+    private boolean debug = false;      // Show psf steps
+    private boolean verbose = false;    // Show some values, need debug to true
     private EzPanel  debuggingPanel;
     private EzVarText resultCostPrior, resultDefocus, resultPhase, resultModulus;
 
 
     private String psfPath=null;
+
+    private BlindDeconvJob bdec;
 
 
 
@@ -893,32 +896,29 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             run = true;
             runBdec = !runDeconv;
 
-            preProcessing();
 
             /*---------------------------------------*/
             /*            OPTIMISATION               */
             /*---------------------------------------*/
 
             if (runBdec) {
-                {     int nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
+
+                int nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
+                int nbBeta = Integer.parseInt(nbBetaCoef.getValue());
+
                 if (nbAlpha==0){
-                    guessPhase = false;
+                    maxIterPhase.setValue(0);
                 }else{
-                    guessPhase = true;
                     pupil.setNPhase(nbAlpha);
                 }
-                }
-
-                {     int nbBeta = Integer.parseInt(nbBetaCoef.getValue());
-
 
                 if (nbBeta==0){
-                    guessModulus = false;
+                    maxIterModulus.setValue(0);
                 }else{
-                    guessModulus = true;
                     pupil.setNModulus(nbBeta);
                 }
-                }
+
+                preProcessing();
 
                 psfEstimation = new PSF_Estimation(pupil);
 
@@ -928,51 +928,25 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 psfEstimation.enablePositivity(false);
                 psfEstimation.setAbsoluteTolerance(0.0);
 
-                for(int i = 0; i < totalNbOfBlindDecLoop.getValue(); i++) {
-                    psfArray = ArrayUtils.roll(pupil.getPsf());
-                    pupil.freeMem();
-                    deconv();
-
-                    psfEstimation.setObj(objArray);
-
-                    /* Defocus estimation */
-                    if (maxIterDefocus.getValue()>0){
-                        if (debug && verbose) {
-                            System.out.println("------------------");
-                            System.out.println("Defocus estimation");
-                            System.out.println("------------------");
-                        }
-                        psfEstimation.setRelativeTolerance(0.);
-                        psfEstimation.setMaximumIterations(maxIterDefocus.getValue());
-                        psfEstimation.fitPSF( WideFieldModel.DEFOCUS);
-                    }
-
-                    /* Phase estimation */
-                    if((maxIterPhase.getValue()>0)& guessPhase){
-                        if (debug && verbose) {
-                            System.out.println("Phase estimation");
-                            System.out.println("------------------");
-                        }
-                        psfEstimation.setMaximumIterations(maxIterPhase.getValue());
-                        psfEstimation.fitPSF( WideFieldModel.PHASE);
-                    }
+                int[] bMaxIter = {maxIterDefocus.getValue(),maxIterPhase.getValue(), maxIterModulus.getValue()};
 
 
-                    /* Modulus estimation */
-                    if((maxIterModulus.getValue() >0)&guessModulus){
-                        if (debug && verbose) {
-                            System.out.println("Modulus estimation");
-                            System.out.println("------------------");
-                        }
-                        psfEstimation.setMaximumIterations(maxIterModulus.getValue());
-                        psfEstimation.fitPSF( WideFieldModel.MODULUS);
-                    }
+                bdec = new BlindDeconvJob(totalNbOfBlindDecLoop.getValue(), pupil.getParametersFlags(), bMaxIter, psfEstimation ,deconvolver, debug );
 
-                    //Emergency stop
-                    if (!run) {
-                        return;
-                    }
+
+                bdec.blindDeconv(objArray);
+
+                if(maxIterDefocus.getValue()>0){
+                    ni.setValue(((WideFieldModel) psfEstimation.getModel()).getNi());
+                    pupilShift.setValue(((WideFieldModel) psfEstimation.getModel()).getPupilShift());
                 }
+                if(maxIterPhase.getValue()>0){
+                    phaseCoefs.setValue(((WideFieldModel) psfEstimation.getModel()).getPhaseCoefs().getData());
+                }
+                if(maxIterModulus.getValue()>0){
+                    modulusCoefs.setValue(((WideFieldModel) psfEstimation.getModel()).getModulusCoefs().getData());
+                }
+                pupil =((WideFieldModel) psfEstimation.getModel());
             } else {
                 psfArray = ArrayUtils.roll( pupil.getPsf() );
                 pupil.freeMem();
@@ -1032,6 +1006,183 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         }
     }
 
+    //    private void launch(boolean runDeconv) {
+    //        try {
+    //            startBlind.setText("Computing...");
+    //
+    //            buildpupil();
+    //            if (debug|| isHeadLess()) {
+    //                System.out.println("-------------IMAGE-------------------");
+    //                System.out.println("File: "+data.getValue());
+    //                System.out.println("Canal: "+channel.getValue());
+    //                System.out.println("image size: "+ dataSize.getValue());
+    //                System.out.println("--------------PSF------------------");
+    //                System.out.println("dxy: "+dxy_nm.getValue()*1E-9);
+    //                System.out.println("dz: "+dz_nm.getValue()*1E-9);
+    //                System.out.println("Nxy: "+Nxy);
+    //                System.out.println("Nx: "+Nz);
+    //                System.out.println("NA: "+na.getValue());
+    //                System.out.println("\u03BB: "+lambda.getValue()*1E-9);
+    //                System.out.println("ni: "+ni.getValue());
+    //                System.out.println("--------------Variance------------------");
+    //                System.out.println("Weights method: "+weightsMethod.getValue());
+    //                System.out.println("Weights: "+weights.getValue());
+    //                System.out.println("Gain: "+gain.getValue());
+    //                System.out.println("Noise: "+noise.getValue());
+    //                System.out.println("deadPix: "+deadPixel.getValue());
+    //                System.out.println("--------------DECONV------------------");
+    //
+    //                System.out.println("zeroPad xy: "+paddingSizeXY.getValue());
+    //                System.out.println("zeroPad z: "+paddingSizeZ.getValue());
+    //                System.out.println("nbIter: "+nbIterDeconv.getValue());
+    //                System.out.println("Restart: "+restart.getValue());
+    //                System.out.println("Positivity: "+positivity.getValue());
+    //                System.out.println("--------------BDEC------------------");
+    //                System.out.println("output size: "+ outputSize.getValue());
+    //                System.out.println("nbIter: "+nbIterDeconv.getValue());
+    //                System.out.println("Number of total iterations: "+totalNbOfBlindDecLoop.getValue());
+    //                System.out.println("------------------------------------");
+    //                System.out.println("");
+    //            }
+    //            run = true;
+    //            runBdec = !runDeconv;
+    //
+    //            preProcessing();
+    //
+    //            /*---------------------------------------*/
+    //            /*            OPTIMISATION               */
+    //            /*---------------------------------------*/
+    //
+    //            if (runBdec) {
+    //                {     int nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
+    //                if (nbAlpha==0){
+    //                    maxIterPhase.setValue(0);
+    //                }else{
+    //                    pupil.setNPhase(nbAlpha);
+    //                }
+    //                }
+    //
+    //                {     int nbBeta = Integer.parseInt(nbBetaCoef.getValue());
+    //
+    //
+    //                if (nbBeta==0){
+    //                    maxIterModulus.setValue(0);
+    //                }else{
+    //                    pupil.setNModulus(nbBeta);
+    //                }
+    //                }
+    //
+    //                psfEstimation = new PSF_Estimation(pupil);
+    //
+    //                psfEstimation.setWeight(  ArrayUtils.pad(wgtArray,outputShape));
+    //                psfEstimation.setData(ArrayUtils.pad(dataArray,outputShape));
+    //
+    //                psfEstimation.enablePositivity(false);
+    //                psfEstimation.setAbsoluteTolerance(0.0);
+    //
+    //                for(int i = 0; i < totalNbOfBlindDecLoop.getValue(); i++) {
+    //                    psfArray = ArrayUtils.roll(pupil.getPsf());
+    //                    pupil.freeMem();
+    //                    deconv();
+    //
+    //                    psfEstimation.setObj(objArray);
+    //
+    //                    /* Defocus estimation */
+    //                    if (maxIterDefocus.getValue()>0){
+    //                        if (debug && verbose) {
+    //                            System.out.println("------------------");
+    //                            System.out.println("Defocus estimation");
+    //                            System.out.println("------------------");
+    //                        }
+    //                        psfEstimation.setRelativeTolerance(0.);
+    //                        psfEstimation.setMaximumIterations(maxIterDefocus.getValue());
+    //                        psfEstimation.fitPSF( WideFieldModel.DEFOCUS);
+    //                    }
+    //
+    //                    /* Phase estimation */
+    //                    if((maxIterPhase.getValue()>0)){
+    //                        if (debug && verbose) {
+    //                            System.out.println("Phase estimation");
+    //                            System.out.println("------------------");
+    //                        }
+    //                        psfEstimation.setMaximumIterations(maxIterPhase.getValue());
+    //                        psfEstimation.fitPSF( WideFieldModel.PHASE);
+    //                    }
+    //
+    //
+    //                    /* Modulus estimation */
+    //                    if((maxIterModulus.getValue() >0)){
+    //                        if (debug && verbose) {
+    //                            System.out.println("Modulus estimation");
+    //                            System.out.println("------------------");
+    //                        }
+    //                        psfEstimation.setMaximumIterations(maxIterModulus.getValue());
+    //                        psfEstimation.fitPSF( WideFieldModel.MODULUS);
+    //                    }
+    //
+    //                    //Emergency stop
+    //                    if (!run) {
+    //                        return;
+    //                    }
+    //                }
+    //            } else {
+    //                psfArray = ArrayUtils.roll( pupil.getPsf() );
+    //                pupil.freeMem();
+    //                preProcessing();
+    //                deconv();
+    //            }
+    //            if(pupil!=null)
+    //                pupil.freeMem();// TODO free more memory
+    //
+    //            SwingUtilities.invokeLater(new Runnable() {
+    //                @Override
+    //                public void run() {
+    //                    restart.setValue(cursequence);
+    //                    channelRestart.setValue(0);
+    //                    ni.setValue(pupil.getNi());
+    //                    if (isHeadLess()) {
+    //                        if(outputHeadlessImage==null){
+    //                            outputHeadlessImage = new EzVarSequence("Output Image");
+    //                        }
+    //                        if(outputHeadlessPSF==null){
+    //                            outputHeadlessPSF = new EzVarSequence("Output PSF");
+    //                        }
+    //
+    //                        if (outputHeadlessWght==null) {
+    //                            outputHeadlessWght = new EzVarSequence("Computed weights");
+    //                        }
+    //
+    //                        Sequence psfSequence = null;
+    //                        psfSequence =   arrayToSequence( ArrayUtils.roll(pupil.getPsf()), psfSequence);
+    //
+    //
+    //                        outputHeadlessPSF.setValue(psfSequence);
+    //                        outputHeadlessImage.setValue(cursequence);
+    //                        outputHeadlessWght.setValue(arrayToSequence(wgtArray));
+    //
+    //                        if(outputPath!=null){
+    //                            IcyImager.save(cursequence, outputPath);
+    //                        }
+    //
+    //                        if(psfPath!=null){
+    //                            IcyImager.save(psfSequence, psfPath);
+    //                        }
+    //
+    //                        if(saveFile.getValue()!=null){
+    //                            saveParamClicked();
+    //                        }
+    //                    }
+    //                }
+    //            });
+    //        } catch (IllegalArgumentException e) {
+    //            new AnnounceFrame("Oops, Error: "+ e.getMessage());
+    //            if (debug) {
+    //                e.printStackTrace();
+    //            }
+    //        } finally {
+    //            startBlind.setText("Guess PSF");
+    //        }
+    //    }
 
     /*****************************************/
     /** All the PSF buttons call are here   **/
@@ -1085,7 +1236,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     {
 
         buildpupil();
-
+        System.out.println("Phase:  "+pupil.getPhaseCoefs().get(0));
         DoubleArray modulus = Double2D.wrap(pupil.getPhi(), new Shape(Nxy, Nxy));
         IcyImager.show(ArrayUtils.roll(modulus),null,"Phase of the pupil",false);
     }
@@ -1111,10 +1262,12 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     @Override
     public void stopExecution() {
         deconvolver.abort();
-        run = false;
-        if (psfEstimation != null) {
-            psfEstimation.stop();
-        }
+        //  run = false;
+        if(bdec!=null)
+            bdec.abort();
+
+
+
     }
 
 
@@ -1159,12 +1312,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         }else{
             wgtArray = createWeights(dataArray.toDouble()).toDouble();
         }
-    }
-
-    private void deconv() {
-        if (debug){
-            System.out.println("Launch it:"+nbIterDeconv.getValue());
-        }
 
         if (scale.getValue().length !=3){
             throwError("Pixel scale must have 3 elements");
@@ -1181,8 +1328,14 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         DEMICSHook dHookfinal = new DEMICSHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
         deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
 
+    }
 
+    private void deconv() {
+        if (debug){
+            System.out.println("Launch it:"+nbIterDeconv.getValue());
+        }
         objArray = deconvolver.deconv(objArray);
+
     }
 
 
