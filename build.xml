@@ -1,27 +1,27 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- WARNING: Eclipse auto-generated file.
-              Any modifications will be overwritten.
-              To include a user specific buildfile here, simply create one in the same
-              directory with the processing instruction <?eclipse.ant.import?>
-              as the first entry and export the buildfile again. -->
-<project basedir="." default="build" name="TiPi">
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build" name="tipi4icy">
     <property environment="env"/>
     <property name="tipi4icy.location" value="../tipi4icy"/>
     <property name="debuglevel" value="source,lines,vars"/>
-    <property name="target" value="1.8"/>
-    <property name="source" value="1.8"/>
+    <property name="target" value="1.7"/>
+    <property name="source" value="1.7"/>
     <property name="source.dir" location="src"/>
     <property name="doc.dir" location="doc"/>
+    <property name="jar.dir" location="."/>
+    <property name="bin.dir" location="bin"/>
+    <property name="lib.dir" location="lib"/>
     <path id="tipi4icy.classpath">
         <pathelement location="bin"/>
         <pathelement location="lib"/>
+        <pathelement location="${bin.dir}"/>
+        <pathelement location="${lib.dir}/JTransforms-3.1-with-dependencies.jar"/>
+        <pathelement location="${lib.dir}/args4j-2.33.jar"/>
+        <pathelement location="${lib.dir}/nom-tam-fits-1.15.0.jar"/>
         <fileset dir="lib">
             <include name="*.jar"/>
         </fileset>
     </path>
     <target name="init">
-        <property name="jar.dir" location="."/>
-        <property name="bin.dir" location="bin"/>
         <mkdir dir="bin"/>
         <copy includeemptydirs="false" todir="bin">
             <fileset dir="src">
@@ -32,6 +32,9 @@
     </target>
     <target name="clean">
         <delete dir="bin"/>
+        <delete dir="bin-TiPiSDK"/>  
+        <delete dir="src-TiPiSDK"/>
+ 
     </target>
     <target depends="clean" name="cleanall"/>
     <target depends="build-subprojects,build-project" name="build"/>
@@ -63,6 +66,33 @@
     <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
         <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
         <antcall target="build"/>
+    </target>
+    <!-- Generate TiPiSDK JAR library for TiPi -->
+    <target name="tipi-sdk" depends="init" description="generate TiPiSdk jar library for Icy">
+        <mkdir dir="src-TiPiSDK"/>
+        <mkdir dir="bin-TiPiSDK"/>
+        <unzip src="TiPi.zip" dest="src-TiPiSDK"/>
+        <copy todir="src-TiPiSDK"> <fileset dir="src"/></copy>
+        <delete dir="src-TiPiSDK/plugins/ferreol/demics"/>
+        <delete dir="src-TiPiSDK/plugins/demics"/>     
+            <delete dir="src-TiPiSDK/mitiv/old"/>
+        <delete dir="src-TiPiSDK/mitiv/invpb"/>
+        <delete dir="src-TiPiSDK/mitiv/io"/>
+        <delete dir="src-TiPiSDK/mitiv/jobs"/>
+        <delete dir="src-TiPiSDK/mitiv/optim/omp"/>
+        <delete dir="src-TiPiSDK/commands"/>
+  
+        <javac debug="false" destdir="bin-TiPiSDK" includeantruntime="false" source="${source}" target="${target}">
+                   <src path="src-TiPiSDK"/>
+                   <classpath refid="tipi4icy.classpath"/>
+               </javac>
+        <jar destfile = "${jar.dir}/TiPiSDK.jar" filesetmanifest="mergewithoutmain">
+             <manifest>
+                 <attribute name="Main-Class" value="plugins.mitiv.TiPiSDK"/>
+                 <attribute name="Class-Path" value="."/>
+             </manifest>
+             <fileset dir="bin-TiPiSDK"/>
+        </jar>
     </target>
     <!-- Generate launchable JAR for TiPi tool -->
        <target name="epidemic" depends="init" description="generate launchable jar for TiPi deconvolution tool">
