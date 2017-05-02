@@ -37,8 +37,8 @@ after_success:
 - git clone --quiet --branch=gh-pages https://${GH_TOKEN}@github.com/emmt/${PROJECT}
 - cp -r doc/* ${PROJECT}
 - cd ${PROJECT} && git add * && git commit -am "Doc update" && (git push 2> /dev/null) 
-- cd .. && rm -rf $(PROJECT)
-- git clone --quiet --branch=jars https://${GH_TOKEN}@github.com/emmt/${PROJECT}
+- cd .. && rm -rf ${PROJECT}
+- git clone  --branch=jars https://${GH_TOKEN}@github.com/emmt/${PROJECT}
 - cp -r jar/* ${PROJECT}
 - cd ${PROJECT} && git add * && git commit -am "Jar update" && (git push 2> /dev/null) 
 
