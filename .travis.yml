@@ -17,19 +17,18 @@ before_install:
 - mv icy/plugins/adufour/blocks/Blocks.jar lib/
 - mv icy/plugins/adufour/ezplug/EzPlug.jar lib/
 - mv icy/plugins/adufour/protocols/Protocols.jar lib/
-# Then build TiPi.jar
+# prepare for build
 - git clone --quiet --branch=ferreol-devel https://github.com/emmt/TiPi.git
 - cd TiPi && ant build && ant tipi-sdk
 - mv TiPi.zip ../ && cd ..
 - cp -r TiPi/lib/* lib/ 
-- ant tipi-sdk 
-- cp TiPiSDK.jar lib/.
 # Then build microtipi
 - git clone --quiet --branch=master https://github.com/FerreolS/microTiPi.git
-- cp -r microTiPi/src/* src/
+- mv microTiPi/src src-epidemic
 
 script:
-- ant build
+- ant simpledemic
+- ant epidemic
 - ant doc > /dev/null
 after_success:
 - git config --global user.email "eric.thiebaut@univ-lyon1.fr"
