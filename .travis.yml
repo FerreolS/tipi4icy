@@ -38,7 +38,7 @@ after_success:
 - cp -r doc/* ${PROJECT}
 - cd ${PROJECT} && git add * && git commit -am "Doc update" && (git push 2> /dev/null) 
 - cd .. && rm -rf $(PROJECT)
-- git clone --quiet --branch=jar https://${GH_TOKEN}@github.com/emmt/${PROJECT}
+- git clone --quiet --branch=jars https://${GH_TOKEN}@github.com/emmt/${PROJECT}
 - cp -r jar/* ${PROJECT}
 - cd ${PROJECT} && git add * && git commit -am "Jar update" && (git push 2> /dev/null) 
 
