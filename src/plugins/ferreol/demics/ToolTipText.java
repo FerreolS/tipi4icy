@@ -36,15 +36,15 @@ package plugins.ferreol.demics;
 public class ToolTipText {
 
     public static final String deconvolutionSlider = "Update Mu value";
-    public static final String sequenceImage = "Stack to be deconvolved";
-    public static final String sequencePSF = "The PSF associated to the image given";
+    public static final String sequenceImage = "data to be deconvolved";
+    public static final String sequencePSF = "The PSF associated to the data";
     public static final String sequenceWeigth = "Map of space varying noise variance or precision";
     public static final String sequenceVariance = "The variance map";
     public static final String sequencePixel = "The binary map with 0 for bad pixels";
 
     public static final String doubleGrtoll = "Relative gradient tolerance for the convergence";
     public static final String doubleMu = "Hyper-parameter";
-    public static final String doubleEpsilon = "TV threshold Epsilon";
+    public static final String doubleEpsilon = "Threshold of hyperbolic TV";
     public static final String doubleMaxIter = "Maximum number of iterations";
     public static final String doublePadding = "Pad with X lines";
     public static final String doubleGain = "The detector gain in electrons per analog digital unit (ADU)";
@@ -76,6 +76,6 @@ public class ToolTipText {
     public  static final String booleanPositivity = "Enforce the positivity of the solution";
     public static final String booleanCrop = "Crop the output with the same field of view as the input.";
     public static final String textMethod = "Choose the algorithm used to deconvoluate the image";
-    public static final String textCanal = "Choose the image canal to use for the deconvolution";
+    public static final String textCanal = "Choose the image channel to use for the deconvolution";
     public static final String textOutput = "The output size as the nearest power of 2 size";
 }
