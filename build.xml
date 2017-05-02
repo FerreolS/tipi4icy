@@ -7,7 +7,7 @@
     <property name="source" value="1.7"/>
     <property name="source.dir" location="src"/>
     <property name="doc.dir" location="doc"/>
-    <property name="jar.dir" location="."/>
+    <property name="jar.dir" location="jar"/>
     <property name="bin.dir" location="bin"/>
     <property name="lib.dir" location="lib"/>
     <path id="tipi4icy.classpath">
@@ -22,6 +22,7 @@
         </fileset>
     </path>
     <target name="init">
+        <mkdir dir="${jar.dir}"/>
         <mkdir dir="bin"/>
         <copy includeemptydirs="false" todir="bin">
             <fileset dir="src">
@@ -86,7 +87,7 @@
         </jar>
         <copy file="${jar.dir}/TiPiSDK.jar" todir="lib"/>
     </target>
-    <!-- Generate launchable JAR for TiPi tool -->
+    <!-- Generate simpleDEMIC JAR for icy -->
        <target name="simpledemic" depends="tipi-sdk" description="generate launchable jar for TiPi deconvolution tool">
            <mkdir dir="src-simpledemic/plugins/ferreol/demics"/>
            <mkdir dir="bin-simpledemic"/>
@@ -107,6 +108,7 @@
                <fileset dir="bin"/>
            </jar>
        </target>
+    <!-- Generate EpiDEMIC JAR for icy -->
     <target name="epidemic" depends="tipi-sdk" description="generate launchable jar for TiPi deconvolution tool">
           <mkdir dir="src-epidemic/plugins/ferreol/demics"/>
           <mkdir dir="bin-epidemic"/>

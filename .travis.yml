@@ -36,7 +36,12 @@ after_success:
 - git config --global push.default matching
 - git clone --quiet --branch=gh-pages https://${GH_TOKEN}@github.com/emmt/${PROJECT}
 - cp -r doc/* ${PROJECT}
-- cd ${PROJECT} && git add * && git commit -am "Doc update" && (git push 2> /dev/null)
+- cd ${PROJECT} && git add * && git commit -am "Doc update" && (git push 2> /dev/null) 
+- cd .. && rm -rf $(PROJECT)
+- git clone --quiet --branch=jar https://${GH_TOKEN}@github.com/emmt/${PROJECT}
+- cp -r jar/* ${PROJECT}
+- cd ${PROJECT} && git add * && git commit -am "Jar update" && (git push 2> /dev/null) 
+
 env:
   global:
   - secure: G0VNj4mO734iePeYNDA0aqYy2mid4dBTEeupwmPEoGEf6yVMYgPrOLvYA0gJYD5MrUMZJ50tFIWWc9rWqsk8CTXCy8a3sAapQZma5TsggrnGOv6IK2emEHx9Znj4kdRRpX3MdxZhLwVTszUkejtoUOmAS4EOtUub4Ky7CUq0WJs=
