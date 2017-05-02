@@ -36,7 +36,7 @@ package plugins.ferreol.demics;
 public class ToolTipText {
 
     public static final String deconvolutionSlider = "Update Mu value";
-    public static final String sequenceImage = "data to be deconvolved";
+    public static final String sequenceImage = "Sequence to  deconvolve";
     public static final String sequencePSF = "The PSF associated to the data";
     public static final String sequenceWeigth = "Map of space varying noise variance or precision";
     public static final String sequenceVariance = "The variance map";
