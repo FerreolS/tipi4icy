@@ -41,8 +41,10 @@ import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.colormap.IceColorMap;
 import icy.main.Icy;
 import icy.sequence.Sequence;
+import loci.formats.ome.OMEXMLMetadata;
 import microTiPi.epifluorescence.WideFieldModel;
 import microTiPi.microUtils.BlindDeconvJob;
+import microTiPi.microscopy.MicroscopeMetadata;
 import microTiPi.microscopy.PSF_Estimation;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
@@ -88,6 +90,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     /** data tab: **/
     private EzPanel         dataPanel;      // data tab
     private EzButton        saveMetaData, showPSF;
+
+    protected MicroscopeMetadata meta = null; // metadata of the data
 
     /** weighting tab: **/
     private EzGroup         ezWeightingGroup, ezPadGroup;
@@ -1491,6 +1495,41 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         super.dataChanged();
         pupil=null;
     }
+
+    /**
+     * Here we get the informations given by the users but not all.
+     * In fact we trust only a few data that we know that are given by Icy.
+     * Else we are trying to keep them for the next run.
+     *
+     * Remember: if users may lie, they will !
+     *
+     * @param seq
+     * @return
+     */
+    protected MicroscopeMetadata getMetaData(Sequence seq){ //FIXME Should be elsewhere
+        OMEXMLMetadata metDat = seq.getMetadata();
+        if (meta == null) {
+            meta = new MicroscopeMetadata();
+            if (metDat.getInstrumentCount() > 0) {
+                try {
+                    meta.na      = metDat.getObjectiveLensNA(0, 0);
+                    //meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
+                } catch(Exception e){
+                    System.out.println("Failed to get some metadatas, will use default values for na, lambda");
+                }
+            }
+        }
+        //If no instrument found, at least we have the right image size
+        meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
+        meta.nz      = seq.getSizeZ();
+        meta.dxy     = seq.getPixelSizeX()*1E3;
+        meta.dz      = seq.getPixelSizeZ()*1E3;
+        meta.na      = na.getValue();
+        meta.lambda  = lambda.getValue();
+        meta.ni      = ni.getValue();
+        return meta;
+    }
+
 }
 
 

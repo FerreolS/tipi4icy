@@ -11,9 +11,8 @@ import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
 import icy.util.OMEUtil;
 import loci.common.services.ServiceException;
-import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
-import microTiPi.microscopy.MicroscopeMetadata;
+//import microTiPi.microscopy.MicroscopeMetadata;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.cost.WeightedData;
@@ -75,8 +74,6 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected Shape dataShape;
     protected ShapedArray wgtArray, dataArray, psfArray, objArray;
     protected boolean run = true;
-
-    protected MicroscopeMetadata meta = null; // metadata of the data
 
 
     protected EzVarText       weightsMethod;  // Combobox for variance estimation
@@ -215,40 +212,6 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         outputMap.add("weightmap", outputHeadlessWght.getVariable());
     }
 
-
-    /**
-     * Here we get the informations given by the users but not all.
-     * In fact we trust only a few data that we know that are given by Icy.
-     * Else we are trying to keep them for the next run.
-     *
-     * Remember: if users may lie, they will !
-     *
-     * @param seq
-     * @return
-     */
-    protected MicroscopeMetadata getMetaData(Sequence seq){ // Should be elsewhere
-        OMEXMLMetadata metDat = seq.getMetadata();
-        if (meta == null) {
-            meta = new MicroscopeMetadata();
-            if (metDat.getInstrumentCount() > 0) {
-                try {
-                    meta.na      = metDat.getObjectiveLensNA(0, 0);
-                    //meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
-                } catch(Exception e){
-                    System.out.println("Failed to get some metadatas, will use default values for na, lambda");
-                }
-            }
-        }
-        //If no instrument found, at least we have the right image size
-        meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
-        meta.nz      = seq.getSizeZ();
-        meta.dxy     = seq.getPixelSizeX()*1E3;
-        meta.dz      = seq.getPixelSizeZ()*1E3;
-        meta.na      = na.getValue();
-        meta.lambda  = lambda.getValue();
-        meta.ni      = ni.getValue();
-        return meta;
-    }
 
     /**
      *  set default values of the plugin
