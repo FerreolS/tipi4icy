@@ -43,8 +43,6 @@ import icy.main.Icy;
 import icy.sequence.Sequence;
 import microTiPi.epifluorescence.WideFieldModel;
 import microTiPi.microUtils.BlindDeconvJob;
-import microTiPi.microUtils.DEMICSHook;
-import microTiPi.microUtils.DeconvolutionJob;
 import microTiPi.microscopy.PSF_Estimation;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
@@ -70,6 +68,8 @@ import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.IcyImager;
+import tipi4icy.jobs.DeconvHook;
+import tipi4icy.jobs.DeconvolutionJob;
 
 /**
  * This class implements  EpiDEMIC, an Icy plugin for 3D blind deconvolution in epifluorescence (wide field) fluorescence microscopy.
@@ -1324,8 +1324,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         }
         IcyImager curImager = new IcyImager(cursequence, isHeadLess());
 
-        DEMICSHook dHook = new DEMICSHook(curImager, dataShape,null, debug);
-        DEMICSHook dHookfinal = new DEMICSHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
+        DeconvHook dHook = new DeconvHook(curImager, dataShape,null, debug);
+        DeconvHook dHookfinal = new DeconvHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
         deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
 
     }
