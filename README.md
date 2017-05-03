@@ -67,10 +67,10 @@ There is a plugin to launch quickly and easily Icy from eclipse [here](http://ic
 
 ## Javadoc
 
-The javadoc is auto generated at each push and is [HERE](http://emmt.github.io/tipi4icy)
+The javadoc is auto generated at each push and is [HERE](http://ferreols.github.io/tipi4icy)
 
 ## Credits
 
-[TiPi](https://github.com/emmt/TiPi) and [tipi4icy](https://github.com/emmt/tipi4icy)
+[TiPi](https://github.com/emmt/TiPi) and [tipi4icy](https://github.com/ferreols/tipi4icy)
 have been developed as part of the [MiTiV](http://mitiv.univ-lyon1.fr) project.
 
