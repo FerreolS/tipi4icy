@@ -104,7 +104,7 @@
                    <attribute name="Main-Class" value="plugins.ferreol.demics.SimpleDEMIC"/>
                    <attribute name="Class-Path" value="."/>
                </manifest>
-               <fileset dir="bin"/>
+               <fileset dir="bin-simpledemic"/>
            </jar>
        </target>
     <!-- Generate EpiDEMIC JAR for icy -->
@@ -114,7 +114,7 @@
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/EpiDEMIC.java"/>       
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/ToolTipText.java"/>  
-          <copy  todir="src-epidemic/plugins/mitiv"><fileset dir="src/plugins/mitiv/io" /> </copy>      
+          <copy  todir="src-epidemic/plugins/mitiv/io"><fileset dir="src/plugins/mitiv/io" /> </copy>      
           <javac debug="false" destdir="bin-epidemic" includeantruntime="false" source="${source}" target="${target}">
                      <src path="src-epidemic"/>
                      <classpath refid="tipi4icy.classpath"/>
@@ -124,7 +124,7 @@
                   <attribute name="Main-Class" value="plugins.ferreol.demics.EpiDEMIC"/>
                   <attribute name="Class-Path" value="."/>
               </manifest>
-              <fileset dir="bin"/>
+              <fileset dir="bin-epidemic"/>
           </jar>
       </target>
      <!-- Generate javadocs for current project into ${doc.dir} -->
