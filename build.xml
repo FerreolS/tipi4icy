@@ -95,7 +95,6 @@
            <copy todir="src-simpledemic" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
            <copy todir="src-simpledemic" file="src/plugins/ferreol/demics/ToolTipText.java"/>       
            <copy  todir="src-simpledemic/plugins/mitiv"><fileset dir="src/plugins/mitiv/io" /> </copy>      
-           <copy   todir="src-simpledemic/tipi4icy">  <fileset dir="src/tipi4icy/jobs"/> </copy>
            <javac debug="false" destdir="bin-simpledemic" includeantruntime="false" source="${source}" target="${target}">
                       <src path="src-simpledemic"/>
                       <classpath refid="tipi4icy.classpath"/>
