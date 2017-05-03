@@ -25,7 +25,7 @@ before_install:
 # Then build microtipi
 - git clone --quiet --branch=master https://github.com/FerreolS/microTiPi.git
 - mkdir src-doc src-epidemic
-- cp microTiPi/src/microTiPi src-doc
+- cp -r microTiPi/src/microTiPi src-doc
 - mv microTiPi/src/microTiPi src-epidemic
 
 script:
