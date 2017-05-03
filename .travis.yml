@@ -24,7 +24,7 @@ before_install:
 - cp -r TiPi/lib/* lib/ 
 # Then build microtipi
 - git clone --quiet --branch=master https://github.com/FerreolS/microTiPi.git
-- mv microTiPi/src src-epidemic
+- mv microTiPi/src/microTiPi src-epidemic
 
 script:
 - ant simpledemic

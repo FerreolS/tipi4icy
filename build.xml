@@ -112,9 +112,9 @@
     <target name="epidemic" depends="tipi-sdk" description="generate launchable jar for TiPi deconvolution tool">
           <mkdir dir="src-epidemic/plugins/ferreol/demics"/>
           <mkdir dir="bin-epidemic"/>
-        <copy todir="src-epidemic" file="src/plugins/ferreol/demics/EpiDEMIC.java"/>       
-        <copy todir="src-epidemic" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
-        <copy todir="src-epidemic" file="src/plugins/ferreol/demics/ToolTipText.java"/>  
+        <copy todir="plugins/ferreol/demics/src-epidemic" file="src/plugins/ferreol/demics/EpiDEMIC.java"/>       
+        <copy todir="plugins/ferreol/demics/src-epidemic" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
+        <copy todir="plugins/ferreol/demics/src-epidemic" file="src/plugins/ferreol/demics/ToolTipText.java"/>  
           <copy  todir="src-epidemic/plugins/mitiv"><fileset dir="src/plugins/mitiv/io" /> </copy>      
           <copy   todir="src-epidemic/tipi4icy">  <fileset dir="src/tipi4icy/jobs"/> </copy>
           <javac debug="false" destdir="bin-epidemic" includeantruntime="false" source="${source}" target="${target}">
@@ -123,7 +123,7 @@
                  </javac>
           <jar destfile="${jar.dir}/EpiDEMIC.jar" filesetmanifest="mergewithoutmain">
               <manifest>
-                  <attribute name="Main-Class" value="plugins.ferreol.demics.SimpleDEMIC"/>
+                  <attribute name="Main-Class" value="plugins.ferreol.demics.EpiDEMIC"/>
                   <attribute name="Class-Path" value="."/>
               </manifest>
               <fileset dir="bin"/>
