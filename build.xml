@@ -86,15 +86,17 @@
              <fileset dir="bin-TiPiSDK"/>
         </jar>
         <copy file="${jar.dir}/TiPiSDK.jar" todir="lib"/>
+        <delete dir="bin-TiPiSDK"/>
+        <delete dir="src-TiPiSDK"/>        
     </target>
     <!-- Generate simpleDEMIC JAR for icy -->
        <target name="simpledemic" depends="tipi-sdk" description="generate launchable jar for TiPi deconvolution tool">
            <mkdir dir="src-simpledemic/plugins/ferreol/demics"/>
            <mkdir dir="bin-simpledemic"/>
-           <copy todir="src-simpledemic" file="src/plugins/ferreol/demics/SimpleDEMIC.java"/>      
-           <copy todir="src-simpledemic" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
-           <copy todir="src-simpledemic" file="src/plugins/ferreol/demics/ToolTipText.java"/>       
-           <copy  todir="src-simpledemic/plugins/mitiv"><fileset dir="src/plugins/mitiv/io" /> </copy>      
+           <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/SimpleDEMIC.java"/>      
+           <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
+           <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/ToolTipText.java"/>       
+           <copy  todir="src-simpledemic/plugins/mitiv/io"><fileset dir="src/plugins/mitiv/io" /> </copy>      
            <javac debug="false" destdir="bin-simpledemic" includeantruntime="false" source="${source}" target="${target}">
                       <src path="src-simpledemic"/>
                       <classpath refid="tipi4icy.classpath"/>
@@ -106,6 +108,8 @@
                </manifest>
                <fileset dir="bin-simpledemic"/>
            </jar>
+           <delete dir="bin-simpledemic"/>
+           <delete dir="src-simpledemic"/>
        </target>
     <!-- Generate EpiDEMIC JAR for icy -->
     <target name="epidemic" depends="tipi-sdk" description="generate launchable jar for TiPi deconvolution tool">
@@ -126,10 +130,24 @@
               </manifest>
               <fileset dir="bin-epidemic"/>
           </jar>
+
+        <delete dir="bin-epidemic"/>
       </target>
      <!-- Generate javadocs for current project into ${doc.dir} -->
     <target name="doc" depends="init" description="generate documentation">
-    <javadoc encoding="UTF-8" charset="UTF-8" docencoding="UTF-8" additionalparam="-notimestamp" sourcepath="${source.dir}" destdir="${doc.dir}"/>
-    </target>
+        <delete dir="${doc.dir}"/>
+        <mkdir dir="${doc.dir}"/>
+        <mkdir dir="src-doc"/>
+        <copy todir="src-doc" file="src/plugins/ferreol/demics/SimpleDEMIC.java"/>      
+        <copy todir="src-doc" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
+        <copy todir="src-doc" file="src/plugins/ferreol/demics/ToolTipText.java"/>       
+        <copy  todir="src-doc/plugins/mitiv"><fileset dir="src/plugins/mitiv/io" /> </copy>      
+        <copy todir="src-doc/plugins/ferreol/demics" file="src/plugins/ferreol/demics/EpiDEMIC.java"/>       
+         <copy todir="src-doc/plugins/ferreol/demics" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
+         <copy todir="src-doc/plugins/ferreol/demics" file="src/plugins/ferreol/demics/ToolTipText.java"/>  
+           <copy  todir="src-doc/plugins/mitiv/io"><fileset dir="src/plugins/mitiv/io" /> </copy>      
+
+        <javadoc encoding="UTF-8" charset="UTF-8" docencoding="UTF-8" additionalparam="-notimestamp" sourcepath="src-doc" destdir="${doc.dir}"/>
+         </target>
 </project>
 
