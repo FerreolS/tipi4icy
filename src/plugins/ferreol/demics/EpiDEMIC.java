@@ -141,8 +141,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     // Main arrays for the psf estimation
     private boolean runBdec;
     private WideFieldModel pupil=null;
-    //  private boolean guessModulus;
-    //  private boolean guessPhase;
 
 
     /*********************************/
@@ -602,6 +600,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         System.out.println("time: "+elapsedTime);
                     }
                 };
+
+                enableVars(false);
+
                 workerThread.start();
             }
         });
@@ -695,19 +696,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         showFullObject2.setToolTipText(ToolTipText.booleanCrop);
         debuggingPanel.setToolTipText(ToolTipText.textOutput);
 
-        /******** Adding ********/
-        /*   paddingSizeXY.setVisible(false);
-        paddingSizeZ.setVisible(false);
-        epsilon.setVisible(false);
-        scale.setVisible(false);
-        singlePrecision.setVisible(false);
 
-        nbAlphaCoef.setVisible(false);
-        nbBetaCoef.setVisible(false);
-        radial.setVisible(false);
-        maxIterDefocus.setVisible(false);
-        maxIterPhase.setVisible(false);
-        maxIterModulus.setVisible(false);*/
 
         /**** IMAGE ****/
         dataPanel.add(data);
@@ -963,6 +952,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             SwingUtilities.invokeLater(new Runnable() {
                 @Override
                 public void run() {
+                    enableVars(true);
                     restart.setValue(cursequence);
                     channelRestart.setValue(0);
                     ni.setValue(pupil.getNi());
@@ -1010,183 +1000,35 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         }
     }
 
-    //    private void launch(boolean runDeconv) {
-    //        try {
-    //            startBlind.setText("Computing...");
-    //
-    //            buildpupil();
-    //            if (debug|| isHeadLess()) {
-    //                System.out.println("-------------IMAGE-------------------");
-    //                System.out.println("File: "+data.getValue());
-    //                System.out.println("Canal: "+channel.getValue());
-    //                System.out.println("image size: "+ dataSize.getValue());
-    //                System.out.println("--------------PSF------------------");
-    //                System.out.println("dxy: "+dxy_nm.getValue()*1E-9);
-    //                System.out.println("dz: "+dz_nm.getValue()*1E-9);
-    //                System.out.println("Nxy: "+Nxy);
-    //                System.out.println("Nx: "+Nz);
-    //                System.out.println("NA: "+na.getValue());
-    //                System.out.println("\u03BB: "+lambda.getValue()*1E-9);
-    //                System.out.println("ni: "+ni.getValue());
-    //                System.out.println("--------------Variance------------------");
-    //                System.out.println("Weights method: "+weightsMethod.getValue());
-    //                System.out.println("Weights: "+weights.getValue());
-    //                System.out.println("Gain: "+gain.getValue());
-    //                System.out.println("Noise: "+noise.getValue());
-    //                System.out.println("deadPix: "+deadPixel.getValue());
-    //                System.out.println("--------------DECONV------------------");
-    //
-    //                System.out.println("zeroPad xy: "+paddingSizeXY.getValue());
-    //                System.out.println("zeroPad z: "+paddingSizeZ.getValue());
-    //                System.out.println("nbIter: "+nbIterDeconv.getValue());
-    //                System.out.println("Restart: "+restart.getValue());
-    //                System.out.println("Positivity: "+positivity.getValue());
-    //                System.out.println("--------------BDEC------------------");
-    //                System.out.println("output size: "+ outputSize.getValue());
-    //                System.out.println("nbIter: "+nbIterDeconv.getValue());
-    //                System.out.println("Number of total iterations: "+totalNbOfBlindDecLoop.getValue());
-    //                System.out.println("------------------------------------");
-    //                System.out.println("");
-    //            }
-    //            run = true;
-    //            runBdec = !runDeconv;
-    //
-    //            preProcessing();
-    //
-    //            /*---------------------------------------*/
-    //            /*            OPTIMISATION               */
-    //            /*---------------------------------------*/
-    //
-    //            if (runBdec) {
-    //                {     int nbAlpha = Integer.parseInt(nbAlphaCoef.getValue());
-    //                if (nbAlpha==0){
-    //                    maxIterPhase.setValue(0);
-    //                }else{
-    //                    pupil.setNPhase(nbAlpha);
-    //                }
-    //                }
-    //
-    //                {     int nbBeta = Integer.parseInt(nbBetaCoef.getValue());
-    //
-    //
-    //                if (nbBeta==0){
-    //                    maxIterModulus.setValue(0);
-    //                }else{
-    //                    pupil.setNModulus(nbBeta);
-    //                }
-    //                }
-    //
-    //                psfEstimation = new PSF_Estimation(pupil);
-    //
-    //                psfEstimation.setWeight(  ArrayUtils.pad(wgtArray,outputShape));
-    //                psfEstimation.setData(ArrayUtils.pad(dataArray,outputShape));
-    //
-    //                psfEstimation.enablePositivity(false);
-    //                psfEstimation.setAbsoluteTolerance(0.0);
-    //
-    //                for(int i = 0; i < totalNbOfBlindDecLoop.getValue(); i++) {
-    //                    psfArray = ArrayUtils.roll(pupil.getPsf());
-    //                    pupil.freeMem();
-    //                    deconv();
-    //
-    //                    psfEstimation.setObj(objArray);
-    //
-    //                    /* Defocus estimation */
-    //                    if (maxIterDefocus.getValue()>0){
-    //                        if (debug && verbose) {
-    //                            System.out.println("------------------");
-    //                            System.out.println("Defocus estimation");
-    //                            System.out.println("------------------");
-    //                        }
-    //                        psfEstimation.setRelativeTolerance(0.);
-    //                        psfEstimation.setMaximumIterations(maxIterDefocus.getValue());
-    //                        psfEstimation.fitPSF( WideFieldModel.DEFOCUS);
-    //                    }
-    //
-    //                    /* Phase estimation */
-    //                    if((maxIterPhase.getValue()>0)){
-    //                        if (debug && verbose) {
-    //                            System.out.println("Phase estimation");
-    //                            System.out.println("------------------");
-    //                        }
-    //                        psfEstimation.setMaximumIterations(maxIterPhase.getValue());
-    //                        psfEstimation.fitPSF( WideFieldModel.PHASE);
-    //                    }
-    //
-    //
-    //                    /* Modulus estimation */
-    //                    if((maxIterModulus.getValue() >0)){
-    //                        if (debug && verbose) {
-    //                            System.out.println("Modulus estimation");
-    //                            System.out.println("------------------");
-    //                        }
-    //                        psfEstimation.setMaximumIterations(maxIterModulus.getValue());
-    //                        psfEstimation.fitPSF( WideFieldModel.MODULUS);
-    //                    }
-    //
-    //                    //Emergency stop
-    //                    if (!run) {
-    //                        return;
-    //                    }
-    //                }
-    //            } else {
-    //                psfArray = ArrayUtils.roll( pupil.getPsf() );
-    //                pupil.freeMem();
-    //                preProcessing();
-    //                deconv();
-    //            }
-    //            if(pupil!=null)
-    //                pupil.freeMem();// TODO free more memory
-    //
-    //            SwingUtilities.invokeLater(new Runnable() {
-    //                @Override
-    //                public void run() {
-    //                    restart.setValue(cursequence);
-    //                    channelRestart.setValue(0);
-    //                    ni.setValue(pupil.getNi());
-    //                    if (isHeadLess()) {
-    //                        if(outputHeadlessImage==null){
-    //                            outputHeadlessImage = new EzVarSequence("Output Image");
-    //                        }
-    //                        if(outputHeadlessPSF==null){
-    //                            outputHeadlessPSF = new EzVarSequence("Output PSF");
-    //                        }
-    //
-    //                        if (outputHeadlessWght==null) {
-    //                            outputHeadlessWght = new EzVarSequence("Computed weights");
-    //                        }
-    //
-    //                        Sequence psfSequence = null;
-    //                        psfSequence =   arrayToSequence( ArrayUtils.roll(pupil.getPsf()), psfSequence);
-    //
-    //
-    //                        outputHeadlessPSF.setValue(psfSequence);
-    //                        outputHeadlessImage.setValue(cursequence);
-    //                        outputHeadlessWght.setValue(arrayToSequence(wgtArray));
-    //
-    //                        if(outputPath!=null){
-    //                            IcyImager.save(cursequence, outputPath);
-    //                        }
-    //
-    //                        if(psfPath!=null){
-    //                            IcyImager.save(psfSequence, psfPath);
-    //                        }
-    //
-    //                        if(saveFile.getValue()!=null){
-    //                            saveParamClicked();
-    //                        }
-    //                    }
-    //                }
-    //            });
-    //        } catch (IllegalArgumentException e) {
-    //            new AnnounceFrame("Oops, Error: "+ e.getMessage());
-    //            if (debug) {
-    //                e.printStackTrace();
-    //            }
-    //        } finally {
-    //            startBlind.setText("Guess PSF");
-    //        }
-    //    }
+
+    /**
+     * If false disable some variables in the interface
+     * @param flag
+     *
+     */
+    private void enableVars(boolean flag) {
+        nbAlphaCoef.setEnabled(flag);
+        nbBetaCoef.setEnabled(flag);
+        radial.setEnabled(flag);
+
+        na.setEnabled(flag);
+        lambda.setEnabled(flag);
+        dxy_nm.setEnabled(flag);
+        dz_nm.setEnabled(flag);
+        ni.setEnabled(flag);
+
+        data.setEnabled(flag);
+        channel.setEnabled(flag);
+        paddingSizeXY.setEnabled(flag);
+        paddingSizeZ.setEnabled(flag);
+
+        singlePrecision.setEnabled(flag);
+        loadParam.setEnabled(flag);
+    }
+
+
+
+
 
     /*****************************************/
     /** All the PSF buttons call are here   **/
