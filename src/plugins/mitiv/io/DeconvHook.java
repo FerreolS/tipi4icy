@@ -1,12 +1,14 @@
 /**
  *
  */
-package tipi4icy.jobs;
+package plugins.mitiv.io;
 
 import mitiv.array.ArrayUtils;
 import mitiv.base.Shape;
+import mitiv.jobs.DeconvolutionJob;
 import mitiv.utils.Imager;
 import mitiv.utils.TiPiHook;
+
 /**
  * @author ferreol
  *

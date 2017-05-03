@@ -50,6 +50,7 @@ import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
 import mitiv.base.Shape;
+import mitiv.jobs.DeconvolutionJob;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
@@ -69,9 +70,8 @@ import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
+import plugins.mitiv.io.DeconvHook;
 import plugins.mitiv.io.IcyImager;
-import tipi4icy.jobs.DeconvHook;
-import tipi4icy.jobs.DeconvolutionJob;
 
 /**
  * This class implements  EpiDEMIC, an Icy plugin for 3D blind deconvolution in epifluorescence (wide field) fluorescence microscopy.
