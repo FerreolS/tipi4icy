@@ -116,7 +116,6 @@
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/ToolTipText.java"/>  
           <copy  todir="src-epidemic/plugins/mitiv"><fileset dir="src/plugins/mitiv/io" /> </copy>      
-          <copy   todir="src-epidemic/tipi4icy/jobs">  <fileset dir="src/tipi4icy/jobs"/> </copy>
           <javac debug="false" destdir="bin-epidemic" includeantruntime="false" source="${source}" target="${target}">
                      <src path="src-epidemic"/>
                      <classpath refid="tipi4icy.classpath"/>
