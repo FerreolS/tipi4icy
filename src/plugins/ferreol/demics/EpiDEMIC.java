@@ -1025,6 +1025,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
      *
      */
     private void enableVars(boolean flag) {
+
+        if (!isHeadLess()) {
         nbAlphaCoef.setEnabled(flag);
         nbBetaCoef.setEnabled(flag);
         radial.setEnabled(flag);
@@ -1042,6 +1044,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         singlePrecision.setEnabled(flag);
         loadParam.setEnabled(flag);
+        }
     }
 
 
