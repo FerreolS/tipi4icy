@@ -1,8 +1,8 @@
 tipi4icy
 ========
 
-Master: ![Travis build status](https://travis-ci.org/emmt/tipi4icy.svg?branch=master)
-Devel: ![Travis build status](https://travis-ci.org/emmt/tipi4icy.svg?branch=ferreol-devel)
+Master: ![Travis build status](https://travis-ci.org/ferreolS/tipi4icy.svg?branch=master)
+Devel: ![Travis build status](https://travis-ci.org/ferreolS/tipi4icy.svg?branch=ferreol-devel)
 
 tipi4icy is a collection of classes to link  [Icy](http://icy.bioimageanalysis.org/)  and  [TiPi](https://github.com/emmt/TiPi), a Java *Toolkit for Inverse Problems and Imaging*. Along with [microTiPi](https://github.com/FerreolS/microTiPi) is mainly used to implements the DEconvolution MICroscopy Suite.
 
@@ -31,7 +31,7 @@ Both plugins are compatible with Icy's protocols and can be easily added to any 
 
 Deconvolution is a memory and computation intensive task and it may not fit in end-users laptop. To process batches of large datasets, both plugins can be used without the Icy GUI on any server with [Docker](https://www.docker.com/). The docker images of [SimpleDEMIC](https://hub.docker.com/r/ferreol/simpledemic/) and [EpiDEMIC](https://hub.docker.com/r/ferreol/epidemic/) can be pulled from docker hub and executed using (for epidemic):
 ```
-docker run -v FOLDER:/data -e NAME='DATAFILE'   -e XMS=MEMORY ferreol/epidemic'
+docker run --rm -v FOLDER:/data -e NAME='DATAFILE'   -e XMS=MEMORY ferreol/epidemic'
  ```
   where:
   - `FOLDER` is the folder were the dataset is,
