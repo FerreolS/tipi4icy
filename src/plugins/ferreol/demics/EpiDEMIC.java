@@ -227,6 +227,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         // install  plugin
         if(desc != null){
             if( desc.isInstalled()){
+                if (!isHeadLess()) {
+                    new AnnounceFrame("Removing the now useless MitivDeconvolution plugin.");
+                }
                 PluginInstaller.desinstall(desc, false, false);
                 while (PluginUpdater.isCheckingForUpdate() ||  PluginInstaller.isProcessing() || PluginInstaller.isInstalling() || PluginInstaller.isDesinstalling())
                     ThreadUtil.sleep(1);
@@ -287,6 +290,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 }
                 dataChanged() ;
                 if(dataSeq!=null){
+                    startDec.setEnabled(true);
+                    startBlind.setEnabled(true);
                     meta = getMetaData(dataSeq);
                     dxy_nm.setValue(    meta.dxy);
                     dz_nm.setValue(     meta.dz);
@@ -299,6 +304,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     }
                     // setting restart value to the current sequence
                     restart.setValue(newValue);
+                }else{
+                    startDec.setEnabled(false);
+                    startBlind.setEnabled(false);
                 }
 
             }
@@ -619,8 +627,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     }
                 };
 
-                enableVars(false);
-
                 workerThread.start();
             }
         });
@@ -870,6 +876,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         try {
             startBlind.setText("Computing...");
 
+
+            enableVars(false);
+
             buildpupil();
             if (debug|| isHeadLess()) {
                 System.out.println("-------------IMAGE-------------------");
@@ -1010,6 +1019,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             });
         } catch (IllegalArgumentException e) {
             new AnnounceFrame("Oops, Error: "+ e.getMessage());
+            enableVars(true);
             if (debug) {
                 e.printStackTrace();
             }
@@ -1027,23 +1037,23 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private void enableVars(boolean flag) {
 
         if (!isHeadLess()) {
-        nbAlphaCoef.setEnabled(flag);
-        nbBetaCoef.setEnabled(flag);
-        radial.setEnabled(flag);
+            nbAlphaCoef.setEnabled(flag);
+            nbBetaCoef.setEnabled(flag);
+            radial.setEnabled(flag);
 
-        na.setEnabled(flag);
-        lambda.setEnabled(flag);
-        dxy_nm.setEnabled(flag);
-        dz_nm.setEnabled(flag);
-        ni.setEnabled(flag);
+            na.setEnabled(flag);
+            lambda.setEnabled(flag);
+            dxy_nm.setEnabled(flag);
+            dz_nm.setEnabled(flag);
+            ni.setEnabled(flag);
 
-        data.setEnabled(flag);
-        channel.setEnabled(flag);
-        paddingSizeXY.setEnabled(flag);
-        paddingSizeZ.setEnabled(flag);
+            data.setEnabled(flag);
+            channel.setEnabled(flag);
+            paddingSizeXY.setEnabled(flag);
+            paddingSizeZ.setEnabled(flag);
 
-        singlePrecision.setEnabled(flag);
-        loadParam.setEnabled(flag);
+            singlePrecision.setEnabled(flag);
+            loadParam.setEnabled(flag);
         }
     }
 
@@ -1356,7 +1366,10 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     @Override
     protected void dataChanged() {
         super.dataChanged();
+        psfEstimation=null;
+        cursequence =null;
         pupil=null;
+        deconvolver = null;
     }
 
     /**

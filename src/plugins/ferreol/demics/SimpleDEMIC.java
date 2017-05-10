@@ -35,8 +35,14 @@ import java.io.File;
 import javax.swing.SwingUtilities;
 
 import icy.file.Loader;
+import icy.gui.frame.progress.AnnounceFrame;
 import icy.main.Icy;
+import icy.plugin.PluginDescriptor;
+import icy.plugin.PluginInstaller;
+import icy.plugin.PluginRepositoryLoader;
+import icy.plugin.PluginUpdater;
 import icy.sequence.Sequence;
+import icy.system.thread.ThreadUtil;
 import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
 import mitiv.base.Shape;
@@ -109,6 +115,24 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     /*********************************/
     @Override
     protected void initialize() {
+
+
+
+        // REMOVE old MitivDeconvolution plugin
+        PluginRepositoryLoader.waitLoaded();
+        // get  plugin descriptor
+        PluginDescriptor desc = PluginRepositoryLoader.getPlugin("plugins.mitiv.deconv.MitivDeconvolution");
+        // install  plugin
+        if(desc != null){
+            if( desc.isInstalled()){
+                if (!isHeadLess()) {
+                    new AnnounceFrame("Removing the now useless MitivDeconvolution plugin.");
+                }
+                PluginInstaller.desinstall(desc, false, false);
+                while (PluginUpdater.isCheckingForUpdate() ||  PluginInstaller.isProcessing() || PluginInstaller.isInstalling() || PluginInstaller.isDesinstalling())
+                    ThreadUtil.sleep(1);
+            }
+        }
 
         if (!isHeadLess()) {
             getUI().setParametersIOVisible(false);
