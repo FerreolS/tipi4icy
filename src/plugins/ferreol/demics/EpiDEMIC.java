@@ -1183,32 +1183,32 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
 
         if (dataSeq.getChannelMax( channel.getValue())== dataSeq.getChannelTypeMax(channel.getValue())){
-            new AnnounceFrame("Warning, saturated pixel detected, accounting them as dead pixels", "OK", new Runnable() {
+            class SaturationFunc implements DoubleFunction{
+                double sat;
+                public  SaturationFunc(double sat){
+                    this.sat = sat;
+                }
+                @Override
+                public double apply(double arg) {
+                    // TODO Auto-generated method stub
+                    if  (arg>= this.sat){
+                        return 1.;
+                    }else{
+                        return 0.;
+                    }
+                }
 
+            }
 
+            badArray = dataArray.copy().toDouble();
+            ((DoubleArray) badArray).map(new SaturationFunc(dataSeq.getChannelTypeMax(channel.getValue())));
+
+            new AnnounceFrame("Warning, saturated pixel detected, accounting them as dead pixels", "show", new Runnable() {
                 @Override
                 public void run() {
-                    class SaturationMap implements DoubleFunction{
-                        double sat;
-                        public  SaturationMap(double sat){
-                            this.sat = sat;
-                        }
-                        @Override
-                        public double apply(double arg) {
-                            // TODO Auto-generated method stub
-                            if  (arg>= this.sat){
-                                return 1.;
-                            }else{
-                                return 0.;
-                            }
-                        }
-
-                    }
-
-                    badArray = dataArray.copy().toDouble();
-                    ((DoubleArray) badArray).map(new SaturationMap(dataSeq.getChannelTypeMax(channel.getValue())));
+                    IcyImager.show(badArray, null, "saturations map", isHeadLess());
                 }
-            }, 5);
+            }, 10);
         }
 
         dataArray =  sequenceToArray(dataSeq, channel.getValue());
