@@ -975,7 +975,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 bdec = new BlindDeconvJob(totalNbOfBlindDecLoop.getValue(), pupil.getParametersFlags(), bMaxIter, psfEstimation ,deconvolver, debug );
 
 
-                bdec.blindDeconv(objArray);
+                objArray = bdec.blindDeconv(objArray);
 
                 if(maxIterDefocus.getValue()>0){
                     ni.setValue(((WideFieldModel) psfEstimation.getModel()).getNi());

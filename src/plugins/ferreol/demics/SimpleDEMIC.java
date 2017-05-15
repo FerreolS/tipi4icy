@@ -45,6 +45,7 @@ import icy.sequence.Sequence;
 import icy.system.thread.ThreadUtil;
 import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
+import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.jobs.DeconvolutionJob;
 import mitiv.utils.FFTUtils;
@@ -110,6 +111,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
     private DeconvolutionJob deconvolver;
 
+    private ShapedArray badArray=null;
     /*********************************/
     /**      Initialization         **/
     /*********************************/
@@ -317,7 +319,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                 Sequence dataSeq = data.getValue();
                 if(dataSeq!=null){
                     dataArray =    sequenceToArray(dataSeq, channel.getValue()).toDouble();
-                    wgtArray = createWeights(dataArray).toDouble();
+                    wgtArray = createWeights(dataArray,badArray).toDouble();
                     IcyImager.show(wgtArray,null,"Weight map",false);
                 }
                 if (debug) {
@@ -621,9 +623,9 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         }
 
         if(singlePrecision.getValue()){
-            wgtArray = createWeights(dataArray.toFloat()).toFloat();
+            wgtArray = createWeights(dataArray.toFloat(),badArray).toFloat();
         }else{
-            wgtArray = createWeights(dataArray.toDouble()).toDouble();
+            wgtArray = createWeights(dataArray.toDouble(),badArray).toDouble();
         }
         cursequence = new Sequence("Current Iterate");
         cursequence.copyMetaDataFrom(dataSeq, false);
