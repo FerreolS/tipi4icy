@@ -107,10 +107,11 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      * Then we apply the dead pixel map
      *
      * @param datArray - The data to deconvolve.
+     * @param badArray
      * @return The weights.
      */
 
-    protected ShapedArray createWeights(ShapedArray datArray) {
+    protected ShapedArray createWeights(ShapedArray datArray, ShapedArray badArray) {
         ShapedArray wgtArray = null;
         Sequence seq;
         WeightedData wd = new WeightedData(datArray);
@@ -136,10 +137,14 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             double beta = (sigma/gamma)*(sigma/gamma);
             wd.computeWeightsFromData(alpha, beta);
         }
-        if ((seq = deadPixel.getValue()) != null) {
+        /*     if ((seq = deadPixel.getValue()) != null) {
             // Account for bad data.
             ShapedArray badArr =  sequenceToArray(seq);
             wd.markBadData(badArr);
+        }*/
+        if (badArray != null) {
+            // Account for bad data.
+            wd.markBadData(badArray);
         }
         return wd.getWeights().asShapedArray();
 

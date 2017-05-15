@@ -54,6 +54,7 @@ import microTiPi.microscopy.PSF_Estimation;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
+import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.jobs.DeconvolutionJob;
 import plugins.adufour.blocks.lang.Block;
@@ -160,6 +161,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private String psfPath=null;
 
     private BlindDeconvJob bdec;
+
+    private ShapedArray badArray=null;
 
 
 
@@ -375,6 +378,17 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
         noise = new EzVarDouble(            "Readout Noise:",10.,0.,Double.MAX_VALUE,0.1);
         deadPixel = new EzVarSequence(      "Bad data map:");
+        deadPixel.addVarChangeListener(new EzVarListener<Sequence>() {
+
+            @Override
+            public void variableChanged(EzVar<Sequence> source, Sequence newValue) {
+                if (newValue!=null){
+                    badArray = sequenceToArray(newValue);
+                }else{
+                    badArray = null;
+                }
+            }
+        });
         weights.setNoSequenceSelection();
         weightsMethod.addVarChangeListener(new EzVarListener<String>() {
 
@@ -1131,7 +1145,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         // Preparing parameters and testing input
         dataSeq = data.getValue();
         dataArray =  sequenceToArray(dataSeq, channel.getValue()).toDouble();
-        wgtArray = createWeights(dataArray).toDouble();
+        wgtArray = createWeights(dataArray,badArray).toDouble();
         IcyImager.show(wgtArray,null,"Weight map",false);
     }
 
@@ -1185,9 +1199,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         }
 
         if(singlePrecision.getValue()){
-            wgtArray = createWeights(dataArray.toFloat()).toFloat();
+            wgtArray = createWeights(dataArray.toFloat(),badArray).toFloat();
         }else{
-            wgtArray = createWeights(dataArray.toDouble()).toDouble();
+            wgtArray = createWeights(dataArray.toDouble(),badArray).toDouble();
         }
 
         if (scale.getValue().length !=3){
