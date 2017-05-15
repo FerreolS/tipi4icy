@@ -56,6 +56,7 @@ import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
+import mitiv.base.mapping.DoubleFunction;
 import mitiv.jobs.DeconvolutionJob;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
@@ -822,9 +823,13 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
      * Load the parameter file and perform parameter update
      */
     private void loadParamClicked() {
-        File saveName = saveFile.getValue();
+        File loadName = loadFile.getValue();
+
+        if ( !isHeadLess()){
+            new AnnounceFrame("Loading deconvolution parameters from "+ loadName.getAbsolutePath().toString(),3);
+        }
         this.loadParameters(loadFile.getValue());
-        saveFile.setValue(saveName);    // FIX saving file name erasing during load
+        loadFile.setValue(loadName);    // FIX saving file name erasing during load
 
         buildpupil();
         pupil.setPupilAxis(pupilShift.getValue());
@@ -864,7 +869,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             if (!pathName.getName().endsWith(".xml")){
                 pathName = new File(pathName.getAbsolutePath()+".xml");
             }
-
+            if ( !isHeadLess()){
+                new AnnounceFrame("Saving deconvolution parameters in "+(pathName.getAbsolutePath().toString()),3);
+            }
             this.saveParameters(pathName);
         }
     }
@@ -1167,8 +1174,41 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         dataSeq = data.getValue();
         if (dataSeq == null)
         {
-            throwError("An image/sequence of images should be given");
+            throwError("No image/sequence");
             return;
+        }
+
+        dataArray =  sequenceToArray(dataSeq, channel.getValue());
+        dataShape = dataArray.getShape();
+
+
+        if (dataSeq.getChannelMax( channel.getValue())== dataSeq.getChannelTypeMax(channel.getValue())){
+            new AnnounceFrame("Warning, saturated pixel detected, accounting them as dead pixels", "OK", new Runnable() {
+
+
+                @Override
+                public void run() {
+                    class SaturationMap implements DoubleFunction{
+                        double sat;
+                        public  SaturationMap(double sat){
+                            this.sat = sat;
+                        }
+                        @Override
+                        public double apply(double arg) {
+                            // TODO Auto-generated method stub
+                            if  (arg>= this.sat){
+                                return 1.;
+                            }else{
+                                return 0.;
+                            }
+                        }
+
+                    }
+
+                    badArray = dataArray.copy().toDouble();
+                    ((DoubleArray) badArray).map(new SaturationMap(dataSeq.getChannelTypeMax(channel.getValue())));
+                }
+            }, 5);
         }
 
         dataArray =  sequenceToArray(dataSeq, channel.getValue());
