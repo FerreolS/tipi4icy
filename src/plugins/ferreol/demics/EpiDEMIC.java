@@ -627,6 +627,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     }
                 };
 
+
+                enableVars(false);
+
                 workerThread.start();
             }
         });
@@ -875,9 +878,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private void launch(boolean runDeconv) {
         try {
             startBlind.setText("Computing...");
-
-
-            enableVars(false);
 
             buildpupil();
             if (debug|| isHeadLess()) {
