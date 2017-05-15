@@ -121,7 +121,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private EzVarBoolean    radial;         // use only radial mode (constraint the PSF to be radially symmetric)
     private EzButton        showPSF2, showModulus, showPhase;
     private EzButton        startBlind, stopBlind, showFullObject2, resetPSF;
-    private EzButton        saveParam, loadParam;
     private EzLabel         docDec;
     private EzVarInteger    totalNbOfBlindDecLoop;// number of outer loop
     private EzVarInteger    maxIterDefocus; // number of iteration for defocus parameters
@@ -421,16 +420,18 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weights,gain,noise,deadPixel,showWeight);
         ezWeightingGroup.setFoldedState(true);
 
-        loadFile = new EzVarFile("Load parameters from", "","*.xml");
-        loadParam = new EzButton("Load parameters", new ActionListener() {
+        loadFile = new EzVarFile("Load parameters from", "/tmp","*.xml");
+
+        loadFile.addVarChangeListener(     new EzVarListener<File>() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                if(loadFile.getValue()!=null){
+            public void variableChanged(EzVar<File> source, File newValue) {
+                if(newValue!=null){
                     loadParamClicked();
                 }
                 if (debug) {
                     System.out.println("Load parameters");
                 }
+
             }
         });
 
@@ -626,7 +627,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         System.out.println("time: "+elapsedTime);
                     }
                 };
-
+                enableVars(false);
                 workerThread.start();
             }
         });
@@ -662,13 +663,14 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         visuPSF = new EzGroup("Visualization", showFullObject2,showIteration,showPSF2, showPhase, showModulus);
 
         saveFile = new EzVarFile("Save parameters in", "");
-        saveParam = new EzButton("Save parameters", new ActionListener() {
+        saveFile.addVarChangeListener(     new EzVarListener<File>() {
             @Override
-            public void actionPerformed(ActionEvent e) {
+            public void variableChanged(EzVar<File> source, File newValue) {
                 saveParamClicked();
                 if (debug) {
                     System.out.println("Save parameters");
                 }
+
             }
         });
 
@@ -741,7 +743,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         dataPanel.add(saveMetaData);
         dataPanel.add(showPSF);
         dataPanel.add(loadFile);
-        dataPanel.add(loadParam);
         tabbedPane.add(dataPanel);
 
 
@@ -768,7 +769,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         bdecPanel.add(visuPSF);
         bdecPanel.add(groupStop2);
         bdecPanel.add(saveFile);
-        bdecPanel.add(saveParam);
         tabbedPane.add(bdecPanel);
         if(debug){
             /**** Result ****/
@@ -805,9 +805,10 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
      * Load the parameter file and perform parameter update
      */
     private void loadParamClicked() {
-        File saveName = saveFile.getValue();
+        File loadName = loadFile.getValue();
         this.loadParameters(loadFile.getValue());
-        saveFile.setValue(saveName);    // FIX saving file name erasing during load
+        new AnnounceFrame("Load parameter from " + loadFile.getValue().getAbsolutePath(),3);
+        loadFile.setValue(loadName);    // FIX saving file name erasing during load
 
         buildpupil();
         pupil.setPupilAxis(pupilShift.getValue());
@@ -847,7 +848,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             if (!pathName.getName().endsWith(".xml")){
                 pathName = new File(pathName.getAbsolutePath()+".xml");
             }
-
+            new AnnounceFrame("Save parameter in " +  pathName.getAbsolutePath(),3);
             this.saveParameters(pathName);
         }
     }
@@ -877,7 +878,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             startBlind.setText("Computing...");
 
 
-            enableVars(false);
 
             buildpupil();
             if (debug|| isHeadLess()) {
@@ -954,7 +954,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 bdec = new BlindDeconvJob(totalNbOfBlindDecLoop.getValue(), pupil.getParametersFlags(), bMaxIter, psfEstimation ,deconvolver, debug );
 
 
-                bdec.blindDeconv(objArray);
+                objArray =bdec.blindDeconv(objArray);
 
                 if(maxIterDefocus.getValue()>0){
                     ni.setValue(((WideFieldModel) psfEstimation.getModel()).getNi());
@@ -982,7 +982,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     enableVars(true);
                     restart.setValue(cursequence);
                     channelRestart.setValue(0);
-                    ni.setValue(pupil.getNi());
                     if (isHeadLess()) {
                         if(outputHeadlessImage==null){
                             outputHeadlessImage = new EzVarSequence("Output Image");
@@ -1053,7 +1052,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             paddingSizeZ.setEnabled(flag);
 
             singlePrecision.setEnabled(flag);
-            loadParam.setEnabled(flag);
         }
     }
 
