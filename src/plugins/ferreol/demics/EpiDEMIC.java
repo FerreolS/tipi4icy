@@ -1180,35 +1180,40 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         dataArray =  sequenceToArray(dataSeq, channel.getValue());
         dataShape = dataArray.getShape();
-
-
-        if (dataSeq.getChannelMax( channel.getValue())== dataSeq.getChannelTypeMax(channel.getValue())){
-            class SaturationFunc implements DoubleFunction{
-                double sat;
-                public  SaturationFunc(double sat){
-                    this.sat = sat;
-                }
-                @Override
-                public double apply(double arg) {
-                    // TODO Auto-generated method stub
-                    if  (arg>= this.sat){
-                        return 1.;
-                    }else{
-                        return 0.;
+        if (deadPixel.getValue() ==null){
+            badArray = null;
+            if (dataSeq.getChannelMax( channel.getValue())== dataSeq.getChannelTypeMax(channel.getValue())){
+                class SaturationFunc implements DoubleFunction{
+                    double sat;
+                    public  SaturationFunc(double sat){
+                        this.sat = sat;
                     }
+                    @Override
+                    public double apply(double arg) {
+                        // TODO Auto-generated method stub
+                        if  (arg>= this.sat){
+                            return 1.;
+                        }else{
+                            return 0.;
+                        }
+                    }
+
                 }
 
+                badArray = dataArray.copy().toDouble();
+                ((DoubleArray) badArray).map(new SaturationFunc(dataSeq.getChannelTypeMax(channel.getValue())));
+                badArray = badArray.toByte();
+                if (!isHeadLess()){
+                    new AnnounceFrame("Warning, saturated pixel detected, accounting them as dead pixels", "show", new Runnable() {
+                        @Override
+                        public void run() {
+                            Sequence deadSequence = new Sequence("Saturations map");
+                            deadSequence.copyMetaDataFrom(dataSeq, false);
+                            IcyImager.show(badArray, deadSequence, "saturations map", isHeadLess());
+                        }
+                    }, 10);
+                }
             }
-
-            badArray = dataArray.copy().toDouble();
-            ((DoubleArray) badArray).map(new SaturationFunc(dataSeq.getChannelTypeMax(channel.getValue())));
-
-            new AnnounceFrame("Warning, saturated pixel detected, accounting them as dead pixels", "show", new Runnable() {
-                @Override
-                public void run() {
-                    IcyImager.show(badArray, null, "saturations map", isHeadLess());
-                }
-            }, 10);
         }
 
         dataArray =  sequenceToArray(dataSeq, channel.getValue());
@@ -1420,6 +1425,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     @Override
     protected void dataChanged() {
         super.dataChanged();
+
+        badArray = null;
         psfEstimation=null;
         cursequence =null;
         pupil=null;
