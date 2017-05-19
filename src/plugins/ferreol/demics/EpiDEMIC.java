@@ -184,6 +184,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     protected void updatePaddedSize() {
         super.updatePaddedSize();
         Nxy = Math.max(Nx, Ny);
+        Nx  = Ny = Nxy;
         psfShape = new Shape(Nxy, Nxy, Nz);
         outputShape = new Shape(Nxy, Nxy, Nz);
 
