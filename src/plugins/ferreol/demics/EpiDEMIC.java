@@ -122,7 +122,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private final String[]  nBetaOptionsR = new String[]{"0","1","2","3","4","5","6","7","8","9"};
     private EzVarBoolean    radial;         // use only radial mode (constraint the PSF to be radially symmetric)
     private EzButton        showPSF2, showModulus, showPhase;
-    private EzButton        startBlind, stopBlind, showFullObject2, resetPSF;
+    private EzButton        startBlind,  showFullObject2, resetPSF;
     private EzButton        saveParam, loadParam;
     private EzLabel         docDec;
     private EzVarInteger    totalNbOfBlindDecLoop;// number of outer loop
@@ -146,7 +146,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
 
     // Main arrays for the psf estimation
-    private boolean runBdec;
+    //  private boolean runBdec;
     private WideFieldModel pupil=null;
 
 
@@ -473,30 +473,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         startDec = new EzButton("Start Deconvolution", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Thread workerThread = new Thread() {
-                    @Override
-                    public void run() {
-                        launch(true);
-
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() {
-                                if(debug){
-                                    System.out.println("invoke later");
-                                }
-                                restart.setValue(cursequence);
-                                channelRestart.setValue(0);
-                            }
-                        });
-                    }
-                };
-                workerThread.start();
-            }
-        });
-        stopDec = new EzButton("STOP Computation", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                stopExecution();
+                launchClicked(false);
             }
         });
 
@@ -525,7 +502,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             }
         });
 
-        EzGroup groupStop1 = new EzGroup("Emergency STOP", stopDec);
 
         ezDeconvolutionGroup = new EzGroup("Expert  parameters",epsilon,scale,positivity,singlePrecision, showFullObject);
         ezDeconvolutionGroup.setFoldedState(true);
@@ -628,35 +604,35 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         startBlind = new EzButton("Blind deconvolution", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Thread workerThread = new Thread() {
-                    @Override
-                    public void run() {
-                        long startTime = System.currentTimeMillis();
-                        if (data.getValue()!=null)
-                            launch(false);
+                launchClicked(true);
+                /*
+                if ( bdec!=null && bdec.isRunning()){
+                    stopExecution();
+                }else{
+
+                    Thread workerThread = new Thread() {
+                        @Override
+                        public void run() {
+                            long startTime = System.currentTimeMillis();
+                            if (data.getValue()!=null)
+                                launch(false);
 
 
-                        long stopTime = System.currentTimeMillis();
-                        long elapsedTime = stopTime - startTime;
-                        System.out.println("time: "+elapsedTime);
-                    }
-                };
+                            long stopTime = System.currentTimeMillis();
+                            long elapsedTime = stopTime - startTime;
+                            System.out.println("time: "+elapsedTime);
+                        }
+                    };
 
 
-                enableVars(false);
+                    enableVars(false);
 
-                workerThread.start();
+                    workerThread.start();
+                }*/
             }
         });
 
-        stopBlind = new EzButton("STOP Computation", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                stopExecution();
-            }
-        });
 
-        EzGroup groupStop2 = new EzGroup("Emergency STOP", stopBlind);
 
         showFullObject2 = new EzButton("Show the full (padded) object", new ActionListener() {
             @Override
@@ -774,7 +750,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         deconvPanel.add(docDec);
         deconvPanel.add(startDec);
-        deconvPanel.add(groupStop1);
         tabbedPane.add(deconvPanel);
 
         /**** BDec ****/
@@ -784,7 +759,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         bdecPanel.add(docBlind);
         bdecPanel.add(startBlind);
         bdecPanel.add(visuPSF);
-        bdecPanel.add(groupStop2);
         bdecPanel.add(saveFile);
         bdecPanel.add(saveParam);
         tabbedPane.add(bdecPanel);
@@ -818,6 +792,45 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         }
 
     }
+
+    /**
+     * @param flag
+     */
+    private void launchClicked(final boolean flag) {
+
+        if ( deconvolver!=null && deconvolver.isRunning()){
+            stopExecution();
+        } else if ( bdec!=null && bdec.isRunning()){
+            stopExecution();
+        }else{
+            Thread  workerThread = new Thread() {
+                @Override
+                public void run() {
+                    launch(flag);
+
+                    SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(debug){
+                                System.out.println("invoke later");
+                            }
+                            restart.setValue(cursequence);
+                            channelRestart.setValue(0);
+                        }
+                    });
+                }
+            };
+
+            workerThread.start();
+
+        }
+
+
+    }
+
+
+
+
 
     /**
      * Load the parameter file and perform parameter update
@@ -889,17 +902,17 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             showIteration.setValue(false);
         }
         long startTime = System.currentTimeMillis();
-        launch(false);
+        launch(true);
 
         long stopTime = System.currentTimeMillis();
         long elapsedTime = stopTime - startTime;
         System.out.println("time: "+elapsedTime);
     }
 
-    private void launch(boolean runDeconv) {
+    private void launch(boolean runBdec) {
         try {
-            startBlind.setText("Computing...");
-
+            startBlind.setText("Emergency stop");
+            startDec.setText("Emergency stop");
             buildpupil();
             if (debug|| isHeadLess()) {
                 System.out.println("-------------IMAGE-------------------");
@@ -934,8 +947,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 System.out.println("------------------------------------");
                 System.out.println("");
             }
-            run = true;
-            runBdec = !runDeconv;
 
 
             /*---------------------------------------*/
@@ -988,6 +999,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     modulusCoefs.setValue(((WideFieldModel) psfEstimation.getModel()).getModulusCoefs().getData());
                 }
                 pupil =((WideFieldModel) psfEstimation.getModel());
+
+                bdec = null;
             } else {
                 psfArray = ArrayUtils.roll( pupil.getPsf() );
                 pupil.freeMem();
@@ -1046,6 +1059,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             }
         } finally {
             startBlind.setText("Guess PSF");
+            startDec.setText("Start Deconvolution");
         }
     }
 
@@ -1132,7 +1146,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     private void phaseClicked()
     {
-
         buildpupil();
         System.out.println("Phase:  "+pupil.getPhaseCoefs().get(0));
         DoubleArray modulus = Double2D.wrap(pupil.getPhi(), new Shape(Nxy, Nxy));
@@ -1159,13 +1172,11 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     @Override
     public void stopExecution() {
-        deconvolver.abort();
+        if (deconvolver!=null)
+            deconvolver.abort();
         //  run = false;
         if(bdec!=null)
             bdec.abort();
-
-
-
     }
 
 

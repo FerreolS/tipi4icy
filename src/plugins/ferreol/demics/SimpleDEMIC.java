@@ -354,24 +354,21 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         ezDeconvolutionGroup = new EzGroup("Deconvolution parameters",logmu,mu,nbIterDeconv,ezDeconvolutionGroup2);
 
         startDec = new EzButton("Start Deconvolution", new ActionListener() {
-
             @Override
             public void actionPerformed(ActionEvent e) {
-                Thread workerThread = new Thread() {
-                    @Override
-                    public void run() {
-                        launch();
+                if ( deconvolver!=null && deconvolver.isRunning()){
+                    stopExecution();
+                }else{
+                    Thread workerThread = new Thread() {
+                        @Override
+                        public void run() {
+                            launch();
 
 
-                    }
-                };
-                workerThread.start();
-            }
-        });
-        stopDec = new EzButton("STOP Computation", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                stopExecution();
+                        }
+                    };
+                    workerThread.start();
+                }
             }
         });
 
@@ -443,9 +440,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         });
 
 
-
-        EzGroup groupStop1 = new EzGroup("Emergency STOP", stopDec);
-
         addEzComponent(data);
         addEzComponent(channel);
         addEzComponent(psf);
@@ -462,7 +456,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         addEzComponent(saveFile);
         addEzComponent(saveParam);
         addEzComponent(loadParam);
-        addEzComponent(groupStop1);
 
         setDefaultValue();
 
@@ -573,120 +566,130 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     protected void launch() {
         //       solver = new EdgePreservingDeconvolution();
 
-        dataSeq = data.getValue();
-        Sequence psfSeq = psf.getValue();
-        Sequence restartSeq = restart.getValue();
+        try {
+            startDec.setText("Emergency stop");
+
+            dataSeq = data.getValue();
+            Sequence psfSeq = psf.getValue();
+            Sequence restartSeq = restart.getValue();
 
 
-        if (dataSeq == null)
-        {
-            throwError("An image should be given");
-            return;
-        }
-        if (psfSeq == null)
-        {
-            throwError("A psf should be given");
-            return;
-        }
-
-        // Set the informations about the input
-        if ((sizeZ == 1)&&(sizeY == 1)) {
-            throwError("Input data must be 2D or 3D");
-            return;
-        }
-        if (paddingSizeX.getValue() < 0.0) {
-            throwError("Padding value cannot be negative");
-            return;
-        }
-        if (paddingSizeY.getValue() < 0.0) {
-            throwError("Padding value cannot be negative");
-            return;
-        }
-        if (paddingSizeZ.getValue() < 0.0) {
-            throwError("Padding value cannot be negative");
-            return;
-        }
-
-        dataArray =  sequenceToArray(dataSeq, channel.getValue());
-        psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue());
-        dataShape = dataArray.getShape();
-        if (restart.getValue() != null && restartSeq != null){
-            objArray =  sequenceToArray(restartSeq, channelRestart.getValue());
-            if(debug){
-                System.out.println("restart seq:" +restartSeq.getName());
-            }
-        }else{
-            objArray = sequenceToArray(dataSeq, channel.getValue());
-            if(debug){
-                System.out.println("restart seq is null:");
-            }
-        }
-
-        if(singlePrecision.getValue()){
-            wgtArray = createWeights(dataArray.toFloat(),badArray).toFloat();
-        }else{
-            wgtArray = createWeights(dataArray.toDouble(),badArray).toDouble();
-        }
-        cursequence = new Sequence("Current Iterate");
-        cursequence.copyMetaDataFrom(dataSeq, false);
-
-
-        if(Nz==1){
-            if (scale.getValue().length !=2){
-                throwError("Pixel scale must have 2 elements");
+            if (dataSeq == null)
+            {
+                throwError("An image should be given");
                 return;
             }
-        }else{
-            if (scale.getValue().length !=3){
-                throwError("Pixel scale must have 3 elements");
+            if (psfSeq == null)
+            {
+                throwError("A psf should be given");
                 return;
             }
-        }
-        if (debug){
-            System.out.println("Launch it:"+nbIterDeconv.getValue());
-        }
 
-        IcyImager curImager = new IcyImager(cursequence, isHeadLess());
+            // Set the informations about the input
+            if ((sizeZ == 1)&&(sizeY == 1)) {
+                throwError("Input data must be 2D or 3D");
+                return;
+            }
+            if (paddingSizeX.getValue() < 0.0) {
+                throwError("Padding value cannot be negative");
+                return;
+            }
+            if (paddingSizeY.getValue() < 0.0) {
+                throwError("Padding value cannot be negative");
+                return;
+            }
+            if (paddingSizeZ.getValue() < 0.0) {
+                throwError("Padding value cannot be negative");
+                return;
+            }
 
-        DeconvHook dHook = new DeconvHook(curImager, dataShape,null, debug);
-        DeconvHook dHookfinal = new DeconvHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
-        deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
-
-
-        objArray = deconvolver.deconv(objArray);
-
-
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
+            dataArray =  sequenceToArray(dataSeq, channel.getValue());
+            psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue());
+            dataShape = dataArray.getShape();
+            if (restart.getValue() != null && restartSeq != null){
+                objArray =  sequenceToArray(restartSeq, channelRestart.getValue());
                 if(debug){
-                    System.out.println("invoke later");
+                    System.out.println("restart seq:" +restartSeq.getName());
                 }
-                restart.setValue(cursequence);
-                channelRestart.setValue(0);
-
-                if (isHeadLess()) {
-                    if(outputHeadlessImage==null){
-                        outputHeadlessImage  = new EzVarSequence("Output Image");
-                    }
-                    outputHeadlessImage.setValue(cursequence);
-                    if (outputHeadlessWght==null) {
-                        outputHeadlessWght = new EzVarSequence("Computed weights");
-                    }
-                    outputHeadlessWght.setValue(arrayToSequence(wgtArray));
-
-                    if(outputPath!=null){
-                        IcyImager.save(cursequence, outputPath);
-                    }
-
-
-                    if(saveFile.getValue()!=null){
-                        saveParamClicked();
-                    }
+            }else{
+                objArray = sequenceToArray(dataSeq, channel.getValue());
+                if(debug){
+                    System.out.println("restart seq is null:");
                 }
             }
-        });
 
+            if(singlePrecision.getValue()){
+                wgtArray = createWeights(dataArray.toFloat(),badArray).toFloat();
+            }else{
+                wgtArray = createWeights(dataArray.toDouble(),badArray).toDouble();
+            }
+            cursequence = new Sequence("Current Iterate");
+            cursequence.copyMetaDataFrom(dataSeq, false);
+
+
+            if(Nz==1){
+                if (scale.getValue().length !=2){
+                    throwError("Pixel scale must have 2 elements");
+                    return;
+                }
+            }else{
+                if (scale.getValue().length !=3){
+                    throwError("Pixel scale must have 3 elements");
+                    return;
+                }
+            }
+            if (debug){
+                System.out.println("Launch it:"+nbIterDeconv.getValue());
+            }
+
+            IcyImager curImager = new IcyImager(cursequence, isHeadLess());
+
+            DeconvHook dHook = new DeconvHook(curImager, dataShape,null, debug);
+            DeconvHook dHookfinal = new DeconvHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
+            deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
+
+
+            objArray = deconvolver.deconv(objArray);
+
+
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    if(debug){
+                        System.out.println("invoke later");
+                    }
+                    restart.setValue(cursequence);
+                    channelRestart.setValue(0);
+
+                    if (isHeadLess()) {
+                        if(outputHeadlessImage==null){
+                            outputHeadlessImage  = new EzVarSequence("Output Image");
+                        }
+                        outputHeadlessImage.setValue(cursequence);
+                        if (outputHeadlessWght==null) {
+                            outputHeadlessWght = new EzVarSequence("Computed weights");
+                        }
+                        outputHeadlessWght.setValue(arrayToSequence(wgtArray));
+
+                        if(outputPath!=null){
+                            IcyImager.save(cursequence, outputPath);
+                        }
+
+
+                        if(saveFile.getValue()!=null){
+                            saveParamClicked();
+                        }
+                    }
+                }
+            });
+        } catch (IllegalArgumentException e) {
+            new AnnounceFrame("Oops, Error: "+ e.getMessage());
+            if (debug) {
+                e.printStackTrace();
+            }
+        } finally {
+            startDec.setText("Start Deconvolution");
+        }
     }
 
 
@@ -696,7 +699,8 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     //If the user call the stop button
     @Override
     public void stopExecution() {
-        deconvolver.abort();
+        if (deconvolver !=null)
+            deconvolver.abort();
     }
     /**
      *  set default values of the plugin

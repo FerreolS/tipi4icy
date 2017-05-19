@@ -47,7 +47,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected EzVarSequence   restart;        // starting point
     protected EzVarChannel    channelRestart; // starting point channel
     protected EzVarBoolean    positivity;     // enforce non negativity
-    protected EzButton        startDec, stopDec,  showFullObject;
+    protected EzButton        startDec, showFullObject;
 
 
     protected EzVarText       dataSize;       //
@@ -73,7 +73,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected Sequence cursequence; // Sequence containing the current solution
     protected Shape dataShape;
     protected ShapedArray wgtArray, dataArray, psfArray, objArray;
-    protected boolean run = true;
+    //  protected boolean run = true;
 
 
     protected EzVarText       weightsMethod;  // Combobox for variance estimation
