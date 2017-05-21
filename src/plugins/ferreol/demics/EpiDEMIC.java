@@ -538,6 +538,10 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             @Override
             public void actionPerformed(ActionEvent e) {
                 pupil=null;
+                phaseCoefs.setValue(new double[Integer.parseInt(nbAlphaCoef.getValue())]);
+                double[] tmp = new double[Integer.parseInt(nbBetaCoef.getValue())];
+                tmp[0] = 1;
+                modulusCoefs.setValue(tmp);
             }
         });
 
@@ -565,7 +569,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     pupil=null;
                 }else{
                     nbAlphaCoef.setDefaultValues( nAlphaOptions,7, false );
-                    nbBetaCoef.setDefaultValues(  nBetaOptions,1, false );
+                    nbBetaCoef.setDefaultValues(  nBetaOptions,0, false );
                     pupil=null;
                 }
 

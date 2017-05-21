@@ -287,7 +287,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
 
     /**
      * Update the size of the output image according to padding size
-     * indicated in the pluging. This output size is rounded to the
+     * indicated in the plugging. This output size is rounded to the
      * next integer suitable for fast FFT computation
      *
      */
