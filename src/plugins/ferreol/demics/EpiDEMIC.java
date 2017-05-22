@@ -154,7 +154,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     /**            DEBUG            **/
     /*********************************/
     private boolean debug = false;      // Show psf steps
-    private boolean verbose = false;    // Show some values, need debug to true
     private EzPanel  debuggingPanel;
     private EzVarText resultCostPrior, resultDefocus, resultPhase, resultModulus;
 
@@ -1193,7 +1192,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         dataShape = dataArray.getShape();
         if (deadPixel.getValue() ==null){
             badArray = null;
-            if (dataSeq.getChannelMax( channel.getValue())== dataSeq.getChannelTypeMax(channel.getValue())){
+            if (dataSeq.getChannelMax( channel.getValue())>=( dataSeq.getChannelTypeMax(channel.getValue())-1)){
                 class SaturationFunc implements DoubleFunction{
                     double sat;
                     public  SaturationFunc(double sat){
@@ -1201,7 +1200,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     }
                     @Override
                     public double apply(double arg) {
-                        // TODO Auto-generated method stub
                         if  (arg>= this.sat){
                             return 1.;
                         }else{

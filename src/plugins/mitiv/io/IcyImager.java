@@ -130,21 +130,6 @@ public class IcyImager implements Imager{
 
 
 
-
-
-
-
-
-
-    /* (non-Javadoc)
-     * @see mitiv.utils.Imager#save(mitiv.array.ShapedArray, java.lang.String)
-     */
-    public void save( String path) {
-        save((ShapedArray) null, path);
-    }
-
-
-
     /* (non-Javadoc)
      * @see mitiv.utils.Imager#save(mitiv.array.ShapedArray, java.lang.String)
      */
@@ -161,6 +146,18 @@ public class IcyImager implements Imager{
         save( arr,  sequence,  path);
     }
 
+    /**
+     *
+     * Save the  image in a file
+     * @param arr
+     *        array to save
+     * @param sequence
+     *        sequence to save.
+     *        If arr != null it will be copied in sequence
+     * @param path
+     *        path of the file
+     *
+     */
     static public void save(ShapedArray arr, Sequence sequence, String path) {
         {
             if (sequence == null )  {
@@ -183,6 +180,15 @@ public class IcyImager implements Imager{
 
     }
 
+    /**
+     *
+     * Save the  image in a file
+     * @param sequence
+     *        sequence to save.
+     * @param path
+     *        path of the file
+     *
+     */
     static public void save(Sequence sequence, String path) {
         {
             if (sequence == null )  {

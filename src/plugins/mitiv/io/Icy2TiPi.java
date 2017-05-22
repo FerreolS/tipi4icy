@@ -180,7 +180,7 @@ public class Icy2TiPi {
                 data =  seq.getDataCopyXYC(t, z);
                 break;
             case CZT:
-                data =  seq.getDataCopyXY(t, z, c); // FIXME it can be  seq.getDataXY(t, z, c);
+                data =  seq.getDataCopyXY(t, z, c); //  it can be  seq.getDataXY(t, z, c);
                 break;
 
             default:

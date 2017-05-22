@@ -10,6 +10,7 @@ import mitiv.utils.Imager;
 import mitiv.utils.TiPiHook;
 
 /**
+ * Hook to plot current object during  deconvolution
  * @author ferreol
  *
  */
@@ -21,6 +22,10 @@ public class DeconvHook implements TiPiHook{
     private String title=null;
 
     /**
+     * @param imager    An abstract class for plot/save
+     * @param outShape  shape of the shown object (depending on padding)
+     * @param title     title of the plot
+     * @param debug
      *
      */
     public DeconvHook(Imager imager, Shape outShape, String title, boolean debug) {
