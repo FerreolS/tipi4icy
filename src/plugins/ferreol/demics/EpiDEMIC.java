@@ -610,30 +610,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             @Override
             public void actionPerformed(ActionEvent e) {
                 launchClicked(true);
-                /*
-                if ( bdec!=null && bdec.isRunning()){
-                    stopExecution();
-                }else{
 
-                    Thread workerThread = new Thread() {
-                        @Override
-                        public void run() {
-                            long startTime = System.currentTimeMillis();
-                            if (data.getValue()!=null)
-                                launch(false);
-
-
-                            long stopTime = System.currentTimeMillis();
-                            long elapsedTime = stopTime - startTime;
-                            System.out.println("time: "+elapsedTime);
-                        }
-                    };
-
-
-                    enableVars(false);
-
-                    workerThread.start();
-                }*/
             }
         });
 
@@ -1127,9 +1104,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         Thread workerThread = new Thread() {
             @Override
             public void run() {
-
-                buildpupil();
-                pupil.computePsf();
+                if (pupil==null){
+                    buildpupil();
+                }
 
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
@@ -1138,7 +1115,12 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         if(dataSeq!=null){
                             psfSequence.copyMetaDataFrom(dataSeq, false);
                         }
-                        IcyImager.show(ArrayUtils.roll(pupil.getPsf()),psfSequence,"Estimated PSF",isHeadLess());
+
+                        if ( bdec!=null && bdec.isRunning()){
+                            IcyImager.show( bdec.getPsf(),psfSequence,"Estimated PSF",isHeadLess());
+                        }else{
+                            IcyImager.show(ArrayUtils.roll(pupil.getPsf()),psfSequence,"Estimated PSF",isHeadLess());
+                        }
                         psfSequence.getFirstViewer().getLut().getLutChannel(0).setColorMap(new IceColorMap(),false);
                     }
                 });
@@ -1151,17 +1133,30 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     private void phaseClicked()
     {
-        buildpupil();
-        System.out.println("Phase:  "+pupil.getPhaseCoefs().get(0));
-        DoubleArray modulus = Double2D.wrap(pupil.getPhi(), new Shape(Nxy, Nxy));
-        IcyImager.show(ArrayUtils.roll(modulus),null,"Phase of the pupil",false);
+        DoubleArray  phase;
+        if (pupil==null){
+            buildpupil();
+        }
+        if ( bdec!=null && bdec.isRunning()){
+            phase = Double2D.wrap(((WideFieldModel) bdec.getPupil()).getPhi(), new Shape(Nxy, Nxy));
+        }else{
+            phase = Double2D.wrap(pupil.getPhi(), new Shape(Nxy, Nxy));
+        }
+        IcyImager.show(ArrayUtils.roll(phase),null,"Phase of the pupil",false);
     }
 
     private void modulusClicked()
     {
-        /* PSF initialisation */
-        buildpupil();
-        DoubleArray modulus = Double2D.wrap(pupil.getRho(), new Shape(Nxy, Nxy));
+        DoubleArray modulus;
+        if (pupil==null){
+            buildpupil();
+        }
+
+        if ( bdec!=null && bdec.isRunning()){
+            modulus = Double2D.wrap(((WideFieldModel) bdec.getPupil()).getRho(), new Shape(Nxy, Nxy));
+        }else{
+            modulus = Double2D.wrap(pupil.getRho(), new Shape(Nxy, Nxy));
+        }
         IcyImager.show(ArrayUtils.roll(modulus),null,"Modulus of the pupil",false);
     }
 
