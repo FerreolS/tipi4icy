@@ -1033,8 +1033,11 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 }
             });
         } catch (IllegalArgumentException e) {
-            new AnnounceFrame("Oops, Error: "+ e.getMessage());
+            if(!isHeadLess()){
+                new AnnounceFrame("Oops, Error: "+ e.getMessage());
+            }
             enableVars(true);
+
             if (debug) {
                 e.printStackTrace();
             }
