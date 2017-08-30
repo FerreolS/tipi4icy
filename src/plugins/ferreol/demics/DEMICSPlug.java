@@ -196,7 +196,6 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         inputMap.add("mu", mu.getVariable());
         inputMap.add("scale", scale.getVariable());
 
-        inputMap.add("Postivity", positivity.getVariable());
         inputMap.add("nbIteration", nbIterDeconv.getVariable());
         inputMap.add("positivity", positivity.getVariable());
         inputMap.add("single precision", singlePrecision.getVariable());
