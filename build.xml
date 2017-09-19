@@ -2,6 +2,7 @@
 <project basedir="." default="build" name="tipi4icy">
     <property environment="env"/>
     <property name="tipi4icy.location" value="../tipi4icy"/>
+    <property name="debug" value="true"/>
     <property name="debuglevel" value="source,lines,vars"/>
     <property name="target" value="1.7"/>
     <property name="source" value="1.7"/>
@@ -45,7 +46,7 @@
         <mkdir dir="bin-TiPiSDK"/>
         <unzip src="TiPi.zip" dest="src-TiPiSDK"/>
         <copy file="src/plugins/mitiv/TiPiSDK.java"  todir="src-TiPiSDK/plugins/mitiv"/> 
-        <javac debug="false" destdir="bin-TiPiSDK" includeantruntime="false" source="${source}" target="${target}">
+        <javac debug="${debug}"  debuglevel="${debuglevel}" destdir="bin-TiPiSDK" includeantruntime="false" source="${source}" target="${target}">
                    <src path="src-TiPiSDK"/>
                    <classpath refid="tipi4icy.classpath"/>
                </javac>
@@ -68,7 +69,7 @@
            <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
            <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/ToolTipText.java"/>       
            <copy  todir="src-simpledemic/plugins/mitiv/io"><fileset dir="src/plugins/mitiv/io" /> </copy>      
-           <javac debug="false" destdir="bin-simpledemic" includeantruntime="false" source="${source}" target="${target}">
+           <javac debug="${debug}"  debuglevel="${debuglevel}" destdir="bin-simpledemic" includeantruntime="false" source="${source}" target="${target}">
                       <src path="src-simpledemic"/>
                       <classpath refid="tipi4icy.classpath"/>
                   </javac>
@@ -90,7 +91,7 @@
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/ToolTipText.java"/>  
           <copy  todir="src-epidemic/plugins/mitiv/io"><fileset dir="src/plugins/mitiv/io" /> </copy>      
-          <javac debug="false" destdir="bin-epidemic" includeantruntime="false" source="${source}" target="${target}">
+          <javac debug="${debug}"  debuglevel="${debuglevel}" destdir="bin-epidemic" includeantruntime="false" source="${source}" target="${target}">
                      <src path="src-epidemic"/>
                      <classpath refid="tipi4icy.classpath"/>
                  </javac>
