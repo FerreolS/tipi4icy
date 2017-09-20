@@ -538,7 +538,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             public void actionPerformed(ActionEvent e) {
                 pupil=null;
                 phaseCoefs.setValue(new double[Integer.parseInt(nbAlphaCoef.getValue())]);
-                double[] tmp = new double[Integer.parseInt(nbBetaCoef.getValue())];
+                double[] tmp = new double[Math.max(1,Integer.parseInt(nbBetaCoef.getValue()))];
                 tmp[0] = 1;
                 modulusCoefs.setValue(tmp);
             }
