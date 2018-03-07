@@ -2,7 +2,6 @@ tipi4icy
 ========
 
 Master: ![Travis build status](https://travis-ci.org/FerreolS/tipi4icy.svg?branch=master)
-Devel: ![Travis build status](https://travis-ci.org/FerreolS/tipi4icy.svg?branch=ferreol-devel)
 
 tipi4icy is a collection of classes to link  [Icy](http://icy.bioimageanalysis.org/)  and  [TiPi](https://github.com/emmt/TiPi), a Java *Toolkit for Inverse Problems and Imaging*. Along with [microTiPi](https://github.com/FerreolS/microTiPi) is mainly used to implements the DEconvolution MICroscopy Suite.
 
