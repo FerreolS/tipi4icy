@@ -23,7 +23,6 @@ import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
 import icy.util.OMEUtil;
-import loci.common.services.ServiceException;
 import loci.formats.ome.OMEXMLMetadataImpl;
 //import microTiPi.microscopy.MicroscopeMetadata;
 import mitiv.array.ShapedArray;
@@ -269,15 +268,11 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected void updateMetaData() {
         Sequence seq = data.getValue();
         if (seq != null) {
-            try {
-                ome.xml.meta.OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
-                newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
-                newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
-                newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
-                seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
-            } catch (ServiceException e) {
-                e.printStackTrace();
-            }
+            ome.xml.meta.OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
+            newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
+            newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
+            newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
+            seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
         } else {
             new AnnounceFrame("Nothing to save");
         }
