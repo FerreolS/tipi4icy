@@ -20,8 +20,10 @@ import icy.image.IcyBufferedImage;
 import icy.sequence.DimensionId;
 import icy.sequence.Sequence;
 import icy.type.DataType;
+import mitiv.array.Array2D;
 import mitiv.array.Array3D;
 import mitiv.array.Array4D;
+import mitiv.array.Array5D;
 import mitiv.array.ArrayFactory;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
@@ -228,9 +230,10 @@ public class Icy2TiPi {
         if (sequence == null )  {
             sequence = new Sequence();
         }
-
         switch (array.getRank()) {
             case 1:
+                sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), 1, array.flatten(),true,false));
+
                 sequence.setImage(0,0, new IcyBufferedImage(array.getDimension(0), 1, array.flatten(),true,false));
                 break;
             case 2:
@@ -247,6 +250,80 @@ public class Icy2TiPi {
                 for (int k = 0; k < array.getDimension(3); k++) {
                     for (int j = 0; j < array.getDimension(2); j++) {
                         sequence.setImage(k,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array4D)array).slice(k).slice(j).flatten() ,true,false));
+                    }
+                }
+            default:
+                throw new IllegalArgumentException(" arrayToSequence can convert only 1D to 4D arrays");
+        }
+        return sequence;
+    }
+
+
+    /**
+     * Copy a ShapedArray into a Sequence
+     * Create a new sequence if the input sequence is null
+     * @param array     ShapedArray
+     * @param channelIndex  dimension that corresponds to the channel
+     * @param sequence  Input sequence
+     * @return          Resulting sequence
+     */
+    public static Sequence arrayToSequence(ShapedArray array,int channelIndex, Sequence sequence)
+    {
+
+        if (channelIndex <0){
+            return arrayToSequence( array,sequence);
+        }else if (channelIndex>array.getRank()){
+            throw new IllegalArgumentException(" The channel index cannot be larger than the array rank");
+        }
+
+        if (sequence == null )  {
+            sequence = new Sequence();
+        }
+
+        int newdims[] = new int[array.getRank()-1];
+        {
+            int k=0,n=0;
+            while (k<array.getRank()-1) {
+                if (n!=channelIndex){
+                    newdims[k] =    array.getDimension(n);
+                    k++;
+                }
+                n++;
+            }
+        }
+
+        double[][] t = new double[array.getDimension(channelIndex)][newdims[0]* newdims[1]];
+
+        switch (array.getRank()-1) {
+            case 1:
+                for(int n=0;n<array.getDimension(channelIndex);++n){
+                    t[n] =  ((Array2D) array).slice(n,channelIndex).toDouble().flatten();
+                }
+                sequence.setImage(0,0, new IcyBufferedImage(newdims[0], 1, t,true,false));
+                break;
+            case 2:
+                for(int n=0;n<array.getDimension(channelIndex);++n){
+                    t[n] =  ((Array3D) array).slice(n,channelIndex).toDouble().flatten();
+                }
+
+                sequence.setImage(0,0, new IcyBufferedImage(newdims[0], newdims[1],t,true,false));
+                break;
+            case 3:
+                for (int j = 0; j < newdims[2]; j++) {
+                    for(int n=0;n<array.getDimension(channelIndex);++n){
+                        t[n] =  ((Array4D) array).slice(n,channelIndex).slice(j).toDouble().flatten();
+                    }
+                    sequence.setImage(0,j, new IcyBufferedImage(newdims[0], newdims[1],t ,true,false));
+                }
+                break;
+
+            case 4:
+
+                for (int k = 0; k < array.getDimension(3); k++) {
+                    for (int j = 0; j < array.getDimension(2); j++) {for(int n=0;n<array.getDimension(channelIndex);++n){
+                        t[n] =  ((Array5D) array).slice(n,channelIndex).slice(k).slice(j).toDouble().flatten();
+                    }
+                    sequence.setImage(k,j, new IcyBufferedImage(newdims[0], newdims[1],t ,true,false));
                     }
                 }
             default:

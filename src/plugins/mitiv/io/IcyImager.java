@@ -88,6 +88,36 @@ public class IcyImager implements Imager{
         sequence.setName(title);
 
     }
+    /**
+     * Show an array in icy by updating the sequence sequence
+     *
+     * @param arr
+     *            ShapedArray to show
+     * @param sequence
+     *            sequence to update
+     * @param title
+     *            title of the plot
+     * @param headless
+     *              true in headless mode
+     */
+    public static void show(final ShapedArray arr, Sequence sequence, int channelIndex, final String title, boolean headless) {
+        if (sequence == null )  {
+            sequence = new Sequence();
+            if (headless){
+                Icy.getMainInterface().addSequence(sequence);
+            }
+        }
+        sequence.beginUpdate();
+        sequence =   arrayToSequence(arr,channelIndex, sequence);
+
+        if( (sequence.getFirstViewer() == null)&&(!headless)){
+            Icy.getMainInterface().addSequence(sequence);
+        }
+
+        sequence.endUpdate();
+        sequence.setName(title);
+
+    }
 
     /* (non-Javadoc)
      * @see mitiv.utils.Imager#show(mitiv.array.ShapedArray)
