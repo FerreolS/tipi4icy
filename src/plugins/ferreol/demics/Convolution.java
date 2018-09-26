@@ -31,7 +31,14 @@ import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.linalg.shaped.DoubleShapedVector;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import plugins.adufour.blocks.lang.Block;
+import plugins.adufour.blocks.util.VarList;
+import plugins.adufour.ezplug.EzPlug;
+import plugins.adufour.ezplug.EzStoppable;
+import plugins.adufour.ezplug.EzVarChannel;
+import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarSequence;
+import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.Icy2TiPi;
 import plugins.mitiv.io.IcyImager;
 
@@ -40,27 +47,42 @@ import plugins.mitiv.io.IcyImager;
  * @author light
  *
  */
-public class Convolution extends DEMICSPlug {
+public class Convolution extends EzPlug  implements Block, EzStoppable {
 
-    private EzVarSequence EzVarSequenceImage;
-    private EzVarSequence EzVarSequencePSF;
+    protected EzVarSequence image;
+    protected EzVarChannel    imagechannel;        // data channel
+    protected EzVarSequence psf;
+    protected EzVarChannel    psfchannel;        // data channel
+
+    protected EzVarText       dataSize;       //
+    protected EzVarText       outputSize;     // size of the object after padding
+    private EzVarInteger    paddingSizeX,paddingSizeY;
+    private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
+
+    protected EzVarSequence   outputHeadlessImage=null;
 
     @Override
     protected void initialize()
     {
-        EzVarSequenceImage = new EzVarSequence("Image");
-        EzVarSequencePSF = new EzVarSequence("Load PSF");
-
-        super.addEzComponent(EzVarSequenceImage);
-        super.addEzComponent(EzVarSequencePSF);
+        image = new EzVarSequence("Image");
+        imagechannel = new EzVarChannel("Data channel:", image.getVariable(), false);
+        psf = new EzVarSequence("PSF");
+        psfchannel = new EzVarChannel("PSF channel:", psf.getVariable(), false);
+        addEzComponent(image);
+        addEzComponent(imagechannel);
+        addEzComponent(psf);
+        addEzComponent(psfchannel);
+        if (isHeadLess()) {
+            outputHeadlessImage = new EzVarSequence("Output Image");
+        }
     }
 
     @Override
     protected void execute()
     {
 
-        Sequence seqImg = EzVarSequenceImage.getValue();
-        Sequence seqPSF = EzVarSequencePSF.getValue();
+        Sequence seqImg = image.getValue();
+        Sequence seqPSF = psf.getValue();
 
         int w = seqImg.getSizeX();
         int h = seqImg.getSizeY();
@@ -73,8 +95,8 @@ public class Convolution extends DEMICSPlug {
             myShape = new Shape(w, h);
         }
 
-        ShapedArray imgArray =   Icy2TiPi.sequenceToArray(seqImg);
-        ShapedArray psfArray =   Icy2TiPi.sequenceToArray(seqPSF );
+        ShapedArray imgArray =   Icy2TiPi.sequenceToArray(seqImg,imagechannel.getValue());
+        ShapedArray psfArray =   Icy2TiPi.sequenceToArray(seqPSF,psfchannel.getValue() );
 
         DoubleShapedVectorSpace space = new DoubleShapedVectorSpace(myShape);
         DoubleShapedVector xVector = space.create(imgArray);
@@ -86,12 +108,41 @@ public class Convolution extends DEMICSPlug {
 
         Sequence seqY = new Sequence();
         IcyImager.show(y.asShapedArray(),seqY,seqImg.getName()+"*"+seqPSF.getName(),isHeadLess() );
-
+        if (isHeadLess()) {
+            if(outputHeadlessImage==null){
+                outputHeadlessImage = new EzVarSequence("Output Image");
+            }
+            outputHeadlessImage.setValue(seqY);
+        }
     }
 
     @Override
     public void clean() {
         // TODO Auto-generated method stub
+
+    }
+
+    /* (non-Javadoc)
+     * @see plugins.adufour.blocks.lang.Block#declareInput(plugins.adufour.blocks.util.VarList)
+     */
+    @Override
+    public void declareInput(VarList inputMap) {
+        initialize();
+        // TODO Auto-generated method stub
+        inputMap.add("image", image.getVariable());
+        inputMap.add("image", imagechannel.getVariable());
+        inputMap.add("PSF", psf.getVariable());
+        inputMap.add("PSF", psfchannel.getVariable());
+
+    }
+
+    /* (non-Javadoc)
+     * @see plugins.adufour.blocks.lang.Block#declareOutput(plugins.adufour.blocks.util.VarList)
+     */
+    @Override
+    public void declareOutput(VarList outputMap) {
+        // TODO Auto-generated method stub
+        outputMap.add("output", outputHeadlessImage.getVariable());
 
     }
 
