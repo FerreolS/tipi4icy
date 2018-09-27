@@ -115,6 +115,16 @@ public class Icy2TiPi {
 
         int[] dims ={1,1,1,1,1};
         int ndims =0;
+
+        if(nx>1){
+            dims[ndims] = nx;
+            ndims++;
+        }
+
+        if(ny>1){
+            dims[ndims] = ny;
+            ndims++;
+        }
         if (c<0){ // No C selection
             if (nc>1){
                 dims[ndims] = nc;
@@ -127,16 +137,6 @@ public class Icy2TiPi {
                 throw  new IllegalArgumentException("Requested channel unavailable");
             }
         }
-        if(nx>1){
-            dims[ndims] = nx;
-            ndims++;
-        }
-
-        if(ny>1){
-            dims[ndims] = ny;
-            ndims++;
-        }
-
         if(z<0){ // no Z selection
             if(nz>1){
                 dims[ndims] = nz;
