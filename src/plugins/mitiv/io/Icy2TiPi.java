@@ -88,7 +88,7 @@ public class Icy2TiPi {
 
         switch (seq.getDataType_())
         {
-            case BYTE:
+            case UBYTE:
                 seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.SHORT, false);
                 break;
             case USHORT:
