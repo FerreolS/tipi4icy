@@ -26,6 +26,7 @@
 package plugins.ferreol.demics;
 
 
+import icy.plugin.interface_.PluginBundled;
 import icy.sequence.Sequence;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
@@ -47,7 +48,7 @@ import plugins.mitiv.io.IcyImager;
  * @author light
  *
  */
-public class Convolution extends EzPlug  implements Block, EzStoppable {
+public class Convolution extends EzPlug  implements Block, EzStoppable,PluginBundled {
 
     protected EzVarSequence image;
     protected EzVarChannel    imagechannel;        // data channel
@@ -144,6 +145,15 @@ public class Convolution extends EzPlug  implements Block, EzStoppable {
         // TODO Auto-generated method stub
         outputMap.add("output", outputHeadlessImage.getVariable());
 
+    }
+
+    /* (non-Javadoc)
+     * @see icy.plugin.interface_.PluginBundled#getMainPluginClassName()
+     */
+    @Override
+    public String getMainPluginClassName() {
+        // TODO Auto-generated method stub
+        return "SimpleDEMIC";
     }
 
 
