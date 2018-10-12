@@ -36,6 +36,7 @@ import icy.plugin.PluginRepositoryLoader;
 import icy.plugin.PluginUpdater;
 import icy.sequence.Sequence;
 import icy.system.thread.ThreadUtil;
+import icy.util.StringUtil;
 import loci.formats.ome.OMEXMLMetadata;
 import microTiPi.epifluorescence.WideFieldModel;
 import microTiPi.microUtils.BlindDeconvJob;
@@ -385,16 +386,16 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
             @Override
             public void variableChanged(EzVar<String> source, String newValue) {
-                if (weightsMethod.getValue() == weightOptions[0]) { //None
+                if (StringUtil.equals(weightsMethod.getValue() , weightOptions[0])) { //None
                     weights.setVisible(false);
                     gain.setVisible(false);
                     noise.setVisible(false);
-                } else if (weightsMethod.getValue() == weightOptions[1] || weightsMethod.getValue() == weightOptions[2]) {  //Personalized map or Variance map
+                } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[1]) || StringUtil.equals(weightsMethod.getValue() , weightOptions[2])) {  //Personalized map or Variance map
                     weights.setVisible(true);
                     gain.setVisible(false);
                     noise.setVisible(false);
                     weights.setNoSequenceSelection();
-                } else if (weightsMethod.getValue() == weightOptions[3]) {  //Computed variance
+                } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[3])) {  //Computed variance
                     weights.setVisible(false);
                     gain.setVisible(true);
                     noise.setVisible(true);

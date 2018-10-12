@@ -35,6 +35,7 @@ import icy.plugin.PluginRepositoryLoader;
 import icy.plugin.PluginUpdater;
 import icy.sequence.Sequence;
 import icy.system.thread.ThreadUtil;
+import icy.util.StringUtil;
 import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
@@ -275,16 +276,16 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                     System.out.println("weight:" + weightOptions[3]+".");
                     System.out.println("weight:" + weightOptions[3]==newValue);
                 }
-                if (weightsMethod.getValue() == weightOptions[0]) { //None
+                if (StringUtil.equals(weightsMethod.getValue(), weightOptions[0])) { //None
                     weights.setVisible(false);
                     gain.setVisible(false);
                     noise.setVisible(false);
-                } else if (weightsMethod.getValue() == weightOptions[1] || weightsMethod.getValue() == weightOptions[2]) {  //Personnalized map ou Variance map
+                } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[1] )|| StringUtil.equals(weightsMethod.getValue() , weightOptions[2])) {  //Personnalized map ou Variance map
                     weights.setVisible(true);
                     gain.setVisible(false);
                     noise.setVisible(false);
                     weights.setNoSequenceSelection();
-                } else if (weightsMethod.getValue() == weightOptions[3]) {  //Computed variance
+                } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[3])) {  //Computed variance
                     weights.setVisible(false);
                     gain.setVisible(true);
                     noise.setVisible(true);
