@@ -56,7 +56,7 @@ after_success:
 - git add *
 - git commit -a -m "Add Doc"
 - git push --force https://${GH_TOKEN}@github.com/FerreolS/${PROJECT} gh-pages
-
+- cd ..
 
 - cd jar
 - git add *
