@@ -59,6 +59,7 @@ after_success:
 - cd ..
 
 - cp -r docker jar/.
+- cp -r README.md jar/.
 - cd jar
 - git add *
 - git commit -a -m "Jar update"
