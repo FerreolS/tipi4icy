@@ -1,7 +1,10 @@
 language: java
 jdk:
 - oraclejdk8
-before_install:
+
+before_script:
+- git config --global user.email "ferreol.soulez@univ-lyon1.fr"
+- git config --global user.name "ferreolS"
 # First icy dependies
 - wget http://www.icy.bioimageanalysis.org/downloadIcy/icy.zip && unzip icy.zip -d icy && rm icy.zip
 - wget https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip 
@@ -18,7 +21,7 @@ before_install:
 - mv icy/plugins/adufour/ezplug/EzPlug.jar lib/
 - mv icy/plugins/adufour/protocols/Protocols.jar lib/
 # prepare for build
-- git clone --quiet --branch=ferreol-devel https://github.com/emmt/TiPi.git
+- git clone --quiet --branch=master https://github.com/emmt/TiPi.git
 - cd TiPi && ant build && ant tipi-sdk
 - mv TiPi.zip ../ && cd ..
 - cp -r TiPi/lib/* lib/ 
@@ -27,24 +30,39 @@ before_install:
 - mkdir src-doc src-epidemic
 - cp -r microTiPi/src/microTiPi src-doc
 - mv microTiPi/src/microTiPi src-epidemic
+- rm -rf doc
+- git clone https://github.com/FerreolS/${PROJECT} doc
+- cd doc
+- git symbolic-ref HEAD refs/heads/gh-pages
+- rm .git/index
+- git clean -fdx
+- cd ..
+- rm -rf jar
+- git clone https://github.com/FerreolS/${PROJECT} jar
+- cd doc
+- git symbolic-ref HEAD refs/heads/jars
+- rm .git/index
+- git clean -fdx
+- cd ..
+
 
 script:
 - ant simpledemic
 - ant epidemic
 - ant doc > /dev/null
+
 after_success:
-- git config --global user.email "eric.thiebaut@univ-lyon1.fr"
-- git config --global user.name "emmt"
-- git config --global push.default matching
-- git clone --quiet --branch=gh-pages https://${GH_TOKEN}@github.com/emmt/${PROJECT}
-- cp -r doc/* ${PROJECT}
-- cd ${PROJECT} && git add * && git commit -am "Doc update" && (git push 2> /dev/null) 
-- cd .. && rm -rf ${PROJECT}
-- git clone  --branch=jars https://${GH_TOKEN}@github.com/emmt/${PROJECT}
-- cp -r jar/* ${PROJECT}
-- cd ${PROJECT} && git add * && git commit -am "Jar update" && (git push 2> /dev/null) 
+- cd doc
+- git add *
+- git commit -a -m "Add Doc"
+- git push --force https://${GH_TOKEN}@github.com/FerreolS/${PROJECT} gh-pages
+
+
+- cd jar
+- git add *
+- git commit -a -m "Jar update"
+- git push --force https://${GH_TOKEN}@github.com/FerreolS/${PROJECT} jars
 
 env:
   global:
-  - secure: G0VNj4mO734iePeYNDA0aqYy2mid4dBTEeupwmPEoGEf6yVMYgPrOLvYA0gJYD5MrUMZJ50tFIWWc9rWqsk8CTXCy8a3sAapQZma5TsggrnGOv6IK2emEHx9Znj4kdRRpX3MdxZhLwVTszUkejtoUOmAS4EOtUub4Ky7CUq0WJs=
   - PROJECT=tipi4icy
