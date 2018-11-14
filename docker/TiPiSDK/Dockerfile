@@ -1,6 +1,6 @@
 FROM ferreol/icy:bare
 
-MAINTAINER Ferreol Soulez ferreol.soulez@epfl.ch
+MAINTAINER Ferreol Soulez ferreol.soulez@univ-lyon1.fr
 
 # do all in one step
 RUN     apk add  --update openssl && \

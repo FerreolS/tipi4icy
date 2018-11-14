@@ -1,9 +1,9 @@
 FROM ferreol/tipisdk
-MAINTAINER Ferreol Soulez ferreol.soulez@epfl.ch
+MAINTAINER Ferreol Soulez ferreol.soulez@univ-lyon1.fr
 RUN apk add  --update openssl && \
     mkdir -p /usr/src && \
     cd /usr/src && \
-    wget https://github.com/emmt/tipi4icy/archive/jars.zip &&\
+    wget https://github.com/ferreolS/tipi4icy/archive/jars.zip &&\
     unzip jars.zip && \
     mv tipi4icy-jars/SimpleDEMIC.jar icy/plugins/. &&\
     rm -r tipi4icy-jars jars.zip &&\
