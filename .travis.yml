@@ -58,6 +58,7 @@ after_success:
 - git push --force https://${GH_TOKEN}@github.com/FerreolS/${PROJECT} gh-pages
 - cd ..
 
+- cp -r docker jar/.
 - cd jar
 - git add *
 - git commit -a -m "Jar update"
