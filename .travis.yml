@@ -39,7 +39,7 @@ before_script:
 - cd ..
 - rm -rf jar
 - git clone https://github.com/FerreolS/${PROJECT} jar
-- cd doc
+- cd jar
 - git symbolic-ref HEAD refs/heads/jars
 - rm .git/index
 - git clean -fdx
