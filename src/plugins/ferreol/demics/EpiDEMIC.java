@@ -872,6 +872,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 parseCmdLine();
             }
             showIteration.setValue(false);
+            dataChanged();
         }
         long startTime = System.currentTimeMillis();
         launch(true);
