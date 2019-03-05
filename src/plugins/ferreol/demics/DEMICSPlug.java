@@ -177,6 +177,8 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
                 throwError("Input data must be 3D");
                 return;
             }
+            // setting restart value to the current sequence
+            restart.setValue(dataSeq);
             updatePaddedSize();
             updateOutputSize();
             updateImageSize();

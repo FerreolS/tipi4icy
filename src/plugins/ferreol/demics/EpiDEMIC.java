@@ -297,8 +297,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                     }
-                    // setting restart value to the current sequence
-                    restart.setValue(newValue);
                 }else{
                     startDec.setEnabled(false);
                     startBlind.setEnabled(false);
@@ -1231,7 +1229,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         }
 
         Sequence restartSeq = restart.getValue();
-        if (restart.getValue() != null && restartSeq != null){
+        if (  restartSeq != null){
             objArray =  sequenceToArray(restartSeq, channelRestart.getValue());
             if(debug){
                 System.out.println("restart seq:" +restartSeq.getName());
