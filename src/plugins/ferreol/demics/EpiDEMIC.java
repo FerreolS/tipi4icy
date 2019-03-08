@@ -987,7 +987,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     enableVars(true);
                     restart.setValue(cursequence);
                     channelRestart.setValue(0);
-                    ni.setValue(pupil.getNi());
                     if (isHeadLess()) {
                         if(outputHeadlessImage==null){
                             outputHeadlessImage = new EzVarSequence("Output Image");
