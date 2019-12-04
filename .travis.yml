@@ -6,7 +6,7 @@ before_script:
 - git config --global user.email "ferreol.soulez@univ-lyon1.fr"
 - git config --global user.name "ferreolS"
 # First icy and dependencies
-- wget https://github.com/Icy-imaging/Icy-App/archive/release.zip && release.zip -d icy && rm release.zip
+- wget https://github.com/Icy-imaging/Icy-App/archive/release.zip && unzip release.zip -d icy && rm release.zip
 - wget https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip 
 - unzip jar.zip 
 - mv IcyHLPluginInstaller-jar/IcyHLPluginInstaller.jar icy/plugins/. 
