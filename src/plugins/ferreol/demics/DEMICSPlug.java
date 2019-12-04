@@ -132,12 +132,18 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             // A map of weights is provided.
             if ((seq = weights.getValue()) != null) {
                 wgtArray =  sequenceToArray(seq);
+                if (!wgtArray.equals(datArray)){
+                    throwError("Weight map must have the same size than the data");
+                }
                 wd.setWeights(wgtArray);
             }
         } else if (weightsMethod.getValue() == weightOptions[2]) {
             // A variance map is provided. FIXME: check shape and values.
             if ((seq = weights.getValue()) != null) {
                 ShapedArray varArray =  sequenceToArray(seq);
+                if (!varArray.equals(datArray)){
+                    throwError("Variance map must have the same size than the data");
+                }
                 wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
                 wd.setWeights(wgtArray);
             }
@@ -156,6 +162,9 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         }*/
         if (badArray != null) {
             // Account for bad data.
+            if (!badArray.equals(datArray)){
+                throwError("Bad data map must have the same size than the data");
+            }
             wd.markBadData(badArray);
         }
         return wd.getWeights().asShapedArray();
