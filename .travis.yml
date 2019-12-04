@@ -9,7 +9,7 @@ before_script:
 - wget -nv https://github.com/Icy-imaging/Icy-App/archive/release.zip && unzip release.zip && mv Icy-App-release icy && rm release.zip
 - wget -nv https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip && unzip jar.zip && mv IcyHLPluginInstaller-jar/IcyHLPluginInstaller.jar icy/plugins/. 
 - cd icy 
-- java -jar icy.jar -hl -x plugins.ferreol.icyhlplugininstaller.IcyHLPluginInstaller plugins.adufour.ezplug.EzPlug 
+- java -jar icy.jar -hl -x plugins.ferreol.icyhlplugininstaller.IcyHLPluginInstaller plugins.adufour.blocks.Blocks
 - cd ..
 - mkdir lib
 - mkdir bin
