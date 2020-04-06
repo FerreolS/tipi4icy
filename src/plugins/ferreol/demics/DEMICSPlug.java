@@ -25,8 +25,6 @@ import icy.sequence.Sequence;
 import icy.util.OMEUtil;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
-import microTiPi.microscopy.MicroscopeMetadata;
-//import microTiPi.microscopy.MicroscopeMetadata;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.cost.WeightedData;
@@ -89,7 +87,6 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected Sequence cursequence; // Sequence containing the current solution
     protected Shape dataShape;
     protected ShapedArray wgtArray, dataArray, psfArray, objArray;
-    //  protected boolean run = true;
 
 
     protected EzVarText       weightsMethod;  // Combobox for variance estimation

@@ -289,7 +289,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 }
                 if(dataSeq!=null){
                     startBlind.setEnabled(true);
-                    meta = getMetaData(dataSeq);
                     if (meta.dx!=meta.dy) {
                         startDec.setEnabled(false);
                         startBlind.setEnabled(false);

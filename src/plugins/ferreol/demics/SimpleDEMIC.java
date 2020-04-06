@@ -94,7 +94,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     static boolean debug =false;
 
     private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
-    //    private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
     private EzVarChannel channelpsf;
     private EzGroup ezPaddingGroup;
@@ -456,25 +455,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             saveParameters(pathName);
         }
     }
-
-
-
-    //    @Override
-    //    protected void updateOutputSize() {
-    //
-    //        String text;
-    //        if (Nz==1){
-    //            text= Nx+"x"+Ny;
-    //            scale.setValue(scaleDef[1]);
-    //        }else{
-    //            scale.setValue(scaleDef[2]);
-    //            text= Nx+"x"+Ny+"x"+Nz;
-    //        }
-    //        outputSize.setValue(text);
-    //        if((1.0*Nx*Ny*Nz)>Math.pow(2, 31)){
-    //            throwError("Padded image is too large (>2^31)");
-    //        }
-    //    }
 
 
 
