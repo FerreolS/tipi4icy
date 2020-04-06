@@ -37,10 +37,8 @@ import icy.plugin.PluginUpdater;
 import icy.sequence.Sequence;
 import icy.system.thread.ThreadUtil;
 import icy.util.StringUtil;
-import loci.formats.ome.OMEXMLMetadata;
 import microTiPi.epifluorescence.WideFieldModel;
 import microTiPi.microUtils.BlindDeconvJob;
-import microTiPi.microscopy.MicroscopeMetadata;
 import microTiPi.microscopy.PSF_Estimation;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
@@ -88,8 +86,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     /** data tab: **/
     private EzPanel         dataPanel;      // data tab
     private EzButton        saveMetaData, showPSF;
-
-    protected MicroscopeMetadata meta = null; // metadata of the data
+    private EzVarDouble     dxy_nm;
 
     /** weighting tab: **/
     private EzGroup         ezWeightingGroup, ezPadGroup;
@@ -284,11 +281,22 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     System.out.println("Seq ch..."+newValue);
                 }
                 dataChanged() ;
+                if (sizeZ == 1) {
+                    startDec.setEnabled(false);
+                    startBlind.setEnabled(false);
+                    throwError("Input data must be 3D");
+                    return;
+                }
                 if(dataSeq!=null){
-                    startDec.setEnabled(true);
                     startBlind.setEnabled(true);
                     meta = getMetaData(dataSeq);
-                    dxy_nm.setValue(    meta.dxy);
+                    if (meta.dx!=meta.dy) {
+                        startDec.setEnabled(false);
+                        startBlind.setEnabled(false);
+                        throwError("Input data must have the same scale in X and Y");
+                        return;
+                    }
+                    dxy_nm.setValue(    meta.dx);
                     dz_nm.setValue(     meta.dz);
                     scale.setValue(new double[]{1.0 ,1.0, dxy_nm.getValue()/ dz_nm.getValue() } );
                     na.setValue(     meta.na);
@@ -337,6 +345,10 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         dxy_nm = new EzVarDouble("dxy(nm):",64.5,0., Double.MAX_VALUE,1.);
         dxy_nm.addVarChangeListener(metaActionListener);
+        dx_nm = new EzVarDouble("dx(nm):",64.5,0., Double.MAX_VALUE,1.);
+        dx_nm.addVarChangeListener(metaActionListener);
+        dy_nm = new EzVarDouble("dy(nm):",64.5,0., Double.MAX_VALUE,1.);
+        dy_nm.addVarChangeListener(metaActionListener);
         dz_nm = new EzVarDouble("dz(nm):",128.,0., Double.MAX_VALUE,1.);
         dz_nm.addVarChangeListener(metaActionListener);
 
@@ -1250,10 +1262,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             wgtArray = createWeights(dataArray.toDouble(),badArray).toDouble();
         }
 
-        if (scale.getValue().length !=3){
-            throwError("Pixel scale must have 3 elements");
-            return;
-        }
 
         if(cursequence==null){
             cursequence = new Sequence("Current Iterate");
@@ -1432,40 +1440,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         cursequence =null;
         pupil=null;
         deconvolver = null;
-    }
-
-    /**
-     * Here we get the informations given by the users but not all.
-     * In fact we trust only a few data that we know that are given by Icy.
-     * Else we are trying to keep them for the next run.
-     *
-     * Remember: if users may lie, they will !
-     *
-     * @param seq
-     * @return
-     */
-    protected MicroscopeMetadata getMetaData(Sequence seq){ //FIXME Should be elsewhere
-        OMEXMLMetadata metDat = seq.getMetadata();
-        if (meta == null) {
-            meta = new MicroscopeMetadata();
-            if (metDat.getInstrumentCount() > 0) {
-                try {
-                    meta.na      = metDat.getObjectiveLensNA(0, 0);
-                    //meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
-                } catch(Exception e){
-                    System.out.println("Failed to get some metadatas, will use default values for na, lambda");
-                }
-            }
-        }
-        //If no instrument found, at least we have the right image size
-        meta.nxy     = seq.getSizeX(); //We suppose X and Y equal
-        meta.nz      = seq.getSizeZ();
-        meta.dxy     = seq.getPixelSizeX()*1E3;
-        meta.dz      = seq.getPixelSizeZ()*1E3;
-        meta.na      = na.getValue();
-        meta.lambda  = lambda.getValue();
-        meta.ni      = ni.getValue();
-        return meta;
     }
 
 }

@@ -94,7 +94,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     static boolean debug =false;
 
     private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
-    private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
+    //    private static double[][] scaleDef =new double[][] {{1.0},{1.0 ,1.0},{1.0 ,1.0, 1.0},{1.0 ,1.0, 1.0,1.0}};
 
     private EzVarChannel channelpsf;
     private EzGroup ezPaddingGroup;
@@ -188,35 +188,9 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                 if (debug) {
                     System.out.println("Seq ch..."+data.getValue());
                 }
+                dataChanged() ;
+                updatePSFSize();
 
-                dataSize.setVisible(false);
-                outputSize.setVisible(false);
-
-                Sequence seq = data.getValue();
-                if (seq != null || (seq != null && seq.isEmpty())) {
-
-
-                    sizeX =  newValue.getSizeX();
-                    sizeY = newValue.getSizeY();
-                    sizeZ = newValue.getSizeZ();
-
-
-                    dataSize.setVisible(true);
-                    outputSize.setVisible(true);
-
-                    updatePSFSize();
-                    updateImageSize();
-
-                    dataShape = new Shape(sizeX, sizeY, sizeZ);
-
-                    if (debug) {
-                        System.out.println("Seq changed:" + sizeX + "  "+ Nx);
-                    }
-                    // setting restart value to the current sequence
-                    restart.setValue(newValue);
-                    channelRestart.setValue(channel.getValue());
-
-                }
             }
 
         });
@@ -341,7 +315,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             showIteration.setValue(false);
         }
 
-        scale = new EzVarDoubleArrayNative("Aspect ratio of a voxel", scaleDef, 2,true);
+        scale = new EzVarDoubleArrayNative("Aspect ratio of a voxel",  new double[][] { {1.0 ,1.0, 1.0} },true);
         ezDeconvolutionGroup2 = new EzGroup("More  parameters",epsilon,scale,positivity,singlePrecision);
         ezDeconvolutionGroup2.setFoldedState(true);
         ezDeconvolutionGroup = new EzGroup("Deconvolution parameters",logmu,mu,nbIterDeconv,ezDeconvolutionGroup2);
@@ -485,22 +459,22 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
 
 
-    @Override
-    protected void updateOutputSize() {
-
-        String text;
-        if (Nz==1){
-            text= Nx+"x"+Ny;
-            scale.setValue(scaleDef[1]);
-        }else{
-            scale.setValue(scaleDef[2]);
-            text= Nx+"x"+Ny+"x"+Nz;
-        }
-        outputSize.setValue(text);
-        if((1.0*Nx*Ny*Nz)>Math.pow(2, 31)){
-            throwError("Padded image is too large (>2^31)");
-        }
-    }
+    //    @Override
+    //    protected void updateOutputSize() {
+    //
+    //        String text;
+    //        if (Nz==1){
+    //            text= Nx+"x"+Ny;
+    //            scale.setValue(scaleDef[1]);
+    //        }else{
+    //            scale.setValue(scaleDef[2]);
+    //            text= Nx+"x"+Ny+"x"+Nz;
+    //        }
+    //        outputSize.setValue(text);
+    //        if((1.0*Nx*Ny*Nz)>Math.pow(2, 31)){
+    //            throwError("Padded image is too large (>2^31)");
+    //        }
+    //    }
 
 
 

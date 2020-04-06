@@ -23,7 +23,9 @@ import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
 import icy.util.OMEUtil;
+import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
+import microTiPi.microscopy.MicroscopeMetadata;
 //import microTiPi.microscopy.MicroscopeMetadata;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
@@ -54,6 +56,8 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected EzVarSequence   data;           // data
     protected EzVarChannel    channel;        // data channel
 
+    protected MicroscopeMetadata meta = null; // metadata of the data
+
 
     protected EzVarDouble     logmu, mu;      // deconvolution hyper parameters; mu = 10^(logmu)
     protected EzVarSequence   restart;        // starting point
@@ -65,8 +69,8 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected EzVarText       dataSize;       //
     protected EzVarText       outputSize;     // size of the object after padding
     // optical parameters
-    protected EzVarDouble     dxy_nm, dz_nm;  //  pixels size in (x,y) and z
-    protected EzVarDouble     na;             //  numerical aperture
+    protected EzVarDouble     dy_nm,dx_nm, dz_nm;  //  pixels size in (x,y) and z
+    protected EzVarDouble     na  ;             //  numerical aperture
     protected EzVarDouble     lambda;         //  wavelength
     protected EzVarDouble     ni;             //  refractive index of the immersion index
 
@@ -177,21 +181,30 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      *
      */
     protected void dataChanged() {
+        dataSize.setVisible(false);
+        outputSize.setVisible(false);
         dataSeq = data.getValue();
         if(dataSeq!=null){
             sizeX = dataSeq.getSizeX();
             sizeY = dataSeq.getSizeY();
             sizeZ = dataSeq.getSizeZ();
-            if (sizeZ == 1) {
-                throwError("Input data must be 3D");
-                return;
-            }
             // setting restart value to the current sequence
             restart.setValue(dataSeq);
+            channelRestart.setValue(channel.getValue());
             updatePaddedSize();
             updateOutputSize();
             updateImageSize();
             dataShape = new Shape(sizeX, sizeY, sizeZ);
+            dataSize.setVisible(true);
+            outputSize.setVisible(true);
+
+            startDec.setEnabled(true);
+
+            meta = getMetaData(dataSeq);
+            dx_nm.setValue(    meta.dx);
+            dy_nm.setValue(    meta.dy);
+            dz_nm.setValue(     meta.dz);
+            scale.setValue(new double[]{1.0 , dx_nm.getValue()/ dy_nm.getValue(), dx_nm.getValue()/ dz_nm.getValue() } );
         }
 
     }
@@ -280,8 +293,8 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         Sequence seq = data.getValue();
         if (seq != null) {
             ome.xml.meta.OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
-            newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
-            newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dxy_nm.getValue()*1E-3), 0);
+            newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dx_nm.getValue()*1E-3), 0);
+            newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dy_nm.getValue()*1E-3), 0);
             newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
             seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
         } else {
@@ -295,7 +308,13 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      * throwError if the number of pixel is to high to indexed with int
      */
     protected void updateOutputSize() {
-        String text = Nx+"x"+Ny+"x"+Nz;
+
+        String text;
+        if (Nz==1){
+            text= Nx+"x"+Ny;
+        }else{
+            text= Nx+"x"+Ny+"x"+Nz;
+        }
         outputSize.setValue(text);
         if((1.0*Nx*Ny*Nz)>Math.pow(2, 30)){
             throwError("Padded image is too large (>2^30)");
@@ -329,6 +348,47 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         }
     }
 
+
+    /**
+     * Here we get the informations given by the users but not all.
+     * In fact we trust only a few data that we know that are given by Icy.
+     * Else we are trying to keep them for the next run.
+     *
+     * Remember: if users may lie, they will !
+     *
+     * @param seq
+     * @return
+     */
+    protected MicroscopeMetadata getMetaData(Sequence seq){ //FIXME Should be elsewhere
+        OMEXMLMetadata metDat = seq.getMetadata();
+        if (meta == null) {
+            meta = new MicroscopeMetadata();
+        }
+        if (metDat.getInstrumentCount() > 0) {
+            try {
+                meta.na      = metDat.getObjectiveLensNA(0, 0);
+                //meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
+            } catch(Exception e){
+                System.out.println("Failed to get some metadatas, will use default values for na, lambda");
+            }
+        }
+
+        //If no instrument found, at least we have the right image size
+        meta.nz      = seq.getSizeZ();
+        meta.dx     = seq.getPixelSizeX()*1E3;
+        meta.dy     = seq.getPixelSizeY()*1E3;
+        meta.dz      = seq.getPixelSizeZ()*1E3;
+        if (na !=null) {
+            meta.na      = na.getValue();
+        }
+        if (lambda !=null) {
+            meta.lambda  = lambda.getValue();
+        }
+        if (ni !=null) {
+            meta.ni      = ni.getValue();
+        }
+        return meta;
+    }
 
     /**
      * print error message
