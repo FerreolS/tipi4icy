@@ -201,9 +201,12 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             dx_nm.setValue(    meta.dx);
             dy_nm.setValue(    meta.dy);
             dz_nm.setValue(     meta.dz);
-            scale.setValue(new double[]{1.0 , dx_nm.getValue()/ dy_nm.getValue(), dx_nm.getValue()/ dz_nm.getValue() } );
+            if (sizeZ==1) {
+                scale.setValue(new double[]{1.0 , dx_nm.getValue()/ dy_nm.getValue()} );
+            }else {
+                scale.setValue(new double[]{1.0 , dx_nm.getValue()/ dy_nm.getValue(), dx_nm.getValue()/ dz_nm.getValue() } );
+            }
         }
-
     }
 
 

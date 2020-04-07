@@ -18,7 +18,8 @@ package plugins.mitiv.io;
 
 import mitiv.array.ArrayUtils;
 import mitiv.base.Shape;
-import mitiv.jobs.DeconvolutionJob;
+import mitiv.invpb.Deconvolution;
+import mitiv.invpb.SmoothInverseProblem;
 import mitiv.utils.Imager;
 import mitiv.utils.TiPiHook;
 
@@ -54,13 +55,13 @@ public class DeconvHook implements TiPiHook{
     public void run(Object caller, int iter) {
         String titlet;
         if(title==null)
-            titlet = "Current mu="+((DeconvolutionJob) caller).solver.getRegularizationLevel() +"it:"+((DeconvolutionJob) caller).solver.getIterations();
+            titlet = "Current mu="+((SmoothInverseProblem) caller).getRegularizationLevel() +"it:"+((SmoothInverseProblem) caller).getIterations();
         else
             titlet = title;
-        curImager.show(ArrayUtils.crop(((DeconvolutionJob) caller).solver.getSolution(),outShape),titlet);
+        curImager.show(ArrayUtils.crop(((Deconvolution) caller).getSolution(),outShape),titlet);
 
         if (debug){
-            System.out.println("Cost "+((DeconvolutionJob) caller).solver.getCost() );
+            System.out.println("Cost "+((SmoothInverseProblem) caller).getCost() );
         }
     }
 

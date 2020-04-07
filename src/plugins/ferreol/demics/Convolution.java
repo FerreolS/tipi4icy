@@ -103,7 +103,7 @@ public class Convolution extends EzPlug  implements Block, EzStoppable,PluginBun
         DoubleShapedVector xVector = space.create(imgArray);
 
         DoubleShapedVector y = space.create();
-        mitiv.deconv.Convolution        H = mitiv.deconv.Convolution.build(space);
+        mitiv.conv.Convolution        H = mitiv.conv.Convolution.build(space);
         H.setPSF(psfArray);
         H.apply( y,xVector);
 

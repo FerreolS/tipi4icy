@@ -46,7 +46,7 @@ import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.mapping.DoubleFunction;
-import mitiv.jobs.DeconvolutionJob;
+import mitiv.jobs.EdgePreservingDeconvolutionJob;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
@@ -130,7 +130,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     // Global solvers
     private PSF_Estimation psfEstimation;
-    private DeconvolutionJob deconvolver ;
+    private EdgePreservingDeconvolutionJob deconvolver ;
 
 
     // Main arrays for the psf estimation
@@ -1275,7 +1275,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         DeconvHook dHook = new DeconvHook(curImager, dataShape,null, debug);
         DeconvHook dHookfinal = new DeconvHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
-        deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
+        deconvolver = new EdgePreservingDeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
 
     }
 

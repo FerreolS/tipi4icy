@@ -40,7 +40,14 @@ import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
+import mitiv.base.Traits;
+import mitiv.conv.WeightedConvolutionCost;
+import mitiv.cost.DifferentiableCostFunction;
+import mitiv.cost.HyperbolicTotalVariation;
 import mitiv.jobs.DeconvolutionJob;
+import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import mitiv.linalg.shaped.FloatShapedVectorSpace;
+import mitiv.linalg.shaped.ShapedVectorSpace;
 import mitiv.utils.FFTUtils;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
@@ -77,10 +84,10 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
     private EzVarInteger    paddingSizeX,paddingSizeY;
 
-
     /** deconvolution tab: **/
     private EzVarDouble  epsilon;
     private EzVarBoolean  showIteration;
+    private EzVarBoolean  normalizePSF;
 
     private EzButton saveParam, loadParam;
     /** headless mode: **/
@@ -104,6 +111,9 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     private DeconvolutionJob deconvolver;
 
     private ShapedArray badArray=null;
+
+    private ShapedVectorSpace dataSpace, objectSpace;
+
     /*********************************/
     /**      Initialization         **/
     /*********************************/
@@ -137,6 +147,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         channel = new EzVarChannel("Data channel:", data.getVariable(), false);
         psf = new EzVarSequence("PSF:");
         channelpsf = new EzVarChannel("PSF channel :", psf.getVariable(), false);
+        normalizePSF = new EzVarBoolean("Normalize PSF (sum=1):", true);
         restart = new EzVarSequence("Starting point:");
         restart.setNoSequenceSelection();
         channelRestart = new EzVarChannel("Initialization channel :", restart.getVariable(), false);
@@ -145,6 +156,9 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         paddingSizeX = new EzVarInteger("padding x:",0, Integer.MAX_VALUE,1);
         paddingSizeY = new EzVarInteger("padding y:",0, Integer.MAX_VALUE,1);
         paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
+        dx_nm = new EzVarDouble("dx(nm):",64.5,0., Double.MAX_VALUE,1.);
+        dy_nm = new EzVarDouble("dy(nm):",64.5,0., Double.MAX_VALUE,1.);
+        dz_nm = new EzVarDouble("dz(nm):",64.5,0., Double.MAX_VALUE,1.);
 
         dataSize.setVisible(false);
         outputSize.setVisible(false);
@@ -410,6 +424,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         addEzComponent(channel);
         addEzComponent(psf);
         addEzComponent(channelpsf);
+        addEzComponent(normalizePSF);
         addEzComponent(restart);
         addEzComponent(channelRestart);
         addEzComponent(dataSize);
@@ -477,12 +492,12 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     }
 
     protected void updatePSFSize() {
-        paddingSizeX.setValue(psfSizeX);
-        paddingSizeY.setValue(psfSizeY);
+        paddingSizeX.setValue(Math.max(psfSizeX/10,10));
+        paddingSizeY.setValue(Math.max(psfSizeY/10,10));
         if( (psfSizeZ==1))
             paddingSizeZ.setValue(  0);
         else
-            paddingSizeZ.setValue(  psfSizeZ);
+            paddingSizeZ.setValue(  Math.max(psfSizeZ/10,10));
 
         updatePaddedSize();
         if(debug){
@@ -593,9 +608,18 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
             DeconvHook dHook = new DeconvHook(curImager, dataShape,null, debug);
             DeconvHook dHookfinal = new DeconvHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
-            deconvolver = new DeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
+            // deconvolver = new EdgePreservingDeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
 
+            buildVectorSpaces();
 
+            DifferentiableCostFunction fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+            WeightedConvolutionCost fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
+            fdata.setData(dataArray);
+            fdata.setWeights(wgtArray);
+            fdata.setPSF(psfArray, normalizePSF.getValue());
+            deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivity.getValue(),nbIterDeconv.getValue(),  dHook,  dHookfinal);
+
+            objArray = ArrayUtils.extract(objArray, outputShape, 0.); //Padding to the right size
             objArray = deconvolver.deconv(objArray);
 
 
@@ -643,6 +667,37 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
 
 
+    /**
+     *
+     */
+    private void buildVectorSpaces() {
+        /* Determine the floating-point type for all vectors. */
+        int type;
+        if (singlePrecision.getValue()) {
+            type = Traits.FLOAT;
+        } else if (dataArray.getType() == Traits.DOUBLE ||
+                (psfArray != null && psfArray.getType() == Traits.DOUBLE) ||
+                (wgtArray != null && wgtArray.getType() == Traits.DOUBLE)) {
+            type = Traits.DOUBLE;
+        } else {
+            type = Traits.FLOAT;
+        }
+        /* Build vector spaces. */
+        if (type == Traits.FLOAT) {
+            if (dataSpace==null)
+                dataSpace = new FloatShapedVectorSpace(dataShape);
+            if (objectSpace==null)
+                objectSpace = new FloatShapedVectorSpace(outputShape);
+        } else {
+            if (dataSpace==null)
+                dataSpace = new DoubleShapedVectorSpace(dataShape);
+            if (objectSpace==null)
+                objectSpace = new DoubleShapedVectorSpace(outputShape);
+        }
+    }
+
+
+
     //If the user call the stop button
     @Override
     public void stopExecution() {
@@ -657,7 +712,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         super.setDefaultValue();
         paddingSizeX.setValue(10);
         paddingSizeY.setValue(10);
-
+        paddingSizeZ.setValue(10);
     }
 
     //The input variable for the protocol
