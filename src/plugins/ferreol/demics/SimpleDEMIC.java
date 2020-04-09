@@ -477,12 +477,12 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
     @Override
     protected void updatePaddedSize() {
 
-        Nx = FFTUtils.bestDimension(sizeX + paddingSizeX.getValue());
-        Ny = FFTUtils.bestDimension(sizeY + paddingSizeY.getValue());
+        Nx = FFTUtils.bestDimension(Math.max(psfSizeX, sizeX + paddingSizeX.getValue()));
+        Ny = FFTUtils.bestDimension(Math.max(psfSizeY,sizeY + paddingSizeY.getValue()));
         if ((Nz==1)&&(paddingSizeZ.getValue()==0)){
             outputShape = new Shape(Nx, Ny);
         }else{
-            Nz= FFTUtils.bestDimension(sizeZ + paddingSizeZ.getValue());
+            Nz= FFTUtils.bestDimension(Math.max(psfSizeZ,sizeZ + paddingSizeZ.getValue()));
             outputShape = new Shape(Nx, Ny, Nz);
         }
         updateOutputSize();
@@ -684,15 +684,11 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         }
         /* Build vector spaces. */
         if (type == Traits.FLOAT) {
-            if (dataSpace==null)
-                dataSpace = new FloatShapedVectorSpace(dataShape);
-            if (objectSpace==null)
-                objectSpace = new FloatShapedVectorSpace(outputShape);
+            dataSpace = new FloatShapedVectorSpace(dataShape);
+            objectSpace = new FloatShapedVectorSpace(outputShape);
         } else {
-            if (dataSpace==null)
-                dataSpace = new DoubleShapedVectorSpace(dataShape);
-            if (objectSpace==null)
-                objectSpace = new DoubleShapedVectorSpace(outputShape);
+            dataSpace = new DoubleShapedVectorSpace(dataShape);
+            objectSpace = new DoubleShapedVectorSpace(outputShape);
         }
     }
 
