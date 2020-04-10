@@ -26,21 +26,25 @@
 package plugins.ferreol.demics;
 
 
+import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
+
+import icy.gui.frame.progress.FailedAnnounceFrame;
 import icy.plugin.interface_.PluginBundled;
 import icy.sequence.Sequence;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
-import mitiv.linalg.shaped.DoubleShapedVector;
+import mitiv.base.Traits;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import mitiv.linalg.shaped.FloatShapedVectorSpace;
+import mitiv.linalg.shaped.ShapedVector;
+import mitiv.linalg.shaped.ShapedVectorSpace;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
+import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarChannel;
-import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarSequence;
-import plugins.adufour.ezplug.EzVarText;
-import plugins.mitiv.io.Icy2TiPi;
 import plugins.mitiv.io.IcyImager;
 
 /**
@@ -50,29 +54,39 @@ import plugins.mitiv.io.IcyImager;
  */
 public class Convolution extends EzPlug  implements Block, EzStoppable,PluginBundled {
 
-    protected EzVarSequence image;
-    protected EzVarChannel    imagechannel;        // data channel
     protected EzVarSequence psf;
     protected EzVarChannel    psfchannel;        // data channel
 
-    protected EzVarText       dataSize;       //
-    protected EzVarText       outputSize;     // size of the object after padding
-    private EzVarInteger    paddingSizeX,paddingSizeY;
-    private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
+    private EzVarBoolean  normalizePSF;
 
-    protected EzVarSequence   outputHeadlessImage=null;
+    protected ShapedArray imgArray, psfArray;
+    protected Sequence   seqPSF;
+    private int vectorSpaceType;
+    private ShapedVectorSpace dataSpace, objectSpace;
+    private EzVarSequence data;
+    private EzVarChannel channel;
+    private EzVarSequence outputHeadlessImage;
+    private Sequence dataSeq;
+    private Shape psfShape;
+    private Shape dataShape;
+
+
 
     @Override
     protected void initialize()
     {
-        image = new EzVarSequence("Image");
-        imagechannel = new EzVarChannel("Data channel:", image.getVariable(), false);
+        data = new EzVarSequence("Image");
+        channel = new EzVarChannel("Data channel:", data.getVariable(), false);
         psf = new EzVarSequence("PSF");
         psfchannel = new EzVarChannel("PSF channel:", psf.getVariable(), false);
-        addEzComponent(image);
-        addEzComponent(imagechannel);
+        normalizePSF = new EzVarBoolean("Normalize PSF (sum=1):", true);
+        addEzComponent(data);
+        addEzComponent(channel);
         addEzComponent(psf);
         addEzComponent(psfchannel);
+        addEzComponent(normalizePSF);
+
+
         if (isHeadLess()) {
             outputHeadlessImage = new EzVarSequence("Output Image");
         }
@@ -82,33 +96,51 @@ public class Convolution extends EzPlug  implements Block, EzStoppable,PluginBun
     protected void execute()
     {
 
-        Sequence seqImg = image.getValue();
-        Sequence seqPSF = psf.getValue();
+        dataSeq = data.getValue();
+        seqPSF = psf.getValue();
 
-        int w = seqImg.getSizeX();
-        int h = seqImg.getSizeY();
-        int d = seqImg.getSizeZ();
-
-        Shape myShape;
-        if (d != 1) {
-            myShape = new Shape(w, h, d);
-        } else {
-            myShape = new Shape(w, h);
+        if (dataSeq == null)
+        {
+            throwError("An image should be given");
+            return;
+        }
+        if (seqPSF == null)
+        {
+            throwError("A psf should be given");
+            return;
         }
 
-        ShapedArray imgArray =   Icy2TiPi.sequenceToArray(seqImg,imagechannel.getValue());
-        ShapedArray psfArray =   Icy2TiPi.sequenceToArray(seqPSF,psfchannel.getValue() );
 
-        DoubleShapedVectorSpace space = new DoubleShapedVectorSpace(myShape);
-        DoubleShapedVector xVector = space.create(imgArray);
+        imgArray =   sequenceToArray(dataSeq,channel.getValue());
+        psfArray =   sequenceToArray(seqPSF,psfchannel.getValue() );
+        dataShape = imgArray.getShape();
+        psfShape = psfArray.getShape();
 
-        DoubleShapedVector y = space.create();
-        mitiv.conv.Convolution        H = mitiv.conv.Convolution.build(space);
-        H.setPSF(psfArray);
-        H.apply( y,xVector);
+        if (imgArray.getType() == Traits.DOUBLE ||
+                (psfArray != null && psfArray.getType() == Traits.DOUBLE) ) {
+            vectorSpaceType = Traits.DOUBLE;
+        } else {
+            vectorSpaceType = Traits.FLOAT;
+        }
+
+        /* Build vector spaces. */
+        if (vectorSpaceType == Traits.FLOAT) {
+            dataSpace = new FloatShapedVectorSpace(dataShape);
+            objectSpace = new FloatShapedVectorSpace(dataShape);
+
+        } else {
+            dataSpace = new DoubleShapedVectorSpace(dataShape);
+            objectSpace = new DoubleShapedVectorSpace(dataShape);
+
+        }
+        mitiv.conv.Convolution H = mitiv.conv.Convolution.build(dataShape,dataSpace,objectSpace);
+        ShapedVector imgVector = dataSpace.create(imgArray);
+        ShapedVector resultVector = objectSpace.create();
+        H.setPSF(psfArray, null, normalizePSF.getValue());
+        H.apply( resultVector ,imgVector);
 
         Sequence seqY = new Sequence();
-        IcyImager.show(y.asShapedArray(),seqY,seqImg.getName()+"*"+seqPSF.getName(),isHeadLess() );
+        IcyImager.show(resultVector.asShapedArray(),seqY,dataSeq.getName()+"*"+seqPSF.getName(),isHeadLess() );
         if (isHeadLess()) {
             if(outputHeadlessImage==null){
                 outputHeadlessImage = new EzVarSequence("Output Image");
@@ -130,8 +162,8 @@ public class Convolution extends EzPlug  implements Block, EzStoppable,PluginBun
     public void declareInput(VarList inputMap) {
         initialize();
         // TODO Auto-generated method stub
-        inputMap.add("image", image.getVariable());
-        inputMap.add("image", imagechannel.getVariable());
+        inputMap.add("image", data.getVariable());
+        inputMap.add("image", channel.getVariable());
         inputMap.add("PSF", psf.getVariable());
         inputMap.add("PSF", psfchannel.getVariable());
 
@@ -156,7 +188,21 @@ public class Convolution extends EzPlug  implements Block, EzStoppable,PluginBun
         return "SimpleDEMIC";
     }
 
+    /**
+     * print error message
+     *
+     * @param s
+     * the error message
+     */
+    protected void throwError(final String s) {
+        if(isHeadLess()){
+            throw new IllegalArgumentException(s);
+        } else {
+            new FailedAnnounceFrame(s);
 
+        }
+
+    }
 
 }
 

@@ -40,14 +40,10 @@ import mitiv.array.ArrayUtils;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
-import mitiv.base.Traits;
 import mitiv.conv.WeightedConvolutionCost;
 import mitiv.cost.DifferentiableCostFunction;
 import mitiv.cost.HyperbolicTotalVariation;
 import mitiv.jobs.DeconvolutionJob;
-import mitiv.linalg.shaped.DoubleShapedVectorSpace;
-import mitiv.linalg.shaped.FloatShapedVectorSpace;
-import mitiv.linalg.shaped.ShapedVectorSpace;
 import mitiv.utils.FFTUtils;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
@@ -112,7 +108,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
     private ShapedArray badArray=null;
 
-    private ShapedVectorSpace dataSpace, objectSpace;
 
     /*********************************/
     /**      Initialization         **/
@@ -660,35 +655,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             }
         } finally {
             startDec.setText("Start Deconvolution");
-        }
-    }
-
-
-
-
-
-    /**
-     *
-     */
-    private void buildVectorSpaces() {
-        /* Determine the floating-point type for all vectors. */
-        int type;
-        if (singlePrecision.getValue()) {
-            type = Traits.FLOAT;
-        } else if (dataArray.getType() == Traits.DOUBLE ||
-                (psfArray != null && psfArray.getType() == Traits.DOUBLE) ||
-                (wgtArray != null && wgtArray.getType() == Traits.DOUBLE)) {
-            type = Traits.DOUBLE;
-        } else {
-            type = Traits.FLOAT;
-        }
-        /* Build vector spaces. */
-        if (type == Traits.FLOAT) {
-            dataSpace = new FloatShapedVectorSpace(dataShape);
-            objectSpace = new FloatShapedVectorSpace(outputShape);
-        } else {
-            dataSpace = new DoubleShapedVectorSpace(dataShape);
-            objectSpace = new DoubleShapedVectorSpace(outputShape);
         }
     }
 

@@ -27,7 +27,13 @@ import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
+import mitiv.base.Traits;
+import mitiv.conv.WeightedConvolutionCost;
+import mitiv.cost.DifferentiableCostFunction;
 import mitiv.cost.WeightedData;
+import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import mitiv.linalg.shaped.FloatShapedVectorSpace;
+import mitiv.linalg.shaped.ShapedVectorSpace;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.WeightFactory;
 import plugins.adufour.blocks.lang.Block;
@@ -101,6 +107,12 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected EzVarSequence   outputHeadlessWght=null;
 
 
+
+    protected ShapedVectorSpace dataSpace, objectSpace;
+    protected  int vectorSpaceType;
+    protected DifferentiableCostFunction fprior;
+    protected WeightedConvolutionCost fdata;
+
     protected String outputPath=null;
 
     /*********************************/
@@ -156,11 +168,6 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             double beta = (sigma/gamma)*(sigma/gamma);
             wd.computeWeightsFromData(alpha, beta);
         }
-        /*     if ((seq = deadPixel.getValue()) != null) {
-            // Account for bad data.
-            ShapedArray badArr =  sequenceToArray(seq);
-            wd.markBadData(badArr);
-        }*/
         if (badArray != null) {
             // Account for bad data.
             if (!badArray.equals(datArray)){
@@ -405,4 +412,30 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         }
 
     }
+
+    /**
+     *
+     */
+    protected void buildVectorSpaces() {
+        /* Determine the floating-point type for all vectors. */
+        if (singlePrecision.getValue()) {
+            vectorSpaceType = Traits.FLOAT;
+        } else if (dataArray.getType() == Traits.DOUBLE ||
+                (psfArray != null && psfArray.getType() == Traits.DOUBLE) ||
+                (wgtArray != null && wgtArray.getType() == Traits.DOUBLE)) {
+            vectorSpaceType = Traits.DOUBLE;
+        } else {
+            vectorSpaceType = Traits.FLOAT;
+        }
+        /* Build vector spaces. */
+        if (vectorSpaceType == Traits.FLOAT) {
+            dataSpace = new FloatShapedVectorSpace(dataShape);
+            objectSpace = new FloatShapedVectorSpace(outputShape);
+        } else {
+            dataSpace = new DoubleShapedVectorSpace(dataShape);
+            objectSpace = new DoubleShapedVectorSpace(outputShape);
+        }
+    }
+
+
 }
