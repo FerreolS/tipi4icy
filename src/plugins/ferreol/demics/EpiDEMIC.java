@@ -46,7 +46,10 @@ import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.mapping.DoubleFunction;
-import mitiv.jobs.EdgePreservingDeconvolutionJob;
+import mitiv.conv.WeightedConvolutionCost;
+import mitiv.cost.DifferentiableCostFunction;
+import mitiv.cost.HyperbolicTotalVariation;
+import mitiv.jobs.DeconvolutionJob;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
@@ -130,7 +133,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     // Global solvers
     private PSF_Estimation psfEstimation;
-    private EdgePreservingDeconvolutionJob deconvolver ;
+    private DeconvolutionJob deconvolver ;
 
 
     // Main arrays for the psf estimation
@@ -957,9 +960,11 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     pupil.setNModulus(nbBeta);
                 }
 
-                preProcessing();
 
                 psfEstimation = new PSF_Estimation(pupil);
+
+                psfArray = ArrayUtils.roll( pupil.getPsf() );
+                preProcessing();
 
                 psfEstimation.setWeight(  ArrayUtils.pad(wgtArray,outputShape));
                 psfEstimation.setData(ArrayUtils.pad(dataArray,outputShape));
@@ -971,7 +976,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
 
                 bdec = new BlindDeconvJob(totalNbOfBlindDecLoop.getValue(), pupil.getParametersFlags(), bMaxIter, psfEstimation ,deconvolver, debug );
-
 
                 objArray = bdec.blindDeconv(objArray);
 
@@ -1275,7 +1279,17 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         DeconvHook dHook = new DeconvHook(curImager, dataShape,null, debug);
         DeconvHook dHookfinal = new DeconvHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
-        deconvolver = new EdgePreservingDeconvolutionJob(dataArray, psfArray, wgtArray, outputShape, mu.getValue(), epsilon.getValue(), scale.getValue(), positivity.getValue(), singlePrecision.getValue(), nbIterDeconv.getValue(), dHook , dHookfinal);
+
+        buildVectorSpaces();
+
+        DifferentiableCostFunction fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+        WeightedConvolutionCost fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
+        fdata.setData(dataArray);
+        fdata.setWeights(wgtArray);
+        fdata.setPSF(psfArray);
+        deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivity.getValue(),nbIterDeconv.getValue(),  dHook,  dHookfinal);
+        objArray = ArrayUtils.extract(objArray, outputShape, 0.); //Padding to the right size
+
 
     }
 
