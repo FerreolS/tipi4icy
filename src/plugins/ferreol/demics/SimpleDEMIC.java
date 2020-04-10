@@ -685,7 +685,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         super.declareInput(inputMap);
         inputMap.add("psf", psf.getVariable());
         inputMap.add("psf channel", channelpsf.getVariable());
-
+        inputMap.add("psf channel",normalizePSF.getVariable());
         inputMap.add("Padding X", paddingSizeX.getVariable());
         inputMap.add("Padding Y", paddingSizeY.getVariable());
         inputMap.add("Padding Z", paddingSizeZ.getVariable());
@@ -704,7 +704,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
     private void parseCmdLine(){
         String[] args = Icy.getCommandLinePluginArgs();
-
+        normalizePSF.setValue(false); //default for cmd line
         loadParameters( new File(args[0]));
         for (int i = 1; i < args.length; i++) {
             switch (args[i]) {
@@ -786,11 +786,15 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
                     weights.setValue(Loader.loadSequence(args[i+1], 0, false));
                     i++;
                     break;
-
+                case "-n":
+                    normalizePSF.setValue(true);
                 default:
+                    System.out.println("Usage: ");
+                    System.out.println("java -jar -Xms24G icy.jar -hl -x plugins.ferreol.demics.SimpleDEMIC ParametersFile.xml -i DataFile   -c CHANNELNUMBER   -p PSFFile  -c CHANNELNUMBER  -r InitialGuessFile -c CHANNELNUMBER  -o DeconvolvedOutputFile");
                     System.out.println("Wrong command line");
                     System.out.println("-i input data file");
                     System.out.println("-p psf file");
+                    System.out.println("-n normalize PSF");
                     System.out.println("-r restart file");
                     System.out.println("-o deconvolved output file");
                     System.out.println("-badpix bad pixels file");
