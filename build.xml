@@ -4,8 +4,8 @@
     <property name="tipi4icy.location" value="../tipi4icy"/>
     <property name="debug" value="true"/>
     <property name="debuglevel" value="source,lines,vars"/>
-    <property name="target" value="1.7"/>
-    <property name="source" value="1.7"/>
+    <property name="target" value="1.8"/>
+    <property name="source" value="1.8"/>
     <property name="source.dir" location="src"/>
     <property name="doc.dir" location="doc"/>
     <property name="jar.dir" location="jar"/>
