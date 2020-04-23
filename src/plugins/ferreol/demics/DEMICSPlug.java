@@ -25,6 +25,7 @@ import icy.sequence.Sequence;
 import icy.util.OMEUtil;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
+import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.Traits;
@@ -136,7 +137,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      * @return The weights.
      */
 
-    protected ShapedArray createWeights(ShapedArray datArray, ShapedArray badArray) {
+    protected ShapedArray createWeights(ShapedArray datArray, ShapedArray badArray, boolean normalize) {
         ShapedArray wgtArray = null;
         Sequence seq;
         WeightedData wd = new WeightedData(datArray);
@@ -175,9 +176,20 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             }
             wd.markBadData(badArray);
         }
-        return wd.getWeights().asShapedArray();
+        if (normalize) {
+            DoubleArray w = wd.getWeights().asShapedArray().toDouble();
+            w.scale(w.getNumber()/ w.sum());
+            return w;
+        }else {
+            return wd.getWeights().asShapedArray();
+        }
 
     }
+
+    protected ShapedArray createWeights(ShapedArray datArray, ShapedArray badArray) {
+        return createWeights(datArray, badArray, false);
+    }
+
 
     /**
      * Function triggered when the data sequence change.
