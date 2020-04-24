@@ -43,7 +43,6 @@ import microTiPi.microscopy.PSF_Estimation;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
-import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.mapping.DoubleFunction;
 import mitiv.conv.WeightedConvolutionCost;
@@ -87,7 +86,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private EzTabs tabbedPane;              // The interface is composed of several tabs
 
     /** data tab: **/
-    private EzPanel         dataPanel;      // data tab
+    private EzPanel         dataPanel;      // channel tab
     private EzButton        saveMetaData, showPSF;
     private EzVarDouble     dxy_nm;
 
@@ -153,7 +152,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     private BlindDeconvJob bdec;
 
-    private ShapedArray badArray=null;
 
 
 
@@ -241,15 +239,15 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         /****************************************************/
 
         dataPanel = new EzPanel("Step 1: Data");
-        data = new EzVarSequence("Sequence:");
-        channel = new EzVarChannel("Channel:", data.getVariable(), false);
-        dataSize = new EzVarText("Image size:");
-        outputSize = new EzVarText("Output size:");
+        dataEV = new EzVarSequence("Sequence:");
+        channelEV = new EzVarChannel("Channel:", dataEV.getVariable(), false);
+        dataSizeTxt = new EzVarText("Image size:");
+        outputSizeTxt = new EzVarText("Output size:");
         paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
         paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
-        restart = new EzVarSequence("Starting point:");
-        restart.setNoSequenceSelection();
-        channelRestart = new EzVarChannel("Initialization channel :", restart.getVariable(), false);
+        restartEV = new EzVarSequence("Starting point:");
+        restartEV.setNoSequenceSelection();
+        channelRestartEV = new EzVarChannel("Initialization channel :", restartEV.getVariable(), false);
         saveMetaData = new EzButton("Save metadata", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -276,7 +274,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
 
 
-        data.addVarChangeListener(new EzVarListener<Sequence>() {
+        dataEV.addVarChangeListener(new EzVarListener<Sequence>() {
             @Override
             public void variableChanged(EzVar<Sequence> source,
                     Sequence newValue) {
@@ -285,17 +283,17 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 }
                 dataChanged() ;
                 if (sizeZ == 1) {
-                    startDec.setEnabled(false);
+                    startDecButton.setEnabled(false);
                     startBlind.setEnabled(false);
-                    throwError("Input data must be 3D");
+                    throwError("Input channel must be 3D");
                     return;
                 }
                 if(dataSeq!=null){
                     startBlind.setEnabled(true);
                     if (meta.dx!=meta.dy) {
-                        startDec.setEnabled(false);
+                        startDecButton.setEnabled(false);
                         startBlind.setEnabled(false);
-                        throwError("Input data must have the same scale in X and Y");
+                        throwError("Input channel must have the same scale in X and Y");
                         return;
                     }
                     dxy_nm.setValue(    meta.dx);
@@ -308,7 +306,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                     }
                 }else{
-                    startDec.setEnabled(false);
+                    startDecButton.setEnabled(false);
                     startBlind.setEnabled(false);
                 }
 
@@ -316,17 +314,17 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         });
 
-        channel.addVarChangeListener(new EzVarListener<Integer>() {
+        channelEV.addVarChangeListener(new EzVarListener<Integer>() {
             @Override
             public void variableChanged(EzVar<Integer> source, Integer newValue) {
-                channelRestart.setValue(newValue);
+                channelRestartEV.setValue(newValue);
             }
         });
-        restart.addVarChangeListener(new EzVarListener<Sequence>() {
+        restartEV.addVarChangeListener(new EzVarListener<Sequence>() {
             @Override
             public void variableChanged(EzVar<Sequence> source,
                     Sequence newValue) {
-                newValue = restart.getValue();
+                newValue = restartEV.getValue();
                 if(debug){
                     if (newValue != null || (newValue != null && newValue.isEmpty())) {
                         System.out.println("restart changed:"+newValue.getName());
@@ -382,40 +380,40 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         /**                WEIGHTING Group                   **/
         /****************************************************/
         weightsMethod = new EzVarText(      "Weighting:", weightOptions, false);
-        weights = new EzVarSequence(        "Map:");
+        weightsSeq = new EzVarSequence(        "Map:");
         gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
         noise = new EzVarDouble(            "Readout Noise:",10.,0.,Double.MAX_VALUE,0.1);
-        deadPixel = new EzVarSequence(      "Bad data map:");
-        deadPixel.addVarChangeListener(new EzVarListener<Sequence>() {
+        badpixMap = new EzVarSequence(      "Bad channel map:");
+        badpixMap.addVarChangeListener(new EzVarListener<Sequence>() {
 
             @Override
             public void variableChanged(EzVar<Sequence> source, Sequence newValue) {
                 if (newValue!=null){
-                    badArray = sequenceToArray(newValue);
+                    badpixArray = sequenceToArray(newValue);
                 }else{
-                    badArray = null;
+                    badpixArray = null;
                 }
             }
         });
-        weights.setNoSequenceSelection();
+        weightsSeq.setNoSequenceSelection();
         weightsMethod.addVarChangeListener(new EzVarListener<String>() {
 
             @Override
             public void variableChanged(EzVar<String> source, String newValue) {
                 if (StringUtil.equals(weightsMethod.getValue() , weightOptions[0])) { //None
-                    weights.setVisible(false);
+                    weightsSeq.setVisible(false);
                     gain.setVisible(false);
                     noise.setVisible(false);
                 } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[1]) || StringUtil.equals(weightsMethod.getValue() , weightOptions[2])) {  //Personalized map or Variance map
-                    weights.setVisible(true);
+                    weightsSeq.setVisible(true);
                     gain.setVisible(false);
                     noise.setVisible(false);
-                    weights.setNoSequenceSelection();
+                    weightsSeq.setNoSequenceSelection();
                 } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[3])) {  //Computed variance
-                    weights.setVisible(false);
+                    weightsSeq.setVisible(false);
                     gain.setVisible(true);
                     noise.setVisible(true);
-                    weights.setNoSequenceSelection();
+                    weightsSeq.setNoSequenceSelection();
                 } else {
                     throwError("Invalid argument passed to weight method");
                     return;
@@ -424,11 +422,11 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         });
 
 
-        weights.setVisible(false);
+        weightsSeq.setVisible(false);
         gain.setVisible(false);
         noise.setVisible(false);
-        deadPixel.setVisible(true);
-        showWeight = new EzButton("Show weight map", new ActionListener() {
+        badpixMap.setVisible(true);
+        showWeightButton = new EzButton("Show weight map", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 showWeightClicked();
@@ -440,7 +438,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         ezPadGroup = new EzGroup("Padding",paddingSizeXY, paddingSizeZ);
         ezPadGroup.setFoldedState(true);
-        ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weights,gain,noise,deadPixel,showWeight);
+        ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weightsSeq,gain,noise,badpixMap,showWeightButton);
         ezWeightingGroup.setFoldedState(true);
 
         loadFile = new EzVarFile("Load parameters from", "","*.xml");
@@ -465,7 +463,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         epsilon = new EzVarDouble("Threshold level:",1E-2,0.,Double.MAX_VALUE,1.0);
         scale = new EzVarDoubleArrayNative("Aspect ratio of a voxel", new double[][] { {1.0 ,1.0, 1.0} }, true);
         nbIterDeconv = new EzVarInteger("Number of iterations: ",10,0,Integer.MAX_VALUE ,1);
-        positivity = new EzVarBoolean("Enforce nonnegativity:", true);
+        positivityEV = new EzVarBoolean("Enforce nonnegativity:", true);
         singlePrecision = new EzVarBoolean("Compute in single precision:", false);
         singlePrecision.addVarChangeListener(new EzVarListener<Boolean>() {
             @Override
@@ -477,7 +475,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             }
         });
         docDec = new EzLabel("Launch a deconvolution using the current PSF", Color.red);
-        startDec = new EzButton("Start Deconvolution", new ActionListener() {
+        startDecButton = new EzButton("Start Deconvolution", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 launchClicked(false);
@@ -492,7 +490,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         };
         logmu.addVarChangeListener(logmuActionListener);
 
-        showFullObject = new EzButton("Show the full (padded) object", new ActionListener() {
+        showFullObjectButton = new EzButton("Show the full (padded) object", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if(debug){
@@ -500,17 +498,17 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 }
                 Sequence fSeq;
                 fSeq = new Sequence("Deconvolved image");
-                fSeq.copyMetaDataFrom(data.getValue(), false);
+                fSeq.copyMetaDataFrom(dataEV.getValue(), false);
                 if(objArray != null){
-                    IcyImager.show(objArray,fSeq,"Deconvolved "+ data.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess() );
+                    IcyImager.show(objArray,fSeq,"Deconvolved "+ dataEV.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess() );
                 }else {
-                    IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
+                    IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ dataEV.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
                 }
             }
         });
 
 
-        ezDeconvolutionGroup = new EzGroup("Expert  parameters",epsilon,scale,positivity,singlePrecision, showFullObject);
+        ezDeconvolutionGroup = new EzGroup("Expert  parameters",epsilon,scale,positivityEV,singlePrecision, showFullObjectButton);
         ezDeconvolutionGroup.setFoldedState(true);
 
         /****************************************************/
@@ -631,11 +629,11 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 }
                 Sequence fSeq;
                 fSeq = new Sequence("Deconvolved image");
-                fSeq.copyMetaDataFrom(data.getValue(), false);
+                fSeq.copyMetaDataFrom(dataEV.getValue(), false);
                 if(objArray != null){
-                    IcyImager.show(objArray,fSeq,"Deconvolved "+ data.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess());
+                    IcyImager.show(objArray,fSeq,"Deconvolved "+ dataEV.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess());
                 }else {
-                    IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ data.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
+                    IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ dataEV.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
                 }
             }
         });
@@ -673,12 +671,12 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         /****************************************************/
         /**                      ToolTips                  **/
         /****************************************************/
-        data.setToolTipText(ToolTipText.sequenceImage);
-        weights.setToolTipText(ToolTipText.sequenceWeigth);
+        dataEV.setToolTipText(ToolTipText.sequenceImage);
+        weightsSeq.setToolTipText(ToolTipText.sequenceWeigth);
         weightsMethod.setToolTipText(ToolTipText.sequenceWeigth);
-        deadPixel.setToolTipText(ToolTipText.sequencePixel);
+        badpixMap.setToolTipText(ToolTipText.sequencePixel);
 
-        channel.setToolTipText(ToolTipText.textCanal);
+        channelEV.setToolTipText(ToolTipText.textCanal);
 
         dxy_nm.setToolTipText(ToolTipText.doubleDxy);
         dz_nm.setToolTipText(ToolTipText.doubleDz);
@@ -697,20 +695,20 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         nbBetaCoef.setToolTipText(ToolTipText.doubleNbeta);
         totalNbOfBlindDecLoop.setToolTipText(ToolTipText.doubleBDecTotalIteration);
 
-        restart.setToolTipText(ToolTipText.booleanRestart);
-        positivity.setToolTipText(ToolTipText.booleanPositivity);
-        showFullObject.setToolTipText(ToolTipText.booleanCrop);
+        restartEV.setToolTipText(ToolTipText.booleanRestart);
+        positivityEV.setToolTipText(ToolTipText.booleanPositivity);
+        showFullObjectButton.setToolTipText(ToolTipText.booleanCrop);
         showFullObject2.setToolTipText(ToolTipText.booleanCrop);
         debuggingPanel.setToolTipText(ToolTipText.textOutput);
 
 
 
         /**** IMAGE ****/
-        dataPanel.add(data);
-        dataPanel.add(channel);
-        dataPanel.add(dataSize);
+        dataPanel.add(dataEV);
+        dataPanel.add(channelEV);
+        dataPanel.add(dataSizeTxt);
         dataPanel.add(ezPadGroup);
-        dataPanel.add(outputSize);
+        dataPanel.add(outputSizeTxt);
         dataPanel.add(dxy_nm);
         dataPanel.add(dz_nm);
 
@@ -733,12 +731,12 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         deconvPanel.add(logmu);
         deconvPanel.add(mu);
         deconvPanel.add(nbIterDeconv);
-        deconvPanel.add(restart);
-        deconvPanel.add(channelRestart);
+        deconvPanel.add(restartEV);
+        deconvPanel.add(channelRestartEV);
         deconvPanel.add(ezDeconvolutionGroup);
 
         deconvPanel.add(docDec);
-        deconvPanel.add(startDec);
+        deconvPanel.add(startDecButton);
         tabbedPane.add(deconvPanel);
 
         /**** BDec ****/
@@ -803,8 +801,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                             if(debug){
                                 System.out.println("invoke later");
                             }
-                            restart.setValue(cursequence);
-                            channelRestart.setValue(0);
+                            restartEV.setValue(cursequence);
+                            channelRestartEV.setValue(0);
                         }
                     });
                 }
@@ -902,13 +900,13 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private void launch(boolean runBdec) {
         try {
             startBlind.setText("Emergency stop");
-            startDec.setText("Emergency stop");
+            startDecButton.setText("Emergency stop");
             buildpupil();
             if (debug|| isHeadLess()) {
                 System.out.println("-------------IMAGE-------------------");
-                System.out.println("File: "+data.getValue());
-                System.out.println("Canal: "+channel.getValue());
-                System.out.println("image size: "+ dataSize.getValue());
+                System.out.println("File: "+dataEV.getValue());
+                System.out.println("Canal: "+channelEV.getValue());
+                System.out.println("image size: "+ dataSizeTxt.getValue());
                 System.out.println("--------------PSF------------------");
                 System.out.println("dxy: "+dxy_nm.getValue()*1E-9);
                 System.out.println("dz: "+dz_nm.getValue()*1E-9);
@@ -919,19 +917,19 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 System.out.println("ni: "+ni.getValue());
                 System.out.println("--------------Variance------------------");
                 System.out.println("Weights method: "+weightsMethod.getValue());
-                System.out.println("Weights: "+weights.getValue());
+                System.out.println("Weights: "+weightsSeq.getValue());
                 System.out.println("Gain: "+gain.getValue());
                 System.out.println("Noise: "+noise.getValue());
-                System.out.println("deadPix: "+deadPixel.getValue());
+                System.out.println("deadPix: "+badpixMap.getValue());
                 System.out.println("--------------DECONV------------------");
 
                 System.out.println("zeroPad xy: "+paddingSizeXY.getValue());
                 System.out.println("zeroPad z: "+paddingSizeZ.getValue());
                 System.out.println("nbIter: "+nbIterDeconv.getValue());
-                System.out.println("Restart: "+restart.getValue());
-                System.out.println("Positivity: "+positivity.getValue());
+                System.out.println("Restart: "+restartEV.getValue());
+                System.out.println("Positivity: "+positivityEV.getValue());
                 System.out.println("--------------BDEC------------------");
-                System.out.println("output size: "+ outputSize.getValue());
+                System.out.println("output size: "+ outputSizeTxt.getValue());
                 System.out.println("nbIter: "+nbIterDeconv.getValue());
                 System.out.println("Number of total iterations: "+totalNbOfBlindDecLoop.getValue());
                 System.out.println("------------------------------------");
@@ -1005,8 +1003,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 @Override
                 public void run() {
                     enableVars(true);
-                    restart.setValue(cursequence);
-                    channelRestart.setValue(0);
+                    restartEV.setValue(cursequence);
+                    channelRestartEV.setValue(0);
                     if (isHeadLess()) {
                         if(outputHeadlessImage==null){
                             outputHeadlessImage = new EzVarSequence("Output Image");
@@ -1016,7 +1014,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         }
 
                         if (outputHeadlessWght==null) {
-                            outputHeadlessWght = new EzVarSequence("Computed weights");
+                            outputHeadlessWght = new EzVarSequence("Computed weightsSeq");
                         }
 
                         Sequence psfSequence = null;
@@ -1052,7 +1050,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             }
         } finally {
             startBlind.setText("Guess PSF");
-            startDec.setText("Start Deconvolution");
+            startDecButton.setText("Start Deconvolution");
         }
     }
 
@@ -1075,8 +1073,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             dz_nm.setEnabled(flag);
             ni.setEnabled(flag);
 
-            data.setEnabled(flag);
-            channel.setEnabled(flag);
+            dataEV.setEnabled(flag);
+            channelEV.setEnabled(flag);
             paddingSizeXY.setEnabled(flag);
             paddingSizeZ.setEnabled(flag);
 
@@ -1174,9 +1172,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private void showWeightClicked()
     {
         // Preparing parameters and testing input
-        dataSeq = data.getValue();
-        dataArray =  sequenceToArray(dataSeq, channel.getValue()).toDouble();
-        wgtArray = createWeights(dataArray,badArray).toDouble();
+        dataSeq = dataEV.getValue();
+        dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
+        wgtArray = createWeights(dataArray,badpixArray).toDouble();
         IcyImager.show(wgtArray,null,"Weight map",false);
     }
 
@@ -1193,18 +1191,18 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     private void preProcessing(){
         // Preparing parameters and testing input
-        dataSeq = data.getValue();
+        dataSeq = dataEV.getValue();
         if (dataSeq == null)
         {
             throwError("No image/sequence");
             return;
         }
 
-        dataArray =  sequenceToArray(dataSeq, channel.getValue());
+        dataArray =  sequenceToArray(dataSeq, channelEV.getValue());
         dataShape = dataArray.getShape();
-        if (deadPixel.getValue() ==null){
-            badArray = null;
-            if (dataSeq.getChannelMax( channel.getValue())>=( dataSeq.getChannelTypeMax(channel.getValue())-1)){
+        if (badpixMap.getValue() ==null){
+            badpixArray = null;
+            if (dataSeq.getChannelMax( channelEV.getValue())>=( dataSeq.getChannelTypeMax(channelEV.getValue())-1)){
                 class SaturationFunc implements DoubleFunction{
                     double sat;
                     public  SaturationFunc(double sat){
@@ -1221,23 +1219,23 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
                 }
 
-                badArray = dataArray.copy().toDouble();
-                ((DoubleArray) badArray).map(new SaturationFunc(dataSeq.getChannelTypeMax(channel.getValue())));
-                badArray = badArray.toByte();
+                badpixArray = dataArray.copy().toDouble();
+                ((DoubleArray) badpixArray).map(new SaturationFunc(dataSeq.getChannelTypeMax(channelEV.getValue())));
+                badpixArray = badpixArray.toByte();
                 if (!isHeadLess()){
                     new AnnounceFrame("Warning, saturated pixel detected, accounting them as dead pixels", "show", new Runnable() {
                         @Override
                         public void run() {
                             Sequence deadSequence = new Sequence("Saturations map");
                             deadSequence.copyMetaDataFrom(dataSeq, false);
-                            IcyImager.show(badArray, deadSequence, "saturations map", isHeadLess());
+                            IcyImager.show(badpixArray, deadSequence, "saturations map", isHeadLess());
                         }
                     }, 10);
                 }
             }
         }
 
-        dataArray =  sequenceToArray(dataSeq, channel.getValue());
+        dataArray =  sequenceToArray(dataSeq, channelEV.getValue());
         dataShape = dataArray.getShape();
 
 
@@ -1247,9 +1245,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             cursequence.copyMetaDataFrom(dataSeq, false);
         }
 
-        Sequence restartSeq = restart.getValue();
+        Sequence restartSeq = restartEV.getValue();
         if (  restartSeq != null){
-            objArray =  sequenceToArray(restartSeq, channelRestart.getValue());
+            objArray =  sequenceToArray(restartSeq, channelRestartEV.getValue());
             if(debug){
                 System.out.println("restart seq:" +restartSeq.getName());
             }
@@ -1265,15 +1263,15 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         }
 
         if(singlePrecision.getValue()){
-            wgtArray = createWeights(dataArray.toFloat(),badArray).toFloat();
+            wgtArray = createWeights(dataArray.toFloat(),badpixArray).toFloat();
         }else{
-            wgtArray = createWeights(dataArray.toDouble(),badArray).toDouble();
+            wgtArray = createWeights(dataArray.toDouble(),badpixArray).toDouble();
         }
 
 
         if(cursequence==null){
             cursequence = new Sequence("Current Iterate");
-            cursequence.copyMetaDataFrom(data.getValue(), false);
+            cursequence.copyMetaDataFrom(dataEV.getValue(), false);
         }
         IcyImager curImager = new IcyImager(cursequence, isHeadLess());
 
@@ -1287,7 +1285,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         fdata.setData(dataArray);
         fdata.setWeights(wgtArray);
         fdata.setPSF(psfArray);
-        deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivity.getValue(),nbIterDeconv.getValue(),  dHook,  dHookfinal);
+        deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivityEV.getValue(),nbIterDeconv.getValue(),  dHook,  dHookfinal);
         objArray = ArrayUtils.extract(objArray, outputShape, 0.); //Padding to the right size
 
 
@@ -1329,7 +1327,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         inputMap.add("loadFile", loadFile.getVariable());
 
-        deadPixel.setNoSequenceSelection();
+        badpixMap.setNoSequenceSelection();
     }
     @Override
     public void declareOutput(VarList outputMap) {
@@ -1357,13 +1355,13 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         break;
 
                     System.out.println("load image:" + args[i+1]);
-                    data.setValue(Loader.loadSequence(args[i+1], 0, false));
+                    dataEV.setValue(Loader.loadSequence(args[i+1], 0, false));
 
                     dataChanged();
                     if(i+3 >= args.length)
                         break;
                     if(args[i+2].equalsIgnoreCase("-c")){
-                        channel.setValue(Integer.parseInt(args[i+3]));
+                        channelEV.setValue(Integer.parseInt(args[i+3]));
                         i=i+3;
                     }else{
                         i++;
@@ -1378,12 +1376,12 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     if( args[i+1].startsWith("-"))
                         break;
                     System.out.println("load restart:" + args[i+1]);
-                    restart.setValue(Loader.loadSequence(args[i+1], 0, false));
+                    restartEV.setValue(Loader.loadSequence(args[i+1], 0, false));
                     if(i+3 >= args.length){
                         break;}
                     if(args[i+2].equalsIgnoreCase("-c")){
                         System.out.println("channel restart:" + Integer.parseInt(args[i+3]));
-                        channelRestart.setValue(Integer.parseInt(args[i+3]));
+                        channelRestartEV.setValue(Integer.parseInt(args[i+3]));
                         i=i+3;
                     }else{
                         i++;
@@ -1420,7 +1418,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         break;
                     if( args[i+1].startsWith("-"))
                         break;
-                    deadPixel.setValue(Loader.loadSequence(args[i+1], 0, false));
+                    badpixMap.setValue(Loader.loadSequence(args[i+1], 0, false));
                     i++;
                     break;
                 case "-wghtmap":
@@ -1428,13 +1426,13 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                         break;
                     if( args[i+1].startsWith("-"))
                         break;
-                    weights.setValue(Loader.loadSequence(args[i+1], 0, false));
+                    weightsSeq.setValue(Loader.loadSequence(args[i+1], 0, false));
                     i++;
                     break;
 
                 default:
                     System.out.println("Wrong command line");
-                    System.out.println("-i input data file");
+                    System.out.println("-i input channel file");
                     System.out.println("-r restart file");
                     System.out.println("-o deconvolved output file");
                     System.out.println("-p psf output file");
@@ -1453,7 +1451,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     protected void dataChanged() {
         super.dataChanged();
 
-        badArray = null;
+        badpixArray = null;
         psfEstimation=null;
         cursequence =null;
         pupil=null;

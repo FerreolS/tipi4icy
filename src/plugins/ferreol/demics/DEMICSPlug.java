@@ -36,6 +36,7 @@ import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.linalg.shaped.FloatShapedVectorSpace;
 import mitiv.linalg.shaped.ShapedVectorSpace;
 import mitiv.utils.FFTUtils;
+import mitiv.utils.HistoMap;
 import mitiv.utils.WeightFactory;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
@@ -58,21 +59,21 @@ import plugins.adufour.ezplug.EzVarText;
  */
 public abstract class DEMICSPlug extends EzPlug  implements Block{
 
-    protected EzVarSequence   data;           // data
-    protected EzVarChannel    channel;        // data channel
+    protected EzVarSequence   dataEV;           // data
+    protected EzVarChannel    channelEV;        // data channel
 
     protected MicroscopeMetadata meta = null; // metadata of the data
 
 
     protected EzVarDouble     logmu, mu;      // deconvolution hyper parameters; mu = 10^(logmu)
-    protected EzVarSequence   restart;        // starting point
-    protected EzVarChannel    channelRestart; // starting point channel
-    protected EzVarBoolean    positivity;     // enforce non negativity
-    protected EzButton        startDec, showFullObject;
+    protected EzVarSequence   restartEV;        // starting point
+    protected EzVarChannel    channelRestartEV; // starting point channel
+    protected EzVarBoolean    positivityEV;     // enforce non negativity
+    protected EzButton        startDecButton, showFullObjectButton;
 
 
-    protected EzVarText       dataSize;       //
-    protected EzVarText       outputSize;     // size of the object after padding
+    protected EzVarText       dataSizeTxt;       //
+    protected EzVarText       outputSizeTxt;     // size of the object after padding
     // optical parameters
     protected EzVarDouble     dy_nm,dx_nm, dz_nm;  //  pixels size in (x,y) and z
     protected EzVarDouble     na  ;             //  numerical aperture
@@ -94,13 +95,14 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected Sequence cursequence; // Sequence containing the current solution
     protected Shape dataShape;
     protected ShapedArray wgtArray, dataArray, psfArray, objArray;
-
+    protected ShapedArray modelArray=null;
+    protected ShapedArray badpixArray=null;
 
     protected EzVarText       weightsMethod;  // Combobox for variance estimation
-    protected final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance"};
+    protected final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance","Automatic variance estimation"};
     protected EzVarDouble     gain, noise;    // gain of the detector in e-/lvl and detector noise in e-
-    protected EzVarSequence weights, deadPixel; // maps of inverse variance and bad pixels
-    protected EzButton        showWeight;
+    protected EzVarSequence weightsSeq, badpixMap; // maps of inverse variance and bad pixels
+    protected EzButton        showWeightButton;
 
     protected EzVarFile       saveFile, loadFile;// xml files to save and load parameters
     protected EzVarBoolean    showIteration;  // show object update at each iteration
@@ -123,6 +125,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     @SuppressWarnings("unused")
     private boolean verbose = false;    // Show some values, need debug to true
 
+
     /**
      * The goal is to create an array of weights, but it will be created depending
      * the user input so we will have to test each cases:
@@ -133,7 +136,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      * Then we apply the dead pixel map
      *
      * @param datArray - The data to deconvolve.
-     * @param badArray
+     * @param badpixArray
      * @return The weights.
      */
 
@@ -144,7 +147,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
 
         if (weightsMethod.getValue() == weightOptions[1]) {
             // A map of weights is provided.
-            if ((seq = weights.getValue()) != null) {
+            if ((seq = weightsSeq.getValue()) != null) {
                 wgtArray =  sequenceToArray(seq);
                 if (!wgtArray.equals(datArray)){
                     throwError("Weight map must have the same size than the data");
@@ -153,7 +156,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             }
         } else if (weightsMethod.getValue() == weightOptions[2]) {
             // A variance map is provided. FIXME: check shape and values.
-            if ((seq = weights.getValue()) != null) {
+            if ((seq = weightsSeq.getValue()) != null) {
                 ShapedArray varArray =  sequenceToArray(seq);
                 if (!varArray.equals(datArray)){
                     throwError("Variance map must have the same size than the data");
@@ -168,6 +171,19 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             double alpha = 1/gamma;
             double beta = (sigma/gamma)*(sigma/gamma);
             wd.computeWeightsFromData(alpha, beta);
+        } else if (weightsMethod.getValue() == weightOptions[4]) {
+            // Weights are computed from the current estimate of the data modelArray =object * PSF
+            //  the gain and the readout noise of the detector are automatically estimated from the variance of the data given the modelArray
+            if (modelArray==null) { // without modelArray (before any deconvolution) rely on the"compute variance" method
+                double gamma = gain.getValue();
+                double sigma = noise.getValue();
+                double alpha = 1/gamma;
+                double beta = (sigma/gamma)*(sigma/gamma);
+                wd.computeWeightsFromData(alpha, beta);
+            }else {
+                computeWeightsFromModel(datArray,modelArray,normalize);
+            }
+
         }
         if (badArray != null) {
             // Account for bad data.
@@ -186,6 +202,16 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
 
     }
 
+    /**
+     * @param normalize
+     * @param modelArray
+     * @param dataArray
+     */
+    private void computeWeightsFromModel(ShapedArray dataArray, ShapedArray model, boolean normalize) {
+        HistoMap hm = new HistoMap(model, dataArray, badpixArray);
+
+    }
+
     protected ShapedArray createWeights(ShapedArray datArray, ShapedArray badArray) {
         return createWeights(datArray, badArray, false);
     }
@@ -197,24 +223,24 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      *
      */
     protected void dataChanged() {
-        dataSize.setVisible(false);
-        outputSize.setVisible(false);
-        dataSeq = data.getValue();
+        dataSizeTxt.setVisible(false);
+        outputSizeTxt.setVisible(false);
+        dataSeq = dataEV.getValue();
         if(dataSeq!=null){
             sizeX = dataSeq.getSizeX();
             sizeY = dataSeq.getSizeY();
             sizeZ = dataSeq.getSizeZ();
             // setting restart value to the current sequence
-            restart.setValue(dataSeq);
-            channelRestart.setValue(channel.getValue());
+            restartEV.setValue(dataSeq);
+            channelRestartEV.setValue(channelEV.getValue());
             updatePaddedSize();
             updateOutputSize();
             updateImageSize();
             dataShape = new Shape(sizeX, sizeY, sizeZ);
-            dataSize.setVisible(true);
-            outputSize.setVisible(true);
+            dataSizeTxt.setVisible(true);
+            outputSizeTxt.setVisible(true);
 
-            startDec.setEnabled(true);
+            startDecButton.setEnabled(true);
 
             meta = getMetaData(dataSeq);
             dx_nm.setValue(    meta.dx);
@@ -236,15 +262,15 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      */
     @Override
     public void declareInput(VarList inputMap) {
-        inputMap.add("image", data.getVariable());
-        inputMap.add("image channel", channel.getVariable());
-        inputMap.add("starting point", restart.getVariable());
-        channelRestart = new EzVarChannel("Initialization channel :", restart.getVariable(), false);
+        inputMap.add("image", dataEV.getVariable());
+        inputMap.add("image channel", channelEV.getVariable());
+        inputMap.add("starting point", restartEV.getVariable());
+        channelRestartEV = new EzVarChannel("Initialization channel :", restartEV.getVariable(), false);
 
-        inputMap.add("starting point channel", channelRestart.getVariable());
+        inputMap.add("starting point channel", channelRestartEV.getVariable());
 
         inputMap.add("weights Method",weightsMethod.getVariable());
-        inputMap.add("deadPixel", deadPixel.getVariable());
+        inputMap.add("badpixMap", badpixMap.getVariable());
         inputMap.add("gain", gain.getVariable());
         inputMap.add("noise", noise.getVariable());
 
@@ -252,7 +278,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         inputMap.add("scale", scale.getVariable());
 
         inputMap.add("nbIteration", nbIterDeconv.getVariable());
-        inputMap.add("positivity", positivity.getVariable());
+        inputMap.add("positivity", positivityEV.getVariable());
         inputMap.add("single precision", singlePrecision.getVariable());
 
         saveFile = new EzVarFile("Save parameters in", "");
@@ -266,7 +292,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      */
     @Override
     public void declareOutput(VarList outputMap) {
-        outputMap.add("outputSize", outputSize.getVariable());
+        outputMap.add("outputSizeTxt", outputSizeTxt.getVariable());
         outputMap.add("output", outputHeadlessImage.getVariable());
         outputMap.add("weightmap", outputHeadlessWght.getVariable());
     }
@@ -277,17 +303,17 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      */
     protected void setDefaultValue() {
         weightsMethod.setValue( weightOptions[3]);
-        data.setNoSequenceSelection();
-        deadPixel.setNoSequenceSelection();
+        dataEV.setNoSequenceSelection();
+        badpixMap.setNoSequenceSelection();
 
 
         paddingSizeZ.setValue(30);
-        deadPixel.setNoSequenceSelection();
+        badpixMap.setNoSequenceSelection();
 
 
         if (!isHeadLess()) {
-            outputSize.setEnabled(false);
-            dataSize.setEnabled(false);
+            outputSizeTxt.setEnabled(false);
+            dataSizeTxt.setEnabled(false);
             mu.setEnabled(false);
         }
     }
@@ -302,14 +328,14 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             text= sizeX+"x"+sizeY;
         else
             text= sizeX+"x"+sizeY+"x"+sizeZ;
-        dataSize.setValue(text);
+        dataSizeTxt.setValue(text);
     }
 
     /**
      * update metaData of the data sequence using the value indicated in the plugin
      */
     protected void updateMetaData() {
-        Sequence seq = data.getValue();
+        Sequence seq = dataEV.getValue();
         if (seq != null) {
             ome.xml.meta.OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
             newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dx_nm.getValue()*1E-3), 0);
@@ -334,7 +360,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         }else{
             text= Nx+"x"+Ny+"x"+Nz;
         }
-        outputSize.setValue(text);
+        outputSizeTxt.setValue(text);
         if((1.0*Nx*Ny*Nz)>Math.pow(2, 30)){
             throwError("Padded image is too large (>2^30)");
         }
