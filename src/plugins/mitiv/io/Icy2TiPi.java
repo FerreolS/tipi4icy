@@ -35,7 +35,7 @@ import mitiv.base.Shape;
  * @see icy.sequence
  *
  */
-public class Icy2TiPi {
+public abstract  class Icy2TiPi {
     static final byte czt = (byte) 0x0; // 0b00000000;
     static final byte Czt = (byte) 0x1; // 0b00000001;
     static final byte cZt = (byte) 0x2; // 0b00000010;

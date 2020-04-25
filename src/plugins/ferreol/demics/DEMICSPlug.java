@@ -18,20 +18,33 @@ package plugins.ferreol.demics;
 
 import static plugins.mitiv.io.Icy2TiPi.sequenceToArray;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.gui.frame.progress.FailedAnnounceFrame;
+import icy.plugin.PluginDescriptor;
+import icy.plugin.PluginInstaller;
+import icy.plugin.PluginRepositoryLoader;
+import icy.plugin.PluginUpdater;
 import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
+import icy.system.thread.ThreadUtil;
 import icy.util.OMEUtil;
+import icy.util.StringUtil;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.ome.OMEXMLMetadataImpl;
+import mitiv.array.ArrayFactory;
+import mitiv.array.ArrayUtils;
+import mitiv.array.ByteArray;
 import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.Traits;
 import mitiv.conv.WeightedConvolutionCost;
 import mitiv.cost.DifferentiableCostFunction;
-import mitiv.cost.WeightedData;
+import mitiv.jobs.DeconvolutionJob;
 import mitiv.linalg.shaped.DoubleShapedVectorSpace;
 import mitiv.linalg.shaped.FloatShapedVectorSpace;
 import mitiv.linalg.shaped.ShapedVectorSpace;
@@ -41,15 +54,19 @@ import mitiv.utils.WeightFactory;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
+import plugins.adufour.ezplug.EzGroup;
 import plugins.adufour.ezplug.EzPlug;
+import plugins.adufour.ezplug.EzVar;
 import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarChannel;
 import plugins.adufour.ezplug.EzVarDouble;
 import plugins.adufour.ezplug.EzVarDoubleArrayNative;
 import plugins.adufour.ezplug.EzVarFile;
 import plugins.adufour.ezplug.EzVarInteger;
+import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
+import plugins.mitiv.io.IcyImager;
 
 /**
  * Plugin class for all plugins of DEconvolution MIcroscopy Studio
@@ -87,6 +104,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected EzVarInteger    paddingSizeXY, paddingSizeZ; // number of pixels added in each direction
 
     // Main variables for the deconvolution part
+    protected EzGroup ezDeconvolutionGroup;
     protected int sizeX=128, sizeY=128, sizeZ=64; // Input sequence sizes
     protected  int Nx=128,Ny=128, Nz=64;             // Output (padded sequence size)
     protected Shape psfShape = new Shape(Nx, Ny, Nz);
@@ -96,27 +114,33 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected Shape dataShape;
     protected ShapedArray wgtArray, dataArray, psfArray, objArray;
     protected ShapedArray modelArray=null;
-    protected ShapedArray badpixArray=null;
+    protected ByteArray badpixArray=null;
 
+    protected EzGroup ezWeightingGroup, groupVisu;
     protected EzVarText       weightsMethod;  // Combobox for variance estimation
     protected final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance","Automatic variance estimation"};
     protected EzVarDouble     gain, noise;    // gain of the detector in e-/lvl and detector noise in e-
     protected EzVarSequence weightsSeq, badpixMap; // maps of inverse variance and bad pixels
     protected EzButton        showWeightButton;
 
+    protected EzGroup ezPaddingGroup;
+
+
     protected EzVarFile       saveFile, loadFile;// xml files to save and load parameters
     protected EzVarBoolean    showIteration;  // show object update at each iteration
     protected EzVarSequence   outputHeadlessImage=null;
     protected EzVarSequence   outputHeadlessWght=null;
+    protected EzButton saveParam, loadParam;
+    protected String outputPath=null;
 
-
-
+    protected DeconvolutionJob deconvolver ;
     protected ShapedVectorSpace dataSpace, objectSpace;
     protected  int vectorSpaceType;
     protected DifferentiableCostFunction fprior;
     protected WeightedConvolutionCost fdata;
 
-    protected String outputPath=null;
+    // listener
+    protected EzVarListener<Integer> zeroPadActionListener;
 
     /*********************************/
     /**            DEBUG            **/
@@ -125,6 +149,243 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     @SuppressWarnings("unused")
     private boolean verbose = false;    // Show some values, need debug to true
 
+
+    @Override
+    protected void initialize() {
+
+        // REMOVE old MitivDeconvolution plugin
+        PluginRepositoryLoader.waitLoaded();
+        // get  plugin descriptor
+        PluginDescriptor desc = PluginRepositoryLoader.getPlugin("plugins.mitiv.deconv.MitivDeconvolution");
+        // install  plugin
+        if(desc != null){
+            if( desc.isInstalled()){
+                if (!isHeadLess()) {
+                    new AnnounceFrame("Removing the now useless MitivDeconvolution plugin.");
+                }
+                PluginInstaller.desinstall(desc, false, false);
+                while (PluginUpdater.isCheckingForUpdate() ||  PluginInstaller.isProcessing() || PluginInstaller.isInstalling() || PluginInstaller.isDesinstalling())
+                    ThreadUtil.sleep(1);
+            }
+        }
+
+        if (!isHeadLess()) {
+            getUI().setParametersIOVisible(false);
+            getUI().setActionPanelVisible(false);
+        }
+
+
+        dataEV = new EzVarSequence("Data:");
+        channelEV = new EzVarChannel("Data channel:", dataEV.getVariable(), false);
+        restartEV = new EzVarSequence("Starting point:");
+        restartEV.setNoSequenceSelection();
+        channelRestartEV = new EzVarChannel("Initialization channel :", restartEV.getVariable(), false);
+        dataSizeTxt = new EzVarText("Data size:");
+        outputSizeTxt = new EzVarText("Output size:");
+        paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
+        dx_nm = new EzVarDouble("dx(nm):",64.5,0., Double.MAX_VALUE,1.);
+        dy_nm = new EzVarDouble("dy(nm):",64.5,0., Double.MAX_VALUE,1.);
+        dz_nm = new EzVarDouble("dz(nm):",64.5,0., Double.MAX_VALUE,1.);
+
+        dataSizeTxt.setVisible(false);
+        outputSizeTxt.setVisible(false);
+
+        dataEV.setNoSequenceSelection();
+
+        zeroPadActionListener = new EzVarListener<Integer>() {
+            @Override
+            public void variableChanged(EzVar<Integer> source, Integer newValue) {
+                updateImageSize();
+                updatePaddedSize();
+            }
+        };
+        paddingSizeZ.addVarChangeListener(zeroPadActionListener);
+
+
+
+
+        restartEV.addVarChangeListener(new EzVarListener<Sequence>() {
+            @Override
+            public void variableChanged(EzVar<Sequence> source,
+                    Sequence newValue) {
+                newValue = restartEV.getValue();
+                if(debug){
+                    if (newValue != null || (newValue != null && newValue.isEmpty())) {
+                        System.out.println("restart changed:"+newValue.getName());
+                    }
+                }
+            }
+        });
+
+        channelEV.addVarChangeListener(new EzVarListener<Integer>() {
+            @Override
+            public void variableChanged(EzVar<Integer> source, Integer newValue) {
+                channelRestartEV.setValue(newValue);
+                modelArray = null;
+            }
+        });
+
+
+
+
+        /****************************************************/
+        /**                WEIGHTING GROUP                   **/
+        /****************************************************/
+        weightsMethod = new EzVarText(      "Weighting:", weightOptions,4, false);
+        weightsSeq = new EzVarSequence(        "Map:");
+        gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
+        noise = new EzVarDouble(            "Readout Noise:",10.,0.,Double.MAX_VALUE,0.1);
+        badpixMap = new EzVarSequence(      "Bad data map:");
+        weightsSeq.setNoSequenceSelection();
+
+        weightsMethod.addVarChangeListener(new EzVarListener<String>() {
+            @Override
+            public void variableChanged(EzVar<String> source, String newValue) {
+                if(debug){
+                    System.out.println("weight:" + weightsMethod.getValue()+".");
+                    System.out.println("weight:" + newValue+".");
+                    System.out.println("weight:" + weightOptions[3]+".");
+                    System.out.println("weight:" + weightOptions[3]==newValue);
+                }
+                if (StringUtil.equals(weightsMethod.getValue(), weightOptions[0])) { //None
+                    weightsSeq.setVisible(false);
+                    gain.setVisible(false);
+                    noise.setVisible(false);
+                } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[1] )
+                        || StringUtil.equals(weightsMethod.getValue() , weightOptions[2])) {  //Personnalized map ou Variance map
+                    weightsSeq.setVisible(true);
+                    gain.setVisible(false);
+                    noise.setVisible(false);
+                    weightsSeq.setNoSequenceSelection();
+                } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[3])
+                        || StringUtil.equals(weightsMethod.getValue() , weightOptions[4])) {  //Computed variance
+                    weightsSeq.setVisible(false);
+                    gain.setVisible(true);
+                    noise.setVisible(true);
+                    weightsSeq.setNoSequenceSelection();
+                } else {
+                    throwError("Invalid argument passed to weight method");
+                    return;
+                }
+            }
+        });
+
+
+        weightsSeq.setVisible(false);
+        gain.setVisible(false);
+        noise.setVisible(false);
+        badpixMap.setVisible(true);
+        badpixMap.setNoSequenceSelection();
+        showWeightButton = new EzButton("Show weight map", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                DoubleArray dataArray;
+                // Preparing parameters and testing input
+
+                Sequence dataSeq = dataEV.getValue();
+                if(dataSeq!=null){
+                    dataArray =    sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
+                    createWeights(true);
+                    IcyImager.show(wgtArray,null,"Weight map",false);
+                }
+                if (debug) {
+                    System.out.println("Weight compute");
+
+                }
+            }
+        });
+        ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weightsSeq,gain,noise,badpixMap,showWeightButton);
+        ezWeightingGroup.setFoldedState(true);
+
+
+
+        /****************************************************/
+        /**                    DECONV GROUP                  **/
+        /****************************************************/
+        mu = new EzVarDouble("Regularization level:",1E-5,0.,Double.MAX_VALUE,0.01);
+        logmu = new EzVarDouble("Log10 of the Regularization level:",-5,-Double.MAX_VALUE,Double.MAX_VALUE,1);
+        nbIterDeconv = new EzVarInteger("Number of iterations: ",10,1,Integer.MAX_VALUE ,1);
+        positivityEV = new EzVarBoolean("Enforce nonnegativity:", true);
+        singlePrecision = new EzVarBoolean("Compute in single precision:", false);
+        showIteration = new EzVarBoolean("Show intermediate results:", true);
+        scale = new EzVarDoubleArrayNative("Aspect ratio of a voxel",  new double[][] { {1.0 ,1.0, 1.0} },true);
+
+        if (isHeadLess()){
+            showIteration.setValue(false);
+        }
+
+
+
+        showFullObjectButton = new EzButton("Show the full (padded) object", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(debug){
+                    System.out.println("showFullObjectButton");
+                }
+                Sequence fSeq;
+                fSeq = new Sequence("Deconvolved image");
+                fSeq.copyMetaDataFrom(dataEV.getValue(), false);
+                if(objArray != null){
+                    IcyImager.show(objArray,fSeq,"Deconvolved "+ dataEV.getValue().getName() + "with padding. mu="+ mu.getValue() ,isHeadLess());
+                }else {
+                    IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"data "+ dataEV.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
+                }
+            }
+        });
+
+        EzVarListener<Double> logmuActionListener = new EzVarListener<Double>() {
+            @Override
+            public void variableChanged(EzVar<Double> source, Double newValue) {
+                mu.setValue(Math.pow(10, logmu.getValue()));
+            }
+        };
+        logmu.addVarChangeListener(logmuActionListener);
+
+        groupVisu  = new EzGroup("Visualization", showIteration,showFullObjectButton);
+        groupVisu.setFoldedState(true);
+
+        saveFile = new EzVarFile("Save parameters in", "");
+        saveParam = new EzButton("Save parameters", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                saveParamClicked();
+                if (debug) {
+                    System.out.println("Save parameters");
+                }
+            }
+        });
+
+        loadFile = new EzVarFile("Load parameters from", "","*.xml");
+        loadParam = new EzButton("Load parameters", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(loadFile.getValue()!=null){
+                    loadParamClicked();
+                }
+                if (debug) {
+                    System.out.println("Load parameters");
+                }
+            }
+        });
+
+    }
+    /**
+     *
+     */
+    protected abstract void loadParamClicked();
+    /**
+     *
+     */
+    protected void saveParamClicked() {
+        File pathName = saveFile.getValue();
+        if(pathName!=null){
+            if (!pathName.getName().endsWith(".xml")){
+                pathName = new File(pathName.getAbsolutePath()+".xml");
+            }
+            saveParameters(pathName);
+        }
+    }
 
     /**
      * The goal is to create an array of weights, but it will be created depending
@@ -140,29 +401,39 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      * @return The weights.
      */
 
-    protected ShapedArray createWeights(ShapedArray datArray, ShapedArray badArray, boolean normalize) {
-        ShapedArray wgtArray = null;
-        Sequence seq;
-        WeightedData wd = new WeightedData(datArray);
+    protected void createWeights( boolean normalize) {
 
+        badpixArray = (ByteArray) ArrayFactory.create(Traits.BYTE, dataShape);
+        if (WeightFactory.flagBads(dataArray,badpixArray,dataSeq.getChannelTypeMax(channelEV.getValue()))){
+            if (!isHeadLess()) {
+                new AnnounceFrame("Warning, saturated pixel detected, accounting them as dead pixels", "show", new Runnable() {
+                    @Override
+                    public void run() {
+                        Sequence deadSequence = new Sequence("Saturations map");
+                        deadSequence.copyMetaDataFrom(dataSeq, false);
+                        IcyImager.show(badpixArray, deadSequence, "saturations map", isHeadLess());
+                    }
+                }, 10);
+            }
+        }
         if (weightsMethod.getValue() == weightOptions[1]) {
             // A map of weights is provided.
+            Sequence seq;
             if ((seq = weightsSeq.getValue()) != null) {
                 wgtArray =  sequenceToArray(seq);
-                if (!wgtArray.equals(datArray)){
+                if (!wgtArray.equals(dataArray)){
                     throwError("Weight map must have the same size than the data");
                 }
-                wd.setWeights(wgtArray);
             }
         } else if (weightsMethod.getValue() == weightOptions[2]) {
             // A variance map is provided. FIXME: check shape and values.
+            Sequence seq;
             if ((seq = weightsSeq.getValue()) != null) {
                 ShapedArray varArray =  sequenceToArray(seq);
-                if (!varArray.equals(datArray)){
+                if (!varArray.equals(dataArray)){
                     throwError("Variance map must have the same size than the data");
                 }
                 wgtArray = WeightFactory.computeWeightsFromVariance(varArray);
-                wd.setWeights(wgtArray);
             }
         } else if (weightsMethod.getValue() == weightOptions[3]) {
             // Weights are computed given the gain and the readout noise of the detector.
@@ -170,7 +441,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             double sigma = noise.getValue();
             double alpha = 1/gamma;
             double beta = (sigma/gamma)*(sigma/gamma);
-            wd.computeWeightsFromData(alpha, beta);
+            wgtArray = WeightFactory.computeWeightsFromData(dataArray,   alpha,  beta);
         } else if (weightsMethod.getValue() == weightOptions[4]) {
             // Weights are computed from the current estimate of the data modelArray =object * PSF
             //  the gain and the readout noise of the detector are automatically estimated from the variance of the data given the modelArray
@@ -179,41 +450,27 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
                 double sigma = noise.getValue();
                 double alpha = 1/gamma;
                 double beta = (sigma/gamma)*(sigma/gamma);
-                wd.computeWeightsFromData(alpha, beta);
+                wgtArray = WeightFactory.computeWeightsFromData(dataArray,   alpha,  beta);
             }else {
-                computeWeightsFromModel(datArray,modelArray,normalize);
+                // wgtArray = WeightFactory.computeWeightsFromModel(dataArray,modelArray,badpixArray);
+                HistoMap hm = new HistoMap(modelArray, dataArray, badpixArray);
+                gain.setValue(1./hm.getAlpha());
+                noise.setValue(Math.sqrt(hm.getBeta())/hm.getAlpha());
+                wgtArray = hm.computeWeightMap(modelArray);
             }
+        }
 
-        }
-        if (badArray != null) {
-            // Account for bad data.
-            if (!badArray.equals(datArray)){
-                throwError("Bad data map must have the same size than the data");
-            }
-            wd.markBadData(badArray);
-        }
+        WeightFactory.removeBads(wgtArray,  badpixArray);
+
         if (normalize) {
-            DoubleArray w = wd.getWeights().asShapedArray().toDouble();
-            w.scale(w.getNumber()/ w.sum());
-            return w;
-        }else {
-            return wd.getWeights().asShapedArray();
+            WeightFactory.normalize(wgtArray);
         }
-
     }
 
-    /**
-     * @param normalize
-     * @param modelArray
-     * @param dataArray
-     */
-    private void computeWeightsFromModel(ShapedArray dataArray, ShapedArray model, boolean normalize) {
-        HistoMap hm = new HistoMap(model, dataArray, badpixArray);
 
-    }
 
-    protected ShapedArray createWeights(ShapedArray datArray, ShapedArray badArray) {
-        return createWeights(datArray, badArray, false);
+    protected void createWeights() {
+        createWeights(  false);
     }
 
 
@@ -232,25 +489,24 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             sizeZ = dataSeq.getSizeZ();
             // setting restart value to the current sequence
             restartEV.setValue(dataSeq);
-            channelRestartEV.setValue(channelEV.getValue());
-            updatePaddedSize();
-            updateOutputSize();
-            updateImageSize();
-            dataShape = new Shape(sizeX, sizeY, sizeZ);
-            dataSizeTxt.setVisible(true);
-            outputSizeTxt.setVisible(true);
-
-            startDecButton.setEnabled(true);
-
-            meta = getMetaData(dataSeq);
+            channelRestartEV.setValue(channelEV.getValue());            meta = getMetaData(dataSeq);
             dx_nm.setValue(    meta.dx);
             dy_nm.setValue(    meta.dy);
             dz_nm.setValue(     meta.dz);
             if (sizeZ==1) {
+                dataShape = new Shape(sizeX, sizeY);
                 scale.setValue(new double[]{1.0 , dx_nm.getValue()/ dy_nm.getValue()} );
             }else {
+                dataShape = new Shape(sizeX, sizeY, sizeZ);
                 scale.setValue(new double[]{1.0 , dx_nm.getValue()/ dy_nm.getValue(), dx_nm.getValue()/ dz_nm.getValue() } );
             }
+
+            updatePaddedSize();
+            updateOutputSize();
+            updateImageSize();
+            dataSizeTxt.setVisible(true);
+            outputSizeTxt.setVisible(true);
+            startDecButton.setEnabled(true);
         }
     }
 
@@ -298,6 +554,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     }
 
 
+
     /**
      *  set default values of the plugin
      */
@@ -310,14 +567,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         paddingSizeZ.setValue(30);
         badpixMap.setNoSequenceSelection();
 
-
-        if (!isHeadLess()) {
-            outputSizeTxt.setEnabled(false);
-            dataSizeTxt.setEnabled(false);
-            mu.setEnabled(false);
-        }
     }
-
 
     /**
      * Update the text indicating the size of the data

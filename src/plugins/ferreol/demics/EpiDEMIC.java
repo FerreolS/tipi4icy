@@ -30,13 +30,7 @@ import icy.file.Loader;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.colormap.IceColorMap;
 import icy.main.Icy;
-import icy.plugin.PluginDescriptor;
-import icy.plugin.PluginInstaller;
-import icy.plugin.PluginRepositoryLoader;
-import icy.plugin.PluginUpdater;
 import icy.sequence.Sequence;
-import icy.system.thread.ThreadUtil;
-import icy.util.StringUtil;
 import microTiPi.epifluorescence.WideFieldModel;
 import microTiPi.microUtils.BlindDeconvJob;
 import microTiPi.microscopy.PSF_Estimation;
@@ -44,7 +38,6 @@ import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
 import mitiv.base.Shape;
-import mitiv.base.mapping.DoubleFunction;
 import mitiv.conv.WeightedConvolutionCost;
 import mitiv.cost.DifferentiableCostFunction;
 import mitiv.cost.HyperbolicTotalVariation;
@@ -60,7 +53,6 @@ import plugins.adufour.ezplug.EzTabs;
 import plugins.adufour.ezplug.EzTabs.TabPlacement;
 import plugins.adufour.ezplug.EzVar;
 import plugins.adufour.ezplug.EzVarBoolean;
-import plugins.adufour.ezplug.EzVarChannel;
 import plugins.adufour.ezplug.EzVarDouble;
 import plugins.adufour.ezplug.EzVarDoubleArrayNative;
 import plugins.adufour.ezplug.EzVarFile;
@@ -90,15 +82,12 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private EzButton        saveMetaData, showPSF;
     private EzVarDouble     dxy_nm;
 
-    /** weighting tab: **/
-    private EzGroup         ezWeightingGroup, ezPadGroup;
 
 
     /** deconvolution tab: **/
     private EzPanel         deconvPanel;
     private EzVarDouble     epsilon; // deconvolution hyper parameters; mu = 10^(logmu)
 
-    private EzGroup         ezDeconvolutionGroup;
     protected  int          Nxy=128; // Output (padded sequence size)
 
 
@@ -113,7 +102,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private EzVarBoolean    radial;         // use only radial mode (constraint the PSF to be radially symmetric)
     private EzButton        showPSF2, showModulus, showPhase;
     private EzButton        startBlind,  showFullObject2, resetPSF;
-    private EzButton        saveParam, loadParam;
     private EzLabel         docDec;
     private EzVarInteger    totalNbOfBlindDecLoop;// number of outer loop
     private EzVarInteger    maxIterDefocus; // number of iteration for defocus parameters
@@ -132,8 +120,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     // Global solvers
     private PSF_Estimation psfEstimation;
-    private DeconvolutionJob deconvolver ;
-
 
     // Main arrays for the psf estimation
     //  private boolean runBdec;
@@ -212,26 +198,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
      */
     @Override
     protected void initialize() {
+        super.initialize();
 
-        // REMOVE old MitivDeconvolution plugin
-        PluginRepositoryLoader.waitLoaded();
-        // get  plugin descriptor
-        PluginDescriptor desc = PluginRepositoryLoader.getPlugin("plugins.mitiv.deconv.MitivDeconvolution");
-        // install  plugin
-        if(desc != null){
-            if( desc.isInstalled()){
-                if (!isHeadLess()) {
-                    new AnnounceFrame("Removing the now useless MitivDeconvolution plugin.");
-                }
-                PluginInstaller.desinstall(desc, false, false);
-                while (PluginUpdater.isCheckingForUpdate() ||  PluginInstaller.isProcessing() || PluginInstaller.isInstalling() || PluginInstaller.isDesinstalling())
-                    ThreadUtil.sleep(1);
-            }
-        }
-        if (!isHeadLess()) {
-            getUI().setParametersIOVisible(false);
-            getUI().setActionPanelVisible(false);
-        }
         tabbedPane = new EzTabs("BlindTabs", TabPlacement.TOP);
 
         /****************************************************/
@@ -239,15 +207,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         /****************************************************/
 
         dataPanel = new EzPanel("Step 1: Data");
-        dataEV = new EzVarSequence("Sequence:");
-        channelEV = new EzVarChannel("Channel:", dataEV.getVariable(), false);
-        dataSizeTxt = new EzVarText("Image size:");
-        outputSizeTxt = new EzVarText("Output size:");
-        paddingSizeXY = new EzVarInteger("padding xy:",0, Integer.MAX_VALUE,1);
-        paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
-        restartEV = new EzVarSequence("Starting point:");
-        restartEV.setNoSequenceSelection();
-        channelRestartEV = new EzVarChannel("Initialization channel :", restartEV.getVariable(), false);
         saveMetaData = new EzButton("Save metadata", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -259,6 +218,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         });
 
 
+        paddingSizeXY = new EzVarInteger("padding x:",0, Integer.MAX_VALUE,1);
 
         EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
             @Override
@@ -314,24 +274,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
         });
 
-        channelEV.addVarChangeListener(new EzVarListener<Integer>() {
-            @Override
-            public void variableChanged(EzVar<Integer> source, Integer newValue) {
-                channelRestartEV.setValue(newValue);
-            }
-        });
-        restartEV.addVarChangeListener(new EzVarListener<Sequence>() {
-            @Override
-            public void variableChanged(EzVar<Sequence> source,
-                    Sequence newValue) {
-                newValue = restartEV.getValue();
-                if(debug){
-                    if (newValue != null || (newValue != null && newValue.isEmpty())) {
-                        System.out.println("restart changed:"+newValue.getName());
-                    }
-                }
-            }
-        });
+
         EzVarListener<Double> metaActionListener = new EzVarListener<Double>() {
             @Override
             public void variableChanged(EzVar<Double> source, Double newValue) {
@@ -376,95 +319,17 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         });
 
 
-        /****************************************************/
-        /**                WEIGHTING Group                   **/
-        /****************************************************/
-        weightsMethod = new EzVarText(      "Weighting:", weightOptions, false);
-        weightsSeq = new EzVarSequence(        "Map:");
-        gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
-        noise = new EzVarDouble(            "Readout Noise:",10.,0.,Double.MAX_VALUE,0.1);
-        badpixMap = new EzVarSequence(      "Bad channel map:");
-        badpixMap.addVarChangeListener(new EzVarListener<Sequence>() {
 
-            @Override
-            public void variableChanged(EzVar<Sequence> source, Sequence newValue) {
-                if (newValue!=null){
-                    badpixArray = sequenceToArray(newValue);
-                }else{
-                    badpixArray = null;
-                }
-            }
-        });
-        weightsSeq.setNoSequenceSelection();
-        weightsMethod.addVarChangeListener(new EzVarListener<String>() {
-
-            @Override
-            public void variableChanged(EzVar<String> source, String newValue) {
-                if (StringUtil.equals(weightsMethod.getValue() , weightOptions[0])) { //None
-                    weightsSeq.setVisible(false);
-                    gain.setVisible(false);
-                    noise.setVisible(false);
-                } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[1]) || StringUtil.equals(weightsMethod.getValue() , weightOptions[2])) {  //Personalized map or Variance map
-                    weightsSeq.setVisible(true);
-                    gain.setVisible(false);
-                    noise.setVisible(false);
-                    weightsSeq.setNoSequenceSelection();
-                } else if (StringUtil.equals(weightsMethod.getValue() , weightOptions[3])) {  //Computed variance
-                    weightsSeq.setVisible(false);
-                    gain.setVisible(true);
-                    noise.setVisible(true);
-                    weightsSeq.setNoSequenceSelection();
-                } else {
-                    throwError("Invalid argument passed to weight method");
-                    return;
-                }
-            }
-        });
+        ezPaddingGroup = new EzGroup("Padding",paddingSizeXY, paddingSizeZ);
+        ezPaddingGroup.setFoldedState(true);
 
 
-        weightsSeq.setVisible(false);
-        gain.setVisible(false);
-        noise.setVisible(false);
-        badpixMap.setVisible(true);
-        showWeightButton = new EzButton("Show weight map", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                showWeightClicked();
-                if (debug) {
-                    System.out.println("Weight compute");
-                }
-            }
-        });
-
-        ezPadGroup = new EzGroup("Padding",paddingSizeXY, paddingSizeZ);
-        ezPadGroup.setFoldedState(true);
-        ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weightsSeq,gain,noise,badpixMap,showWeightButton);
-        ezWeightingGroup.setFoldedState(true);
-
-        loadFile = new EzVarFile("Load parameters from", "","*.xml");
-        loadParam = new EzButton("Load parameters", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if(loadFile.getValue()!=null){
-                    loadParamClicked();
-                }
-                if (debug) {
-                    System.out.println("Load parameters");
-                }
-            }
-        });
 
         /****************************************************/
         /**                    DECONV TAB                  **/
         /****************************************************/
         deconvPanel = new EzPanel("Step 2: Deconvolution");
-        mu = new EzVarDouble("Regularization level:",1E-5,0.,Double.MAX_VALUE,0.01);
-        logmu = new EzVarDouble("Log10 of the Regularization level:",-5,-Double.MAX_VALUE,Double.MAX_VALUE,1);
         epsilon = new EzVarDouble("Threshold level:",1E-2,0.,Double.MAX_VALUE,1.0);
-        scale = new EzVarDoubleArrayNative("Aspect ratio of a voxel", new double[][] { {1.0 ,1.0, 1.0} }, true);
-        nbIterDeconv = new EzVarInteger("Number of iterations: ",10,0,Integer.MAX_VALUE ,1);
-        positivityEV = new EzVarBoolean("Enforce nonnegativity:", true);
-        singlePrecision = new EzVarBoolean("Compute in single precision:", false);
         singlePrecision.addVarChangeListener(new EzVarListener<Boolean>() {
             @Override
             public void variableChanged(EzVar<Boolean> source, Boolean newValue) {
@@ -482,33 +347,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             }
         });
 
-        EzVarListener<Double> logmuActionListener = new EzVarListener<Double>() {
-            @Override
-            public void variableChanged(EzVar<Double> source, Double newValue) {
-                mu.setValue(Math.pow(10, logmu.getValue()));
-            }
-        };
-        logmu.addVarChangeListener(logmuActionListener);
 
-        showFullObjectButton = new EzButton("Show the full (padded) object", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if(debug){
-                    System.out.println("showFull");
-                }
-                Sequence fSeq;
-                fSeq = new Sequence("Deconvolved image");
-                fSeq.copyMetaDataFrom(dataEV.getValue(), false);
-                if(objArray != null){
-                    IcyImager.show(objArray,fSeq,"Deconvolved "+ dataEV.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess() );
-                }else {
-                    IcyImager.show(ArrayUtils.extract(dataArray, outputShape),fSeq,"Deconvolved "+ dataEV.getValue().getName() + "with padding. mu="+ mu.getValue(),isHeadLess() );
-                }
-            }
-        });
-
-
-        ezDeconvolutionGroup = new EzGroup("Expert  parameters",epsilon,scale,positivityEV,singlePrecision, showFullObjectButton);
+        ezDeconvolutionGroup = new EzGroup("Expert  parameters",epsilon,scale,positivityEV,singlePrecision);//, showFullObjectButton);
         ezDeconvolutionGroup.setFoldedState(true);
 
         /****************************************************/
@@ -707,7 +547,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         dataPanel.add(dataEV);
         dataPanel.add(channelEV);
         dataPanel.add(dataSizeTxt);
-        dataPanel.add(ezPadGroup);
+        dataPanel.add(ezPaddingGroup);
         dataPanel.add(outputSizeTxt);
         dataPanel.add(dxy_nm);
         dataPanel.add(dz_nm);
@@ -773,6 +613,10 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         updateImageSize();
 
         if (isHeadLess()) {
+            outputSizeTxt.setEnabled(false);
+            dataSizeTxt.setEnabled(false);
+            mu.setEnabled(false);
+        }else{
             outputHeadlessImage = new EzVarSequence("Output Image");
             outputHeadlessPSF = new EzVarSequence("Output PSF");
             outputHeadlessWght = new EzVarSequence("Computed weight");
@@ -822,7 +666,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     /**
      * Load the parameter file and perform parameter update
      */
-    private void loadParamClicked() {
+    @Override
+    protected void loadParamClicked() {
         File loadName = loadFile.getValue();
 
         if ( !isHeadLess()){
@@ -852,7 +697,8 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
     }
 
-    private void saveParamClicked() {
+    @Override
+    protected void saveParamClicked() {
         if(pupil!=null){
             pupilShift.setValue( pupil.getPupilShift());
             if(pupil.getPhaseCoefs() !=null)
@@ -1173,8 +1019,12 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     {
         // Preparing parameters and testing input
         dataSeq = dataEV.getValue();
-        dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
-        wgtArray = createWeights(dataArray,badpixArray).toDouble();
+        if (singlePrecision.getValue()) {
+            dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toFloat();
+        }else {
+            dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
+        }
+        createWeights(true);
         IcyImager.show(wgtArray,null,"Weight map",false);
     }
 
@@ -1198,9 +1048,14 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             return;
         }
 
-        dataArray =  sequenceToArray(dataSeq, channelEV.getValue());
+
+        if (singlePrecision.getValue()) {
+            dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toFloat();
+        }else {
+            dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
+        }
         dataShape = dataArray.getShape();
-        if (badpixMap.getValue() ==null){
+        /*       if (badpixMap.getValue() ==null){
             badpixArray = null;
             if (dataSeq.getChannelMax( channelEV.getValue())>=( dataSeq.getChannelTypeMax(channelEV.getValue())-1)){
                 class SaturationFunc implements DoubleFunction{
@@ -1233,10 +1088,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                     }, 10);
                 }
             }
-        }
-
-        dataArray =  sequenceToArray(dataSeq, channelEV.getValue());
-        dataShape = dataArray.getShape();
+        }*/
 
 
 
@@ -1262,12 +1114,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             return;
         }
 
-        if(singlePrecision.getValue()){
-            wgtArray = createWeights(dataArray.toFloat(),badpixArray).toFloat();
-        }else{
-            wgtArray = createWeights(dataArray.toDouble(),badpixArray).toDouble();
-        }
-
+        createWeights(true);
 
         if(cursequence==null){
             cursequence = new Sequence("Current Iterate");
