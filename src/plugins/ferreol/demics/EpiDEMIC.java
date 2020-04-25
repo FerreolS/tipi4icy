@@ -34,6 +34,7 @@ import icy.sequence.Sequence;
 import microTiPi.epifluorescence.WideFieldModel;
 import microTiPi.microUtils.BlindDeconvJob;
 import microTiPi.microscopy.PSF_Estimation;
+import microTiPi.microscopy.weightsFromModel;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
@@ -819,10 +820,12 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 int[] bMaxIter = {maxIterDefocus.getValue(),maxIterPhase.getValue(), maxIterModulus.getValue()};
 
 
-                bdec = new BlindDeconvJob(totalNbOfBlindDecLoop.getValue(), pupil.getParametersFlags(), bMaxIter, psfEstimation ,deconvolver, debug );
+                bdec = new BlindDeconvJob(totalNbOfBlindDecLoop.getValue(), pupil.getParametersFlags(), bMaxIter, psfEstimation ,deconvolver, wghtUpdt,debug );
 
                 objArray = bdec.blindDeconv(objArray);
-
+                wgtArray = wghtUpdt.getWeights();
+                gain.setValue(((weightsFromModel) wghtUpdt).getAlpha());
+                noise.setValue(Math.sqrt(((weightsFromModel) wghtUpdt).getBeta())/gain.getValue());
                 if(maxIterDefocus.getValue()>0){
                     ni.setValue(((WideFieldModel) psfEstimation.getModel()).getNi());
                     pupilShift.setValue(((WideFieldModel) psfEstimation.getModel()).getPupilShift());
@@ -1115,6 +1118,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         }
 
         createWeights(true);
+        if (weightsMethod.getValue() == weightOptions[4]) {
+            wghtUpdt = new weightsFromModel( dataArray, badpixArray);
+        }
 
         if(cursequence==null){
             cursequence = new Sequence("Current Iterate");
@@ -1130,7 +1136,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         DifferentiableCostFunction fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
         WeightedConvolutionCost fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
         fdata.setData(dataArray);
-        fdata.setWeights(wgtArray);
+        fdata.setWeights(wgtArray,true);
         fdata.setPSF(psfArray);
         deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivityEV.getValue(),nbIterDeconv.getValue(),  dHook,  dHookfinal);
         objArray = ArrayUtils.extract(objArray, outputShape, 0.); //Padding to the right size
@@ -1143,7 +1149,12 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             System.out.println("Launch it:"+nbIterDeconv.getValue());
         }
         objArray = deconvolver.deconv(objArray);
-
+        if(wghtUpdt!=null) {
+            wghtUpdt.update(deconvolver);
+        }
+        wgtArray = wghtUpdt.getWeights();
+        gain.setValue(((weightsFromModel) wghtUpdt).getAlpha());
+        noise.setValue(Math.sqrt(((weightsFromModel) wghtUpdt).getBeta())/gain.getValue());
     }
 
 

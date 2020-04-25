@@ -51,6 +51,7 @@ import mitiv.linalg.shaped.ShapedVectorSpace;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.HistoMap;
 import mitiv.utils.WeightFactory;
+import mitiv.utils.WeightUpdater;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
@@ -141,7 +142,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
 
     // listener
     protected EzVarListener<Integer> zeroPadActionListener;
-
+    protected WeightUpdater wghtUpdt;
     /*********************************/
     /**            DEBUG            **/
     /*********************************/
@@ -233,7 +234,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         /****************************************************/
         weightsMethod = new EzVarText(      "Weighting:", weightOptions,4, false);
         weightsSeq = new EzVarSequence(        "Map:");
-        gain = new EzVarDouble(             "Gain:",1.,0.01,Double.MAX_VALUE,1);
+        gain = new EzVarDouble(             "Gain:",1.,Double.MIN_VALUE,Double.MAX_VALUE,0.1);
         noise = new EzVarDouble(            "Readout Noise:",10.,0.,Double.MAX_VALUE,0.1);
         badpixMap = new EzVarSequence(      "Bad data map:");
         weightsSeq.setNoSequenceSelection();
@@ -281,9 +282,10 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             public void actionPerformed(ActionEvent e) {
                 DoubleArray dataArray;
                 // Preparing parameters and testing input
-
                 Sequence dataSeq = dataEV.getValue();
-                if(dataSeq!=null){
+                if(wgtArray!=null) {
+                    IcyImager.show(wgtArray,null,"Weight map",false);
+                }else if(dataSeq!=null){
                     dataArray =    sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
                     createWeights(true);
                     IcyImager.show(wgtArray,null,"Weight map",false);
@@ -559,7 +561,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      *  set default values of the plugin
      */
     protected void setDefaultValue() {
-        weightsMethod.setValue( weightOptions[3]);
+        weightsMethod.setValue( weightOptions[4]);
         dataEV.setNoSequenceSelection();
         badpixMap.setNoSequenceSelection();
 

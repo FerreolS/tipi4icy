@@ -371,7 +371,7 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
             fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
             fdata.setData(dataArray);
-            fdata.setWeights(wgtArray);
+            fdata.setWeights(wgtArray,true);
             fdata.setPSF(psfArray, normalizePSF.getValue());
             deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivityEV.getValue(),nbIterDeconv.getValue(),  dHook,  dHookfinal);
 
@@ -379,7 +379,6 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             objArray = deconvolver.deconv(objArray);
             if (weightsMethod.getValue() == weightOptions[4]) {
                 modelArray =  fdata.getModel(objArray).asShapedArray();
-                (new IcyImager(null, isHeadLess())).show(modelArray);
             }
 
 
