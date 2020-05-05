@@ -244,14 +244,13 @@ public abstract  class Icy2TiPi {
                     sequence.setImage(0,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array3D)array).slice(j).flatten() ,true,false));
                 }
                 break;
-
             case 4:
-
                 for (int k = 0; k < array.getDimension(3); k++) {
                     for (int j = 0; j < array.getDimension(2); j++) {
                         sequence.setImage(k,j, new IcyBufferedImage(array.getDimension(0), array.getDimension(1),((Array4D)array).slice(k).slice(j).flatten() ,true,false));
                     }
                 }
+                break;
             default:
                 throw new IllegalArgumentException(" arrayToSequence can convert only 1D to 4D arrays");
         }

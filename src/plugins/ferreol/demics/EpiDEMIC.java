@@ -79,7 +79,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private EzTabs tabbedPane;              // The interface is composed of several tabs
 
     /** data tab: **/
-    private EzPanel         dataPanel;      // channel tab
+    private EzPanel         dataPanel;      // data tab
     private EzButton        saveMetaData, showPSF;
     private EzVarDouble     dxy_nm;
 
@@ -89,7 +89,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private EzPanel         deconvPanel;
     private EzVarDouble     epsilon; // deconvolution hyper parameters; mu = 10^(logmu)
 
-    protected  int          Nxy=128; // Output (padded sequence size)
+    protected  int          Nxy=32; // Output (padded sequence size)
 
 
     /** blind deconvolution tab: **/

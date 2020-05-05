@@ -36,6 +36,7 @@ import mitiv.conv.WeightedConvolutionCost;
 import mitiv.cost.HyperbolicTotalVariation;
 import mitiv.jobs.DeconvolutionJob;
 import mitiv.utils.FFTUtils;
+import mitiv.utils.HistoMap;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
@@ -379,6 +380,9 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             objArray = deconvolver.deconv(objArray);
             if (weightsMethod.getValue() == weightOptions[4]) {
                 modelArray =  fdata.getModel(objArray).asShapedArray();
+                HistoMap hm = new HistoMap(modelArray, dataArray, badpixArray);
+                gain.setValue(hm.getAlpha());
+                noise.setValue(Math.sqrt(hm.getBeta())/hm.getAlpha());
             }
 
 

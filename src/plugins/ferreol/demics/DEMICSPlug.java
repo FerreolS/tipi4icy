@@ -38,7 +38,6 @@ import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.ArrayFactory;
 import mitiv.array.ArrayUtils;
 import mitiv.array.ByteArray;
-import mitiv.array.DoubleArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.Traits;
@@ -280,7 +279,6 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         showWeightButton = new EzButton("Show weight map", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                DoubleArray dataArray;
                 // Preparing parameters and testing input
                 Sequence dataSeq = dataEV.getValue();
                 if(wgtArray!=null) {
@@ -397,10 +395,6 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
      *      - A variance map
      *      - A computed variance
      * Then we apply the dead pixel map
-     *
-     * @param datArray - The data to deconvolve.
-     * @param badpixArray
-     * @return The weights.
      */
 
     protected void createWeights( boolean normalize) {
@@ -441,7 +435,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             // Weights are computed given the gain and the readout noise of the detector.
             double gamma = gain.getValue();
             double sigma = noise.getValue();
-            double alpha = 1/gamma;
+            double alpha = gamma;
             double beta = (sigma/gamma)*(sigma/gamma);
             wgtArray = WeightFactory.computeWeightsFromData(dataArray,   alpha,  beta);
         } else if (weightsMethod.getValue() == weightOptions[4]) {
@@ -450,13 +444,13 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             if (modelArray==null) { // without modelArray (before any deconvolution) rely on the"compute variance" method
                 double gamma = gain.getValue();
                 double sigma = noise.getValue();
-                double alpha = 1/gamma;
+                double alpha = gamma;
                 double beta = (sigma/gamma)*(sigma/gamma);
                 wgtArray = WeightFactory.computeWeightsFromData(dataArray,   alpha,  beta);
             }else {
                 // wgtArray = WeightFactory.computeWeightsFromModel(dataArray,modelArray,badpixArray);
                 HistoMap hm = new HistoMap(modelArray, dataArray, badpixArray);
-                gain.setValue(1./hm.getAlpha());
+                gain.setValue(hm.getAlpha());
                 noise.setValue(Math.sqrt(hm.getBeta())/hm.getAlpha());
                 wgtArray = hm.computeWeightMap(modelArray);
             }
