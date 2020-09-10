@@ -109,7 +109,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
     protected  int Nx=128,Ny=128, Nz=64;             // Output (padded sequence size)
     protected Shape psfShape = new Shape(Nx, Ny, Nz);
     protected Shape outputShape;
-    protected Sequence dataSeq;
+    protected Sequence dataSeq=null;
     protected Sequence cursequence; // Sequence containing the current solution
     protected Shape dataShape;
     protected ShapedArray wgtArray, dataArray, psfArray, objArray;
@@ -302,9 +302,9 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
         /****************************************************/
         /**                    DECONV GROUP                  **/
         /****************************************************/
-        mu = new EzVarDouble("Regularization level:",1E-5,0.,Double.MAX_VALUE,0.01);
-        logmu = new EzVarDouble("Log10 of the Regularization level:",-5,-Double.MAX_VALUE,Double.MAX_VALUE,1);
-        nbIterDeconv = new EzVarInteger("Number of iterations: ",10,1,Integer.MAX_VALUE ,1);
+        mu = new EzVarDouble("Regularization level:",1,0.,Double.MAX_VALUE,0.01);
+        logmu = new EzVarDouble("Log10 of the Regularization level:",0,-Double.MAX_VALUE,Double.MAX_VALUE,1);
+        nbIterDeconv = new EzVarInteger("Number of iterations: ",50,1,Integer.MAX_VALUE ,1);
         positivityEV = new EzVarBoolean("Enforce nonnegativity:", true);
         singlePrecision = new EzVarBoolean("Compute in single precision:", false);
         showIteration = new EzVarBoolean("Show intermediate results:", true);
@@ -409,7 +409,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
                         deadSequence.copyMetaDataFrom(dataSeq, false);
                         IcyImager.show(badpixArray, deadSequence, "saturations map", isHeadLess());
                     }
-                }, 10);
+                }, 3);
             }
         }
         if (weightsMethod.getValue() == weightOptions[1]) {
@@ -485,7 +485,8 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             sizeZ = dataSeq.getSizeZ();
             // setting restart value to the current sequence
             restartEV.setValue(dataSeq);
-            channelRestartEV.setValue(channelEV.getValue());            meta = getMetaData(dataSeq);
+            channelRestartEV.setValue(channelEV.getValue());
+            meta = getMetaData(dataSeq);
             dx_nm.setValue(    meta.dx);
             dy_nm.setValue(    meta.dy);
             dz_nm.setValue(     meta.dz);
@@ -503,6 +504,8 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
             dataSizeTxt.setVisible(true);
             outputSizeTxt.setVisible(true);
             startDecButton.setEnabled(true);
+        }else {
+            startDecButton.setEnabled(false);
         }
     }
 

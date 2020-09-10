@@ -43,6 +43,7 @@ import mitiv.conv.WeightedConvolutionCost;
 import mitiv.cost.DifferentiableCostFunction;
 import mitiv.cost.HyperbolicTotalVariation;
 import mitiv.jobs.DeconvolutionJob;
+import mitiv.utils.Histogram;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
@@ -63,7 +64,6 @@ import plugins.adufour.ezplug.EzVarSequence;
 import plugins.adufour.ezplug.EzVarText;
 import plugins.mitiv.io.DeconvHook;
 import plugins.mitiv.io.IcyImager;
-
 /**
  * This class implements  EpiDEMIC, an Icy plugin for 3D blind deconvolution in epifluorescence (wide field) fluorescence microscopy.
  *
@@ -1058,41 +1058,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
         }
         dataShape = dataArray.getShape();
-        /*       if (badpixMap.getValue() ==null){
-            badpixArray = null;
-            if (dataSeq.getChannelMax( channelEV.getValue())>=( dataSeq.getChannelTypeMax(channelEV.getValue())-1)){
-                class SaturationFunc implements DoubleFunction{
-                    double sat;
-                    public  SaturationFunc(double sat){
-                        this.sat = sat;
-                    }
-                    @Override
-                    public double apply(double arg) {
-                        if  (arg>= this.sat){
-                            return 1.;
-                        }else{
-                            return 0.;
-                        }
-                    }
-
-                }
-
-                badpixArray = dataArray.copy().toDouble();
-                ((DoubleArray) badpixArray).map(new SaturationFunc(dataSeq.getChannelTypeMax(channelEV.getValue())));
-                badpixArray = badpixArray.toByte();
-                if (!isHeadLess()){
-                    new AnnounceFrame("Warning, saturated pixel detected, accounting them as dead pixels", "show", new Runnable() {
-                        @Override
-                        public void run() {
-                            Sequence deadSequence = new Sequence("Saturations map");
-                            deadSequence.copyMetaDataFrom(dataSeq, false);
-                            IcyImager.show(badpixArray, deadSequence, "saturations map", isHeadLess());
-                        }
-                    }, 10);
-                }
-            }
-        }*/
-
 
 
         if(cursequence==null){
@@ -1308,7 +1273,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     @Override
     protected void dataChanged() {
         super.dataChanged();
-
+        if(dataSeq!=null){
+            epsilon.setValue((new Histogram(sequenceToArray(dataSeq, channelEV.getValue()))).getMaximumValue()/1000 );
+        };
         badpixArray = null;
         psfEstimation=null;
         cursequence =null;
