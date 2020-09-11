@@ -391,6 +391,10 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
                 tmp[0] = 1;
                 modulusCoefs.setValue(tmp);
                 pupilShift.setValue(new double[] { 0., 0.});
+                if (meta!=null)
+                    ni.setValue(     meta.ni);
+                else
+                    ni.setValue(1.518);
             }
         });
 
