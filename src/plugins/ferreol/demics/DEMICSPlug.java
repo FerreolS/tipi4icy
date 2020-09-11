@@ -56,6 +56,7 @@ import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzGroup;
 import plugins.adufour.ezplug.EzPlug;
+import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVar;
 import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarChannel;
@@ -74,7 +75,7 @@ import plugins.mitiv.io.IcyImager;
  * @author Ferréol
  *
  */
-public abstract class DEMICSPlug extends EzPlug  implements Block{
+public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
 
     protected EzVarSequence   dataEV;           // data
     protected EzVarChannel    channelEV;        // data channel

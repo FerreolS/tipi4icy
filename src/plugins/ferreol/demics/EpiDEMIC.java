@@ -44,13 +44,11 @@ import mitiv.cost.DifferentiableCostFunction;
 import mitiv.cost.HyperbolicTotalVariation;
 import mitiv.jobs.DeconvolutionJob;
 import mitiv.utils.Histogram;
-import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzGroup;
 import plugins.adufour.ezplug.EzLabel;
 import plugins.adufour.ezplug.EzPanel;
-import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzTabs;
 import plugins.adufour.ezplug.EzTabs.TabPlacement;
 import plugins.adufour.ezplug.EzVar;
@@ -70,7 +68,7 @@ import plugins.mitiv.io.IcyImager;
  * @author Ferréol Soulez & Jonathan Leger
  *
  */
-public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
+public class EpiDEMIC extends DEMICSPlug {
 
 
     /***************************************************/
