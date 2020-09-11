@@ -118,7 +118,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
 
     protected EzGroup ezWeightingGroup, groupVisu;
     protected EzVarText       weightsMethod;  // Combobox for variance estimation
-    protected final String[] weightOptions = new String[]{"None","Inverse covariance map","Variance map","Computed variance","Automatic variance estimation"};
+    protected final String[] weightOptions = new String[]{"Variance =1","Inverse variance map","Variance map","Computed variance","Automatic variance estimation"};
     protected EzVarDouble     gain, noise;    // gain of the detector in e-/lvl and detector noise in e-
     protected EzVarSequence weightsSeq, badpixMap; // maps of inverse variance and bad pixels
     protected EzButton        showWeightButton;
@@ -294,8 +294,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block{
                 }
             }
         });
-        ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weightsSeq,gain,noise,badpixMap,showWeightButton);
-        ezWeightingGroup.setFoldedState(true);
+
 
 
 

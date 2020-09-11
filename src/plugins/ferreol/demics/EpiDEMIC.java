@@ -83,6 +83,9 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
     private EzButton        saveMetaData, showPSF;
     private EzVarDouble     dxy_nm;
 
+    /** Noise model tab **/
+    private EzPanel         noisePanel; // Panel with noise parameters
+
 
 
     /** deconvolution tab: **/
@@ -281,10 +284,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
             public void variableChanged(EzVar<Double> source, Double newValue) {
                 scale.setValue(new double[]{1.0 ,1.0,  dz_nm.getValue()/dxy_nm.getValue() } );
                 pupilShift.setValue(new double[] { 0., 0.});
-                if (meta!=null)
-                    ni.setValue(     meta.ni);
-                else
-                    ni.setValue(1.518);
                 pupil=null;
             };
         };
@@ -327,9 +326,14 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
 
 
         /****************************************************/
+        /**                    NOISE  TAB                  **/
+        /****************************************************/
+        noisePanel = new EzPanel("Step 2: Noise model");
+
+        /****************************************************/
         /**                    DECONV TAB                  **/
         /****************************************************/
-        deconvPanel = new EzPanel("Step 2: Deconvolution");
+        deconvPanel = new EzPanel("Step 3: Deconvolution");
         epsilon = new EzVarDouble("Threshold level:",1E-2,0.,Double.MAX_VALUE,1.0);
         singlePrecision.addVarChangeListener(new EzVarListener<Boolean>() {
             @Override
@@ -355,7 +359,7 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         /****************************************************/
         /**                      BDEC TAB                  **/
         /****************************************************/
-        //Saving variables
+        bdecPanel = new EzPanel("Step 4: Blind deconvolution");
         pupilShift = new EzVarDoubleArrayNative("pupilShift", new double[][] { { 0.0, 0.0} }, false);
         pupilShift.setVisible(false);
         phaseCoefs = new EzVarDoubleArrayNative("phase coefs",null , false);
@@ -363,7 +367,6 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         modulusCoefs = new EzVarDoubleArrayNative("modulusCoefs", new double[][] { {1.0 } },0, false);
         modulusCoefs.setVisible(false);
 
-        bdecPanel = new EzPanel("Step 3: Blind dec.");
         nbAlphaCoef = new EzVarText(            "Number of phase coefs N\u03B1:", nAlphaOptions, 3,false );
         nbBetaCoef = new EzVarText(             "Number of modulus coefs N\u03B2:", nBetaOptions,0, false);
         radial = new EzVarBoolean(              "Radially symmetric PSF", false);
@@ -558,13 +561,24 @@ public class EpiDEMIC extends DEMICSPlug implements  EzStoppable, Block {
         dataPanel.add(ni);
         dataPanel.add(lambda);
 
-        dataPanel.add(ezWeightingGroup);
+        //    dataPanel.add(ezWeightingGroup);
 
         dataPanel.add(saveMetaData);
         dataPanel.add(showPSF);
         dataPanel.add(loadFile);
         dataPanel.add(loadParam);
         tabbedPane.add(dataPanel);
+
+        /**** Noise model ****/
+        noisePanel.add(new EzLabel("The noise is supposed Gaussian with variance given by:"
+                + "\n"));
+        noisePanel.add(weightsMethod);
+        noisePanel.add(weightsSeq);
+        noisePanel.add(gain);
+        noisePanel.add(noise);
+        noisePanel.add(badpixMap);
+        noisePanel.add(showWeightButton);
+        tabbedPane.add(noisePanel);
 
 
         /**** Deconv ****/

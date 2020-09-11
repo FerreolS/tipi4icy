@@ -201,6 +201,9 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         addEzComponent(dataSizeTxt);
         addEzComponent(outputSizeTxt);
         addEzComponent(ezPaddingGroup);
+
+        ezWeightingGroup = new EzGroup("Weighting",weightsMethod,weightsSeq,gain,noise,badpixMap,showWeightButton);
+        ezWeightingGroup.setFoldedState(true);
         addEzComponent(ezWeightingGroup);
         addEzComponent(ezDeconvolutionGroup);
         addEzComponent(startDecButton);
