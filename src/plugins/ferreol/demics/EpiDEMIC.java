@@ -220,7 +220,7 @@ public class EpiDEMIC extends DEMICSPlug {
         });
 
 
-        paddingSizeXY = new EzVarInteger("padding x:",0, Integer.MAX_VALUE,1);
+        paddingSizeXY = new EzVarInteger("padding in x and y:",0, Integer.MAX_VALUE,1);
 
         EzVarListener<Integer> zeroPadActionListener = new EzVarListener<Integer>() {
             @Override

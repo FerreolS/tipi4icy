@@ -183,14 +183,13 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
         channelRestartEV = new EzVarChannel("Initialization channel :", restartEV.getVariable(), false);
         dataSizeTxt = new EzVarText("Data size:");
         outputSizeTxt = new EzVarText("Output size:");
-        paddingSizeZ = new EzVarInteger("padding z :",0, Integer.MAX_VALUE,1);
+        paddingSizeZ = new EzVarInteger("padding in z :",0, Integer.MAX_VALUE,1);
         dx_nm = new EzVarDouble("dx(nm):",64.5,0., Double.MAX_VALUE,1.);
         dy_nm = new EzVarDouble("dy(nm):",64.5,0., Double.MAX_VALUE,1.);
         dz_nm = new EzVarDouble("dz(nm):",64.5,0., Double.MAX_VALUE,1.);
 
         dataSizeTxt.setVisible(false);
         outputSizeTxt.setVisible(false);
-
         dataEV.setNoSequenceSelection();
 
         zeroPadActionListener = new EzVarListener<Integer>() {
@@ -503,6 +502,9 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
             updateImageSize();
             dataSizeTxt.setVisible(true);
             outputSizeTxt.setVisible(true);
+            outputSizeTxt.setEnabled(false);
+            dataSizeTxt.setEnabled(false);
+
             startDecButton.setEnabled(true);
         }else {
             startDecButton.setEnabled(false);
