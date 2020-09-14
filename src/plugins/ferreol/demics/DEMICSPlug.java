@@ -336,6 +336,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
             @Override
             public void variableChanged(EzVar<Double> source, Double newValue) {
                 mu.setValue(Math.pow(10, logmu.getValue()));
+                mu.setEnabled(false);
             }
         };
         logmu.addVarChangeListener(logmuActionListener);
