@@ -33,8 +33,6 @@ import icy.sequence.Sequence;
 import icy.system.thread.ThreadUtil;
 import icy.util.OMEUtil;
 import icy.util.StringUtil;
-import loci.formats.ome.OMEXMLMetadata;
-import loci.formats.ome.OMEXMLMetadataImpl;
 import mitiv.array.ArrayFactory;
 import mitiv.array.ArrayUtils;
 import mitiv.array.ByteArray;
@@ -51,6 +49,7 @@ import mitiv.utils.FFTUtils;
 import mitiv.utils.HistoMap;
 import mitiv.utils.WeightFactory;
 import mitiv.utils.WeightUpdater;
+import ome.xml.meta.OMEXMLMetadata;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
@@ -80,8 +79,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
     protected EzVarSequence   dataEV;           // data
     protected EzVarChannel    channelEV;        // data channel
 
-    protected MicroscopeMetadata meta = null; // metadata of the data
-
+    protected  OMEXMLMetadata metDat = null;
 
     protected EzVarDouble     logmu, mu;      // deconvolution hyper parameters; mu = 10^(logmu)
     protected EzVarSequence   restartEV;        // starting point
@@ -221,6 +219,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
             @Override
             public void variableChanged(EzVar<Integer> source, Integer newValue) {
                 channelRestartEV.setValue(newValue);
+                dataChanged();
                 modelArray = null;
             }
         });
@@ -486,10 +485,30 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
             // setting restart value to the current sequence
             restartEV.setValue(dataSeq);
             channelRestartEV.setValue(channelEV.getValue());
-            meta = getMetaData(dataSeq);
-            dx_nm.setValue(    meta.dx);
-            dy_nm.setValue(    meta.dy);
-            dz_nm.setValue(     meta.dz);
+            metDat = dataSeq.getOMEXMLMetadata();
+            dx_nm.setValue( dataSeq.getPixelSizeX()*1E3);
+            dy_nm.setValue( dataSeq.getPixelSizeY()*1E3);
+            dz_nm.setValue( dataSeq.getPixelSizeZ()*1E3);
+
+            try {
+                lambda.setValue( metDat.getChannelEmissionWavelength(0,channelEV.getValue()).value().doubleValue()*1E3);
+            } catch(Exception e){
+                System.out.println("Failed to get wavelength from metadata, will use default values ");
+                lambda.setValue(500.0);
+            }
+            try {
+                na.setValue( metDat.getObjectiveLensNA(0, 0));
+            } catch(Exception e){
+                System.out.println("Failed to get numerical aperture from metadata, will use default values ");
+                na.setValue(1.4);
+            }
+            try {
+                ni.setValue( metDat.getObjectiveSettingsRefractiveIndex(0));
+            } catch(Exception e){
+                System.out.println("Failed to get refractive index from metadata, will use default values ");
+                ni.setValue(1.518);
+            }
+
             if (sizeZ==1) {
                 dataShape = new Shape(sizeX, sizeY);
                 scale.setValue(new double[]{1.0 , dx_nm.getValue()/ dy_nm.getValue()} );
@@ -589,11 +608,16 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
     protected void updateMetaData() {
         Sequence seq = dataEV.getValue();
         if (seq != null) {
-            ome.xml.meta.OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, false);
+            OMEXMLMetadata newMetdat = MetaDataUtil.generateMetaData(seq, true);
             newMetdat.setPixelsPhysicalSizeX(OMEUtil.getLength(dx_nm.getValue()*1E-3), 0);
             newMetdat.setPixelsPhysicalSizeY(OMEUtil.getLength(dy_nm.getValue()*1E-3), 0);
             newMetdat.setPixelsPhysicalSizeZ(OMEUtil.getLength(dz_nm.getValue()*1E-3), 0);
-            seq.setMetaData((OMEXMLMetadataImpl) newMetdat); //FIXME may not working now
+            newMetdat.setObjectiveLensNA(na.getValue(),0, 0);
+            //    for (int i = 0; i <  newMetdat.getImageCount(); i++) {
+            newMetdat.setChannelEmissionWavelength(OMEUtil.getLength(lambda.getValue()*1E-3),0, channelEV.getValue());
+            newMetdat.setObjectiveSettingsRefractiveIndex(ni.getValue(), 0);
+            //     }
+            seq.setMetaData(newMetdat); //FIXME may not working now
         } else {
             new AnnounceFrame("Nothing to save");
         }
@@ -645,49 +669,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
         }
     }
 
-
-    /**
-     * Here we get the informations given by the users but not all.
-     * In fact we trust only a few data that we know that are given by Icy.
-     * Else we are trying to keep them for the next run.
-     *
-     * Remember: if users may lie, they will !
-     *
-     * @param seq
-     * @return
-     */
-    protected MicroscopeMetadata getMetaData(Sequence seq){ //FIXME Should be elsewhere
-        OMEXMLMetadata metDat = seq.getMetadata();
-        if (meta == null) {
-            meta = new MicroscopeMetadata();
-        }
-        if (metDat.getInstrumentCount() > 0) {
-            try {
-                meta.na      = metDat.getObjectiveLensNA(0, 0);
-                //meta.lambda  = metDat.getChannelEmissionWavelength(0, 0).getValue().doubleValue()*1E6;  //I suppose the value I will get is in um
-            } catch(Exception e){
-                System.out.println("Failed to get some metadatas, will use default values for na, lambda");
-            }
-        }
-
-        //If no instrument found, at least we have the right image size
-        meta.nz      = seq.getSizeZ();
-        meta.dx     = seq.getPixelSizeX()*1E3;
-        meta.dy     = seq.getPixelSizeY()*1E3;
-        meta.dz      = seq.getPixelSizeZ()*1E3;
-        if (na !=null) {
-            meta.na      = na.getValue();
-        }
-        if (lambda !=null) {
-            meta.lambda  = lambda.getValue();
-        }
-        if (ni !=null) {
-            meta.ni      = ni.getValue();
-        }
-        return meta;
-    }
-
-    /**
+    /*
      * print error message
      *
      * @param s

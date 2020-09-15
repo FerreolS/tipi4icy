@@ -31,6 +31,7 @@ import icy.gui.frame.progress.AnnounceFrame;
 import icy.image.colormap.IceColorMap;
 import icy.main.Icy;
 import icy.sequence.Sequence;
+import icy.util.OMEUtil;
 import microTiPi.epifluorescence.WideFieldModel;
 import microTiPi.microUtils.BlindDeconvJob;
 import microTiPi.microscopy.PSF_Estimation;
@@ -252,18 +253,35 @@ public class EpiDEMIC extends DEMICSPlug {
                 }
                 if(dataSeq!=null){
                     startBlind.setEnabled(true);
-                    if (meta.dx!=meta.dy) {
+                    if (dataSeq.getPixelSizeX()!=dataSeq.getPixelSizeY()) {
                         startDecButton.setEnabled(false);
                         startBlind.setEnabled(false);
                         throwError("Input channel must have the same scale in X and Y");
                         return;
                     }
-                    dxy_nm.setValue(    meta.dx);
-                    dz_nm.setValue(     meta.dz);
+                    dxy_nm.setValue( dataSeq.getPixelSizeX()*1E3);
+                    dz_nm.setValue( dataSeq.getPixelSizeZ()*1E3);
                     scale.setValue(new double[]{1.0 ,1.0, dxy_nm.getValue()/ dz_nm.getValue() } );
-                    na.setValue(     meta.na);
-                    lambda.setValue( meta.lambda);
-                    ni.setValue(     meta.ni);
+
+                    try {
+                        lambda.setValue( metDat.getChannelEmissionWavelength(0,channelEV.getValue()).value().doubleValue()*1E3);
+                    } catch(Exception e){
+                        System.out.println("Failed to get some wavelength metadatas, will use default values ");
+                        lambda.setValue(500.0);
+                    }
+                    try {
+                        na.setValue( metDat.getObjectiveLensNA(0, 0));
+                    } catch(Exception e){
+                        System.out.println("Failed to get na metadatas, will use default values ");
+                        na.setValue(1.4);
+                    }
+
+                    try {
+                        ni.setValue( metDat.getObjectiveSettingsRefractiveIndex(0));
+                    } catch(Exception e){
+                        System.out.println("Failed to get refractive index from metadata, will use default values ");
+                        ni.setValue(1.518);
+                    }
                     if (debug) {
                         System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
                     }
@@ -389,8 +407,8 @@ public class EpiDEMIC extends DEMICSPlug {
                 tmp[0] = 1;
                 modulusCoefs.setValue(tmp);
                 pupilShift.setValue(new double[] { 0., 0.});
-                if (meta!=null)
-                    ni.setValue(     meta.ni);
+                if (metDat!=null)
+                    ni.setValue(   1.518); //FIXME
                 else
                     ni.setValue(1.518);
             }
@@ -476,6 +494,7 @@ public class EpiDEMIC extends DEMICSPlug {
                 Sequence fSeq;
                 fSeq = new Sequence("Deconvolved image");
                 fSeq.copyMetaDataFrom(dataEV.getValue(), false);
+                fSeq.setMetaData(OMEUtil.createOMEXMLMetadata(dataEV.getValue().getOMEXMLMetadata()));
                 if(objArray != null){
                     IcyImager.show(objArray,fSeq,"Deconvolved "+ dataEV.getValue().getName() + " with padding. mu " + mu.getValue(),isHeadLess());
                 }else {
@@ -1075,11 +1094,6 @@ public class EpiDEMIC extends DEMICSPlug {
         }
         dataShape = dataArray.getShape();
 
-
-        if(cursequence==null){
-            cursequence = new Sequence("Current Iterate");
-            cursequence.copyMetaDataFrom(dataSeq, false);
-        }
 
         Sequence restartSeq = restartEV.getValue();
         if (  restartSeq != null){
