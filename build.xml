@@ -68,7 +68,6 @@
            <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/SimpleDEMIC.java"/>      
            <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>       
            <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/Convolution.java"/>        
-           <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/MicroscopeMetadata.java"/>     
            <copy todir="src-simpledemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/ToolTipText.java"/>       
            <copy  todir="src-simpledemic/plugins/mitiv/io"><fileset dir="src/plugins/mitiv/io" /> </copy>      
            <javac debug="${debug}"  debuglevel="${debuglevel}" destdir="bin-simpledemic" includeantruntime="false" source="${source}" target="${target}">
@@ -92,7 +91,6 @@
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/EpiDEMIC.java"/>       
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
         <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/ToolTipText.java"/> 
-        <copy todir="src-epidemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/MicroscopeMetadata.java"/>     
           <copy  todir="src-epidemic/plugins/mitiv/io"><fileset dir="src/plugins/mitiv/io" /> </copy>      
           <javac debug="${debug}"  debuglevel="${debuglevel}" destdir="bin-epidemic" includeantruntime="false" source="${source}" target="${target}">
                      <src path="src-epidemic"/>
