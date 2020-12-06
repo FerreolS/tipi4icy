@@ -49,6 +49,7 @@ import mitiv.utils.FFTUtils;
 import mitiv.utils.HistoMap;
 import mitiv.utils.WeightFactory;
 import mitiv.utils.WeightUpdater;
+import ome.units.UNITS;
 import ome.xml.meta.OMEXMLMetadata;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
@@ -491,7 +492,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
             dz_nm.setValue( dataSeq.getPixelSizeZ()*1E3);
 
             try {
-                lambda.setValue( metDat.getChannelEmissionWavelength(0,channelEV.getValue()).value().doubleValue()*1E3);
+                lambda.setValue( metDat.getChannelEmissionWavelength(0,channelEV.getValue()).value(UNITS.NANOMETER).doubleValue());
             } catch(Exception e){
                 System.out.println("Failed to get wavelength from metadata, will use default values ");
                 lambda.setValue(500.0);
@@ -503,7 +504,12 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
                 na.setValue(1.4);
             }
             try {
-                ni.setValue( metDat.getObjectiveSettingsRefractiveIndex(0));
+                if (metDat.getObjectiveSettingsRefractiveIndex(0)!=null)
+                    ni.setValue(metDat.getObjectiveSettingsRefractiveIndex(0) );
+                else {
+                    System.out.println("Failed to get refractive index from metadata, will use default values ");
+                    ni.setValue(1.518);
+                }
             } catch(Exception e){
                 System.out.println("Failed to get refractive index from metadata, will use default values ");
                 ni.setValue(1.518);

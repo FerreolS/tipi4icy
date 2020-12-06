@@ -45,6 +45,7 @@ import mitiv.cost.DifferentiableCostFunction;
 import mitiv.cost.HyperbolicTotalVariation;
 import mitiv.jobs.DeconvolutionJob;
 import mitiv.utils.Histogram;
+import ome.units.UNITS;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzButton;
 import plugins.adufour.ezplug.EzGroup;
@@ -264,7 +265,7 @@ public class EpiDEMIC extends DEMICSPlug {
                     scale.setValue(new double[]{1.0 ,1.0, dxy_nm.getValue()/ dz_nm.getValue() } );
 
                     try {
-                        lambda.setValue( metDat.getChannelEmissionWavelength(0,channelEV.getValue()).value().doubleValue()*1E3);
+                        lambda.setValue( metDat.getChannelEmissionWavelength(0,channelEV.getValue()).value(UNITS.NANOMETER).doubleValue());
                     } catch(Exception e){
                         System.out.println("Failed to get some wavelength metadatas, will use default values ");
                         lambda.setValue(500.0);
@@ -277,7 +278,12 @@ public class EpiDEMIC extends DEMICSPlug {
                     }
 
                     try {
-                        ni.setValue( metDat.getObjectiveSettingsRefractiveIndex(0));
+                        if (metDat.getObjectiveSettingsRefractiveIndex(0)!=null)
+                            ni.setValue(metDat.getObjectiveSettingsRefractiveIndex(0) );
+                        else {
+                            System.out.println("Failed to get refractive index from metadata, will use default values ");
+                            ni.setValue(1.518);
+                        }
                     } catch(Exception e){
                         System.out.println("Failed to get refractive index from metadata, will use default values ");
                         ni.setValue(1.518);
@@ -408,7 +414,7 @@ public class EpiDEMIC extends DEMICSPlug {
                 modulusCoefs.setValue(tmp);
                 pupilShift.setValue(new double[] { 0., 0.});
                 if (metDat!=null)
-                    ni.setValue(   1.518); //FIXME
+                    ni.setValue(1.518); //FIXME
                 else
                     ni.setValue(1.518);
             }
