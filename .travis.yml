@@ -6,7 +6,7 @@ before_script:
 - git config --global user.email "ferreol.soulez@univ-lyon1.fr"
 - git config --global user.name "ferreolS"
 # First icy and dependencies
-- wget -nv -O icy.zip http://icy.bioimageanalysis.org/download-file/\?id\=79911 && unzip icy.zip -s icy  && rm icy.zip
+- wget -nv -O icy.zip http://icy.bioimageanalysis.org/download-file/\?id\=79911 && unzip icy.zip -d icy  && rm icy.zip
 - wget -nv https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip && unzip jar.zip && mv IcyHLPluginInstaller-jar/IcyHLPluginInstaller.jar icy/plugins/. 
 - cd icy 
 - java -jar icy.jar -hl -x plugins.ferreol.icyhlplugininstaller.IcyHLPluginInstaller  plugins.adufour.blocks.Blocks plugins.adufour.protocols.Protocols
