@@ -654,7 +654,7 @@ public class EpiDEMIC extends DEMICSPlug {
         updateOutputSize();
         updateImageSize();
 
-        if (isHeadLess()) {
+        if (!isHeadLess()) {
             outputSizeTxt.setEnabled(false);
             dataSizeTxt.setEnabled(false);
             mu.setEnabled(false);
