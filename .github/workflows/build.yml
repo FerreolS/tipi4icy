@@ -21,11 +21,11 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
-    - name: prepare build 
-      run: | 
+    - name: prepare build
+      run: |
         wget -nv -O icy.zip http://icy.bioimageanalysis.org/download-file/\?id\=86029 && unzip icy.zip -d icy  && rm icy.zip
-        wget -nv https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip && unzip jar.zip && mv IcyHLPluginInstaller-jar/IcyHLPluginInstaller.jar icy/plugins/. 
-        cd icy 
+        wget -nv https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip && unzip jar.zip && mv IcyHLPluginInstaller-jar/IcyHLPluginInstaller.jar icy/plugins/.
+        cd icy
         java -jar icy.jar -hl -x plugins.ferreol.icyhlplugininstaller.IcyHLPluginInstaller  plugins.adufour.blocks.Blocks plugins.adufour.protocols.Protocols
         cd ..
         mkdir lib
@@ -40,7 +40,7 @@ jobs:
         git clone --quiet --branch=master https://github.com/emmt/TiPi.git
         cd TiPi && ant build && ant tipi-sdk
         mv TiPi.zip ../ && cd ..
-        cp -r TiPi/lib/* lib/ 
+        cp -r TiPi/lib/* lib/
     - name: prepare microtipi
       run: |
         git clone --quiet --branch=master https://github.com/FerreolS/microTiPi.git
@@ -52,13 +52,13 @@ jobs:
         ant simpledemic
         ant epidemic
         ant doc > /dev/null
-        
+
     - uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./doc
         force_orphan: true
-      
+
     - name: Push jars
       uses: s0/git-publish-subdir-action@develop
       env:
@@ -67,3 +67,4 @@ jobs:
         FOLDER: jar # The directory where your assets are generated
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub will automatically add this - you don't need to bother getting a token
         MESSAGE: "Build: ({sha}) {msg}" # The commit message
+        SQUASH_HISTORY: true
