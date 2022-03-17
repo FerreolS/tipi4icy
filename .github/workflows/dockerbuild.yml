@@ -6,9 +6,13 @@ name: docker
 # documentation.
 on:
   push:
-    branches: [ master ]
+    branches: [ jars ]
   schedule:
   - cron: "0 15 17 * *"
+  workflow_run:
+    workflows: ["Java CI"]
+    types:
+      - completed
 jobs:
   build:
     runs-on: ubuntu-latest
