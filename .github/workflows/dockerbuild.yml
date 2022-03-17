@@ -43,6 +43,7 @@ jobs:
       #     tags: ${{ secrets.DOCKER_HUB_USERNAME }}/icy:full
       -
         name: Build and push icy:latest
+        continue-on-error: true
         uses: docker/build-push-action@v2
         with:
           context: .
@@ -62,7 +63,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: ./docker/simpledemic/Dockerfile
+          file: ./docker/SimpleDEMIC/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/simpledemic:latest
       -
@@ -70,6 +71,6 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: ./docker/epidemic/Dockerfile
+          file: ./docker/EpiDEMIC/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/epidemic:latest
