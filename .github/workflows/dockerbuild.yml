@@ -33,14 +33,14 @@ jobs:
           file: ./docker/Icy/bare/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/icy:bare
-      -
-        name: Build and push icy:full
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./docker/Icy/full/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/icy:full
+      # -
+      #   name: Build and push icy:full
+      #   uses: docker/build-push-action@v2
+      #   with:
+      #     context: .
+      #     file: ./docker/Icy/full/Dockerfile
+      #     push: true
+      #     tags: ${{ secrets.DOCKER_HUB_USERNAME }}/icy:full
       -
         name: Build and push icy:latest
         uses: docker/build-push-action@v2
