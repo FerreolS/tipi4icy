@@ -6,7 +6,7 @@ name: docker
 # documentation.
 on:
   push:
-    branches: [ jars ]
+    branches: [ master ]
   schedule:
   - cron: "0 15 17 * *"
 jobs:
