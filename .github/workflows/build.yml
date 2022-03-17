@@ -22,8 +22,8 @@ jobs:
         java-version: '11'
         distribution: 'temurin'
     - name: prepare build 
-      run: |
-        wget -nv -O icy.zip http://icy.bioimageanalysis.org/download-file/\?id\=79911 && unzip icy.zip -d icy  && rm icy.zip
+      run: | 
+        wget -nv -O icy.zip http://icy.bioimageanalysis.org/download-file/\?id\=88734 && unzip icy.zip -d icy  && rm icy.zip
         wget -nv https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip && unzip jar.zip && mv IcyHLPluginInstaller-jar/IcyHLPluginInstaller.jar icy/plugins/. 
         cd icy 
         java -jar icy.jar -hl -x plugins.ferreol.icyhlplugininstaller.IcyHLPluginInstaller  plugins.adufour.blocks.Blocks plugins.adufour.protocols.Protocols
