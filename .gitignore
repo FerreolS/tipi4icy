@@ -57,3 +57,6 @@ Icon?
 Thumbs.db
 .directory
 
+target
+.vscode
+extlibs
