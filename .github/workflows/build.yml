@@ -40,7 +40,6 @@ jobs:
         git clone --quiet --branch=master https://github.com/FerreolS/microTiPi.git
         mkdir src-doc src-epidemic
         cp -r microTiPi/src/microTiPi src-doc
-        mv microTiPi/src/microTiPi src-TiPiSDK
     - name: prepare tipi
       run: |
         git clone --quiet --branch=master https://github.com/emmt/TiPi.git
