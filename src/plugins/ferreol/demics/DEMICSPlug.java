@@ -93,9 +93,9 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
     protected EzVarText       outputSizeTxt;     // size of the object after padding
     // optical parameters
     protected EzVarDouble     dy_nm,dx_nm, dz_nm;  //  pixels size in (x,y) and z
-    protected EzVarDouble     na  ;             //  numerical aperture
-    protected EzVarDouble     lambda;         //  wavelength
-    protected EzVarDouble     ni;             //  refractive index of the immersion index
+    protected EzVarDouble     na=null  ;             //  numerical aperture
+    protected EzVarDouble     lambda=null;         //  wavelength
+    protected EzVarDouble     ni=null;             //  refractive index of the immersion index
 
     protected EzVarInteger    nbIterDeconv;   // number of iteration for the deconvolution stage
     protected EzVarBoolean    singlePrecision;// compute in single precision
@@ -491,28 +491,35 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
             dy_nm.setValue( dataSeq.getPixelSizeY()*1E3);
             dz_nm.setValue( dataSeq.getPixelSizeZ()*1E3);
 
-            try {
-                lambda.setValue( metDat.getChannelEmissionWavelength(0,channelEV.getValue()).value(UNITS.NANOMETER).doubleValue());
-            } catch(Exception e){
-                System.out.println("Failed to get wavelength from metadata, will use default values ");
-                lambda.setValue(500.0);
+            if (lambda != null) {
+                try {
+                    lambda.setValue(metDat.getChannelEmissionWavelength(0, channelEV.getValue()).value(UNITS.NANOMETER)
+                            .doubleValue());
+                } catch (Exception e) {
+                    System.out.println("Failed to get wavelength from metadata, will use default values ");
+                    lambda.setValue(500.0);
+                }
             }
-            try {
-                na.setValue( metDat.getObjectiveLensNA(0, 0));
-            } catch(Exception e){
-                System.out.println("Failed to get numerical aperture from metadata, will use default values ");
-                na.setValue(1.4);
+            if (na != null) {
+                try {
+                    na.setValue(metDat.getObjectiveLensNA(0, 0));
+                } catch (Exception e) {
+                    System.out.println("Failed to get numerical aperture from metadata, will use default values ");
+                    na.setValue(1.4);
+                }
             }
-            try {
-                if (metDat.getObjectiveSettingsRefractiveIndex(0)!=null)
-                    ni.setValue(metDat.getObjectiveSettingsRefractiveIndex(0) );
-                else {
+            if (ni != null) {
+                try {
+                    if (metDat.getObjectiveSettingsRefractiveIndex(0) != null)
+                        ni.setValue(metDat.getObjectiveSettingsRefractiveIndex(0));
+                    else {
+                        System.out.println("Failed to get refractive index from metadata, will use default values ");
+                        ni.setValue(1.518);
+                    }
+                } catch (Exception e) {
                     System.out.println("Failed to get refractive index from metadata, will use default values ");
                     ni.setValue(1.518);
                 }
-            } catch(Exception e){
-                System.out.println("Failed to get refractive index from metadata, will use default values ");
-                ni.setValue(1.518);
             }
 
             if (sizeZ==1) {

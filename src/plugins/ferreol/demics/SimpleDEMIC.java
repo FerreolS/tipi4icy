@@ -621,5 +621,4 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
         }
     }
 
-
 }
