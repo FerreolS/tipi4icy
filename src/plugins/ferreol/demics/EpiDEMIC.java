@@ -1320,5 +1320,3 @@ public class EpiDEMIC extends DEMICSPlug {
     }
 
 }
-
-
