@@ -23,18 +23,18 @@ jobs:
         distribution: 'temurin'
     - name: prepare build
       run: |
-        wget -nv -O icy.zip http://icy.bioimageanalysis.org/download-file/\?id\=89162 && unzip icy.zip -d icy  && rm icy.zip
-        wget -nv https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip && unzip jar.zip && mv IcyHLPluginInstaller-jar/IcyHLPluginInstaller.jar icy/plugins/.
-        cd icy
+        wget -nv -O icy.zip http://icy.bioimageanalysis.org/download-file/\?id\=89162 && unzip icy.zip   && rm icy.zip
+        wget -nv https://github.com/FerreolS/IcyHLPluginInstaller/archive/jar.zip && unzip jar.zip && mv IcyHLPluginInstaller-jar/IcyHLPluginInstaller.jar Icy/plugins/.
+        cd Icy
         java -jar icy.jar -hl -x plugins.ferreol.icyhlplugininstaller.IcyHLPluginInstaller  plugins.adufour.blocks.Blocks plugins.adufour.protocols.Protocols
         cd ..
         mkdir lib
         mkdir bin
-        mv icy/icy.jar lib/
-        mv icy/lib/icy-bioformats.jar lib/
-        mv icy/plugins/adufour/blocks/Blocks.jar lib/
-        mv icy/plugins/adufour/ezplug/EzPlug.jar lib/
-        mv icy/plugins/adufour/protocols/Protocols.jar lib/
+        mv Icy/icy.jar lib/
+        mv Icy/lib/icy-bioformats.jar lib/
+        mv Icy/plugins/adufour/blocks/Blocks.jar lib/
+        mv Icy/plugins/adufour/ezplug/EzPlug.jar lib/
+        mv Icy/plugins/adufour/protocols/Protocols.jar lib/
     - name: prepare tipi
       run: |
         git clone --quiet --branch=master https://github.com/emmt/TiPi.git
