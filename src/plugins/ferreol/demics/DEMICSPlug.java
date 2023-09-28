@@ -141,7 +141,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
 
     // listener
     protected EzVarListener<Integer> zeroPadActionListener;
-    protected WeightUpdater wghtUpdt;
+    protected WeightUpdater wghtUpdt=null;
     /*********************************/
     /**            DEBUG            **/
     /*********************************/

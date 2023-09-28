@@ -864,9 +864,11 @@ public class EpiDEMIC extends DEMICSPlug {
                 bdec = new BlindDeconvJob(totalNbOfBlindDecLoop.getValue(), pupil.getParametersFlags(), bMaxIter, psfEstimation ,deconvolver, wghtUpdt,debug );
 
                 objArray = bdec.blindDeconv(objArray);
-                wgtArray = wghtUpdt.getWeights();
-                gain.setValue(((weightsFromModel) wghtUpdt).getAlpha());
-                noise.setValue(Math.sqrt(((weightsFromModel) wghtUpdt).getBeta())/gain.getValue());
+                if(wghtUpdt!=null){
+                    wgtArray = wghtUpdt.getWeights();
+                    gain.setValue(((weightsFromModel) wghtUpdt).getAlpha());
+                    noise.setValue(Math.sqrt(((weightsFromModel) wghtUpdt).getBeta())/gain.getValue());
+                }
                 if(maxIterDefocus.getValue()>0){
                     ni.setValue(((WideFieldModel) psfEstimation.getModel()).getNi());
                     pupilShift.setValue(((WideFieldModel) psfEstimation.getModel()).getPupilShift());
@@ -1152,10 +1154,10 @@ public class EpiDEMIC extends DEMICSPlug {
         objArray = deconvolver.deconv(objArray);
         if(wghtUpdt!=null) {
             wghtUpdt.update(deconvolver);
+            wgtArray = wghtUpdt.getWeights();
+            gain.setValue(((weightsFromModel) wghtUpdt).getAlpha());
+            noise.setValue(Math.sqrt(((weightsFromModel) wghtUpdt).getBeta())/gain.getValue());
         }
-        wgtArray = wghtUpdt.getWeights();
-        gain.setValue(((weightsFromModel) wghtUpdt).getAlpha());
-        noise.setValue(Math.sqrt(((weightsFromModel) wghtUpdt).getBeta())/gain.getValue());
     }
 
 
