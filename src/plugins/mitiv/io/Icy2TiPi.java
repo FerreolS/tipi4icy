@@ -89,16 +89,36 @@ public abstract  class Icy2TiPi {
         switch (seq.getDataType_())
         {
             case UBYTE:
-                seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.SHORT, false);
+                try {
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.SHORT, false);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
                 break;
             case USHORT:
-                seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.INT, false);
+                try {
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.INT, false);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
                 break;
             case UINT:
-                seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.LONG, false);
+                try {
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.LONG, false);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
                 break;
             case ULONG:
-                seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.DOUBLE, false);
+                try {
+                    seq = icy.sequence.SequenceUtil.convertToType(seq, DataType.DOUBLE, false);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
                 break;
             default:
                 break;
