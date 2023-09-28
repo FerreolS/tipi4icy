@@ -45,7 +45,9 @@
         <mkdir dir="src-TiPiSDK/plugins/mitiv"/>
         <mkdir dir="bin-TiPiSDK"/>
         <unzip src="TiPi.zip" dest="src-TiPiSDK"/>
-        <copy file="microTiPi/src/microTiPi" todir="src-TiPiSDK"/>
+        <copy todir="src-TiPiSDK">
+            <fileset dir="microTiPi/src/microTiPi"/> 
+        </copy>
         <copy file="src/plugins/mitiv/TiPiSDK.java"  todir="src-TiPiSDK/plugins/mitiv"/> 
         <javac debug="${debug}"  debuglevel="${debuglevel}" destdir="bin-TiPiSDK" includeantruntime="false" source="${source}" target="${target}">
                    <src path="src-TiPiSDK"/>
