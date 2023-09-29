@@ -852,8 +852,8 @@ public class EpiDEMIC extends DEMICSPlug {
                 psfArray = ArrayUtils.roll( pupil.getPsf() );
                 preProcessing();
 
-                psfEstimation.setWeight(  ArrayUtils.pad(wgtArray,outputShape));
                 psfEstimation.setData(ArrayUtils.pad(dataArray,outputShape));
+                psfEstimation.setWeight(  ArrayUtils.pad(wgtArray,outputShape));
 
                 psfEstimation.enablePositivity(false);
                 psfEstimation.setAbsoluteTolerance(0.0);
