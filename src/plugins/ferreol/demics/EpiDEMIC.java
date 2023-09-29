@@ -35,7 +35,7 @@ import icy.util.OMEUtil;
 import microTiPi.epifluorescence.WideFieldModel;
 import microTiPi.microUtils.BlindDeconvJob;
 import microTiPi.microscopy.PSF_Estimation;
-import microTiPi.microscopy.weightsFromModel;
+import mitiv.weights.weightsFromModel;
 import mitiv.array.ArrayUtils;
 import mitiv.array.Double2D;
 import mitiv.array.DoubleArray;
