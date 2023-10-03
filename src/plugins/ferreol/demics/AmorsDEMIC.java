@@ -402,12 +402,13 @@ public class AmorsDEMIC extends DEMICSPlug {
            	fprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
             deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivityEV.getValue(),nbIterDeconv.getValue(),  ObjectHook,  ObjectHookfinal);
             objArray = ArrayUtils.extract(objArray, outputShape, fdata.getWeightedMean()); //Padding to the right size
-
+			curImager.show(objArray, "obj");
 
 //            PSFprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
 			PSFprior = new QuadraticCost(objectSpace);
 			PSFdeconvolver  = new DeconvolutionJob( fdata,  1.0,PSFprior,  true, nbIterDeconv.getValue(),  PSFHook,  PSFHookfinal);
-
+            psfArray = ArrayUtils.extract(psfArray, outputShape,0.0); //Padding to the right size
+			PSFImager.show(psfArray, "PSF");
 
 			amors = new AmorsJob(totalNbOfBlindDecLoop.getValue(), deconvolver,PSFdeconvolver,wghtUpdt, debug);
 
