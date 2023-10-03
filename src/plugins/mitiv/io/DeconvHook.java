@@ -58,7 +58,7 @@ public class DeconvHook implements TiPiHook{
             titlet = "Current mu="+((SmoothInverseProblem) caller).getRegularizationLevel() +"it:"+((SmoothInverseProblem) caller).getIterations();
         else
             titlet = title;
-        curImager.show(ArrayUtils.crop(((Deconvolution) caller).getSolution(),outShape),titlet);
+        curImager.show(ArrayUtils.extract(((Deconvolution) caller).getSolution(),outShape),titlet);
 
         if (debug){
             System.out.println("Cost "+((SmoothInverseProblem) caller).getCost() );
