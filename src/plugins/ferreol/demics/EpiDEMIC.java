@@ -264,33 +264,7 @@ public class EpiDEMIC extends DEMICSPlug {
                     dz_nm.setValue( dataSeq.getPixelSizeZ()*1E3);
                     scale.setValue(new double[]{1.0 ,1.0, dxy_nm.getValue()/ dz_nm.getValue() } );
 
-                    try {
-                        lambda.setValue( metDat.getChannelEmissionWavelength(0,channelEV.getValue()).value(UNITS.NANOMETER).doubleValue());
-                    } catch(Exception e){
-                        System.out.println("Failed to get some wavelength metadatas, will use default values ");
-                        lambda.setValue(500.0);
-                    }
-                    try {
-                        na.setValue( metDat.getObjectiveLensNA(0, 0));
-                    } catch(Exception e){
-                        System.out.println("Failed to get na metadatas, will use default values ");
-                        na.setValue(1.4);
-                    }
 
-                    try {
-                        if (metDat.getObjectiveSettingsRefractiveIndex(0)!=null)
-                            ni.setValue(metDat.getObjectiveSettingsRefractiveIndex(0) );
-                        else {
-                            System.out.println("Failed to get refractive index from metadata, will use default values ");
-                            ni.setValue(1.518);
-                        }
-                    } catch(Exception e){
-                        System.out.println("Failed to get refractive index from metadata, will use default values ");
-                        ni.setValue(1.518);
-                    }
-                    if (debug) {
-                        System.out.println("Seq changed:" + sizeX + "  "+ Nxy);
-                    }
                 }else{
                     startDecButton.setEnabled(false);
                     startBlind.setEnabled(false);

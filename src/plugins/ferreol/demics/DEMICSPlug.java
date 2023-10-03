@@ -498,7 +498,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
                     lambda.setValue(metDat.getChannelEmissionWavelength(0, channelEV.getValue()).value(UNITS.NANOMETER)
                             .doubleValue());
                 } catch (Exception e) {
-                    System.out.println("Failed to get wavelength from metadata, will use default values ");
+                    System.out.println("Failed to get wavelength from metadata, will use default value: 500nm ");
                     lambda.setValue(500.0);
                 }
             }
@@ -506,7 +506,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
                 try {
                     na.setValue(metDat.getObjectiveLensNA(0, 0));
                 } catch (Exception e) {
-                    System.out.println("Failed to get numerical aperture from metadata, will use default values ");
+                    System.out.println("Failed to get numerical aperture from metadata, will use default value: 1.4 ");
                     na.setValue(1.4);
                 }
             }
@@ -515,11 +515,11 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
                     if (metDat.getObjectiveSettingsRefractiveIndex(0) != null)
                         ni.setValue(metDat.getObjectiveSettingsRefractiveIndex(0));
                     else {
-                        System.out.println("Failed to get refractive index from metadata, will use default values ");
+                        System.out.println("Failed to get refractive index from metadata, will use default value: 1.518 ");
                         ni.setValue(1.518);
                     }
                 } catch (Exception e) {
-                    System.out.println("Failed to get refractive index from metadata, will use default values ");
+                    System.out.println("Failed to get refractive index from metadata, will use default value: 1.518 ");
                     ni.setValue(1.518);
                 }
             }
