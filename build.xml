@@ -39,7 +39,7 @@
  
     </target>
     <target depends="clean" name="cleanall"/>
-    <target depends="tipi-sdk,simpledemic,epidemic" name="build"/>
+    <target depends="tipi-sdk,simpledemic,amorsdemic,epidemic" name="build"/>
     <!-- Generate TiPiSDK JAR library for TiPi -->
     <target name="tipi-sdk" depends="init" description="generate TiPiSdk jar library for Icy">
         <mkdir dir="src-TiPiSDK/plugins/mitiv"/>
@@ -87,6 +87,31 @@
            <delete dir="bin-simpledemic"/>
            <delete dir="src-simpledemic"/>
        </target>
+
+    <!-- Generate AmorsDEMIC JAR for icy -->
+    <target name="amorsdemic" depends="tipi-sdk" description="generate amors plugin">
+        <mkdir dir="src-amorsdemic/plugins/ferreol/demics"/>
+        <mkdir dir="bin-amorsdemic"/>
+        <copy todir="src-amorsdemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/AmorsDEMIC.java"/>      
+        <copy todir="src-amorsdemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>       
+        <copy todir="src-amorsdemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/Convolution.java"/>        
+        <copy todir="src-amorsdemic/plugins/ferreol/demics" file="src/plugins/ferreol/demics/ToolTipText.java"/>       
+        <copy  todir="src-amorsdemic/plugins/mitiv/io"><fileset dir="src/plugins/mitiv/io" /> </copy>      
+        <javac debug="${debug}"  debuglevel="${debuglevel}" destdir="bin-amorsdemic" includeantruntime="false" source="${source}" target="${target}">
+                   <src path="src-amorsdemic"/>
+                   <classpath refid="tipi4icy.classpath"/>
+               </javac>
+        <jar destfile="${jar.dir}/AmorsDEMIC.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="plugins.ferreol.demics.AmorsDEMIC"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="bin-amorsdemic"/>
+        </jar>
+        <delete dir="bin-amorsdemic"/>
+        <delete dir="src-amorsdemic"/>
+    </target>
+
     <!-- Generate EpiDEMIC JAR for icy -->
     <target name="epidemic" depends="tipi-sdk" description="generate launchable jar for TiPi deconvolution tool">
           <mkdir dir="src-epidemic/plugins/ferreol/demics"/>
@@ -114,6 +139,7 @@
         <mkdir dir="${doc.dir}"/>
         <mkdir dir="src-doc"/>
         <copy todir="src-doc" file="src/plugins/ferreol/demics/SimpleDEMIC.java"/>      
+        <copy todir="src-doc" file="src/plugins/ferreol/demics/AmorsDEMIC.java"/>      
         <copy todir="src-doc" file="src/plugins/ferreol/demics/DEMICSPlug.java"/>     
         <copy todir="src-doc" file="src/plugins/ferreol/demics/ToolTipText.java"/>       
         <copy  todir="src-doc/plugins/mitiv"><fileset dir="src/plugins/mitiv/io" /> </copy>      
