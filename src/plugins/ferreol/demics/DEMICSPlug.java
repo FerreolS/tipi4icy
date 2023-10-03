@@ -209,8 +209,10 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
                     Sequence newValue) {
                 newValue = restartEV.getValue();
                 if(debug){
-                    if (newValue != null || (newValue != null && newValue.isEmpty())) {
-                        System.out.println("restart changed:"+newValue.getName());
+                    if (newValue != null){
+                        if (!newValue.isEmpty()) {
+                            System.out.println("restart changed:"+ newValue.getName());
+                        }
                     }
                 }
             }
