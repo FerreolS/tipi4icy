@@ -384,8 +384,8 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
             if (weightsMethod.getValue() == weightOptions[4]) {
                 modelArray =  fdata.getModel(objArray).asShapedArray();
                 HistoMap hm = new HistoMap(modelArray, dataArray, badpixArray);
-                gain.setValue(hm.getAlpha());
-                noise.setValue(Math.sqrt(hm.getBeta())/hm.getAlpha());
+                gain.setValue(Math.max(0.01, hm.getAlpha()));
+                noise.setValue(Math.sqrt(hm.getBeta())/gain.getValue());
             }
 
 

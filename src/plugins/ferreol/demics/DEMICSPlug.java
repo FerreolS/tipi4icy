@@ -236,6 +236,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
         weightsMethod = new EzVarText(      "Weighting:", weightOptions,4, false);
         weightsSeq = new EzVarSequence(        "Map:");
         gain = new EzVarDouble(             "Gain:",1.,Double.MIN_VALUE,Double.MAX_VALUE,0.1);
+        gain.setMinValue(0.01);
         noise = new EzVarDouble(            "Readout Noise:",10.,0.,Double.MAX_VALUE,0.1);
         badpixMap = new EzVarSequence(      "Bad data map:");
         weightsSeq.setNoSequenceSelection();
@@ -453,7 +454,7 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
                 // wgtArray = WeightFactory.computeWeightsFromModel(dataArray,modelArray,badpixArray);
                 HistoMap hm = new HistoMap(modelArray, dataArray, badpixArray);
                 gain.setValue(hm.getAlpha());
-                noise.setValue(Math.sqrt(hm.getBeta())/hm.getAlpha());
+                noise.setValue(Math.sqrt(hm.getBeta())/gain.getValue());
                 wgtArray = hm.computeWeightMap(modelArray);
             }
         }
