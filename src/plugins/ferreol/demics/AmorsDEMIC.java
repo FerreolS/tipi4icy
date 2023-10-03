@@ -408,8 +408,8 @@ public class AmorsDEMIC extends DEMICSPlug {
             deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivityEV.getValue(),nbIterDeconv.getValue(),  ObjectHook,  ObjectHookfinal);
 			curImager.show(objArray, "obj");
 
-           	// PSFprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
-			PSFprior = new QuadraticCost(objectSpace);
+           	PSFprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+			//PSFprior = new QuadraticCost(objectSpace);
 			PSFdeconvolver  = new DeconvolutionJob( fdata,  1.0,PSFprior,  true, nbIterDeconv.getValue(),  PSFHook,  PSFHookfinal);
 			PSFImager.show(psfArray, "PSF");
 
