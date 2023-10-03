@@ -336,27 +336,39 @@ public class AmorsDEMIC extends DEMICSPlug {
             if (paddingSizeZ.getValue() < 0.0) {
                 throwError("Padding value cannot be negative");
                 return;
-            }
-
-            if (singlePrecision.getValue()) {
-                dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toFloat();
-                psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue()).toFloat();
-            }else {
-                dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
-                psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue()).toDouble();
-            }
-            if (restartEV.getValue() != null && restartSeq != null){
-                objArray =  sequenceToArray(restartSeq, channelRestartEV.getValue());
-                if(debug){
-                    System.out.println("restart seq:" +restartSeq.getName());
-                }
-            }else{
-                objArray = sequenceToArray(dataSeq, channelEV.getValue());
-                if(debug){
-                    System.out.println("restart seq is null:");
-                }
-            }
-
+			}
+			
+			if (singlePrecision.getValue()) {
+				dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toFloat();
+				psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue()).toFloat();
+				
+				if (restartEV.getValue() != null && restartSeq != null){
+					objArray =  sequenceToArray(restartSeq, channelRestartEV.getValue()).toFloat();
+					if(debug){
+						System.out.println("restart seq:" +restartSeq.getName());
+					}
+				}else{
+					objArray = sequenceToArray(dataSeq, channelEV.getValue()).toFloat();
+					if(debug){
+						System.out.println("restart seq is null:");
+					}
+				}
+			}else {
+				dataArray =  sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
+				psfArray =  sequenceToArray(psfSeq,  channelpsf.getValue()).toDouble();
+				
+				if (restartEV.getValue() != null && restartSeq != null){
+					objArray =  sequenceToArray(restartSeq, channelRestartEV.getValue()).toDouble();
+					if(debug){
+						System.out.println("restart seq:" +restartSeq.getName());
+					}
+				}else{
+					objArray = sequenceToArray(dataSeq, channelEV.getValue()).toDouble();
+					if(debug){
+						System.out.println("restart seq is null:");
+					}
+				}
+			}
             createWeights(true);
 
 
