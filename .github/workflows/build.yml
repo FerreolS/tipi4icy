@@ -51,6 +51,7 @@ jobs:
     - name: Build with Ant
       run: |
         ant simpledemic
+        ant amorsdemic
         ant epidemic
         ant doc > /dev/null
 
