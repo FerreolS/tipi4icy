@@ -392,22 +392,25 @@ public class AmorsDEMIC extends DEMICSPlug {
             DeconvHook PSFHookfinal = new DeconvHook(PSFImager, dataShape,"Estimated PSF "+dataSeq.getName(), debug);
 
             buildVectorSpaces();
+			psfArray = ArrayUtils.extract(psfArray, outputShape,0.0); //Padding to the right size
+
 
             fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
             fdata.setData(dataArray);
             fdata.setWeights(wgtArray,true);
-            fdata.setPSF(psfArray);
+            fdata.setPSF(psfArray);            
+			
+			objArray = ArrayUtils.extract(objArray, outputShape, fdata.getWeightedMean()); //Padding to the right size
+
 
 
            	fprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
             deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivityEV.getValue(),nbIterDeconv.getValue(),  ObjectHook,  ObjectHookfinal);
-            objArray = ArrayUtils.extract(objArray, outputShape, fdata.getWeightedMean()); //Padding to the right size
 			curImager.show(objArray, "obj");
 
             PSFprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
 			//PSFprior = new QuadraticCost(objectSpace);
 			PSFdeconvolver  = new DeconvolutionJob( fdata,  1.0,PSFprior,  true, nbIterDeconv.getValue(),  PSFHook,  PSFHookfinal);
-            psfArray = ArrayUtils.extract(psfArray, outputShape,0.0); //Padding to the right size
 			PSFImager.show(psfArray, "PSF");
 
 			amors = new AmorsJob(totalNbOfBlindDecLoop.getValue(), deconvolver,PSFdeconvolver,wghtUpdt, debug);
