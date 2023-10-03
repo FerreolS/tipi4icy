@@ -90,7 +90,7 @@ public class AmorsDEMIC extends DEMICSPlug {
     /**                 VARIABLES                      **/
     /****************************************************/
 
-    static boolean debug =false;
+    static boolean debug =true;
 
     private int psfSizeX=1,psfSizeY=1,psfSizeZ=1;
     protected DeconvolutionJob PSFdeconvolver =null ;
