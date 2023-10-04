@@ -409,7 +409,7 @@ public class AmorsDEMIC extends DEMICSPlug {
 
             fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
             fdata.setData(dataArray);
-            //fdata.setWeights(wgtArray,true);
+            fdata.setWeights(wgtArray,true);
             fdata.setPSF(psfArray);            
 			
 			objArray = ArrayUtils.extract(objArray, outputShape, fdata.getWeightedMean()); //Padding to the right size
@@ -493,9 +493,10 @@ public class AmorsDEMIC extends DEMICSPlug {
     @Override
     protected void setDefaultValue() {
         super.setDefaultValue();
-        paddingSizeX.setValue(10);
-        paddingSizeY.setValue(10);
-        paddingSizeZ.setValue(10);
+		weightsMethod.setValue( weightOptions[0]);
+        paddingSizeX.setValue(0);
+        paddingSizeY.setValue(0);
+        paddingSizeZ.setValue(0);
     }
 
     //The input variable for the protocol
