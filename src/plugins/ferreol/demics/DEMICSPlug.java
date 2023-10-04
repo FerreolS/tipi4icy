@@ -36,6 +36,8 @@ import icy.util.StringUtil;
 import mitiv.array.ArrayFactory;
 import mitiv.array.ArrayUtils;
 import mitiv.array.ByteArray;
+import mitiv.array.DoubleArray;
+import mitiv.array.FloatArray;
 import mitiv.array.ShapedArray;
 import mitiv.base.Shape;
 import mitiv.base.Traits;
@@ -456,6 +458,14 @@ public abstract class DEMICSPlug extends EzPlug  implements Block,EzStoppable{
                 gain.setValue(hm.getAlpha());
                 noise.setValue(Math.sqrt(hm.getBeta())/gain.getValue());
                 wgtArray = hm.computeWeightMap(modelArray);
+            }
+        } else {
+            if (singlePrecision.getValue()) {
+                wgtArray = ArrayFactory.create(Traits.FLOAT, dataShape);
+                ((FloatArray) wgtArray).fill(1.0f);
+            }else{
+                wgtArray = ArrayFactory.create(Traits.DOUBLE, dataShape);
+                ((DoubleArray) wgtArray).fill(1.0);
             }
         }
 
