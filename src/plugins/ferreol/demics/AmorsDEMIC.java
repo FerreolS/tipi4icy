@@ -409,7 +409,7 @@ public class AmorsDEMIC extends DEMICSPlug {
 
             fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
             fdata.setData(dataArray);
-            fdata.setWeights(wgtArray,true);
+            //fdata.setWeights(wgtArray,true);
             fdata.setPSF(psfArray);            
 			
 			objArray = ArrayUtils.extract(objArray, outputShape, fdata.getWeightedMean()); //Padding to the right size
@@ -425,7 +425,7 @@ public class AmorsDEMIC extends DEMICSPlug {
 			PSFdeconvolver  = new DeconvolutionJob( fdata,  1.0,PSFprior,  true, nbIterDeconv.getValue(),  PSFHook,  PSFHookfinal);
 			PSFImager.show(psfArray, "PSF");
 
-			amors = new AmorsJob(totalNbOfBlindDecLoop.getValue(), deconvolver,PSFdeconvolver,wghtUpdt, debug);
+			amors = new AmorsJob(totalNbOfBlindDecLoop.getValue(), deconvolver,PSFdeconvolver,null, debug);
 
             amors.blindDeconv(objArray,psfArray);
 
