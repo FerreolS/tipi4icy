@@ -33,8 +33,13 @@ import icy.sequence.Sequence;
 import mitiv.array.ArrayUtils;
 import mitiv.base.Shape;
 import mitiv.conv.WeightedConvolutionCost;
+import mitiv.cost.FiniteDifferenceOperator;
 import mitiv.cost.HyperbolicTotalVariation;
+import mitiv.cost.QuadraticCost;
 import mitiv.jobs.DeconvolutionJob;
+import mitiv.linalg.LinearOperator;
+import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import mitiv.linalg.shaped.FloatShapedVectorSpace;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.HistoMap;
 import plugins.adufour.blocks.lang.Block;
@@ -384,7 +389,12 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
             buildVectorSpaces();
 
-            fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+            // fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+            if  (singlePrecision.getValue()){
+                fprior = new QuadraticCost(new FiniteDifferenceOperator((FloatShapedVectorSpace)objectSpace));
+            }else{
+                fprior = new QuadraticCost(new FiniteDifferenceOperator((DoubleShapedVectorSpace) objectSpace));
+            }
             fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
             fdata.setData(dataArray);
             fdata.setWeights(wgtArray,true);
