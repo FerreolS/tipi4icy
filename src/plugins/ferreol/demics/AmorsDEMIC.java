@@ -32,11 +32,15 @@ import icy.main.Icy;
 import icy.sequence.Sequence;
 import mitiv.array.ArrayUtils;
 import mitiv.base.Shape;
+import mitiv.base.indexing.BoundaryConditions;
 import mitiv.conv.WeightedConvolutionCost;
 import mitiv.cost.DifferentiableCostFunction;
+import mitiv.cost.FiniteDifferenceOperator;
 import mitiv.cost.HomogeneousHyperbolicTotalVariation;
 import mitiv.cost.QuadraticCost;
 import mitiv.jobs.DeconvolutionJob;
+import mitiv.linalg.shaped.DoubleShapedVectorSpace;
+import mitiv.linalg.shaped.FloatShapedVectorSpace;
 import mitiv.jobs.AmorsJob;
 import mitiv.utils.FFTUtils;
 import mitiv.utils.HistoMap;
@@ -420,8 +424,17 @@ public class AmorsDEMIC extends DEMICSPlug {
             deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivityEV.getValue(),nbIterDeconv.getValue(),  ObjectHook,  ObjectHookfinal);
 			curImager.show(objArray, "obj");
 
-           	PSFprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
-			//PSFprior = new QuadraticCost(objectSpace);
+           	//PSFprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+			
+            
+            // fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+            if  (singlePrecision.getValue()){
+                PSFprior = new QuadraticCost(new FiniteDifferenceOperator((FloatShapedVectorSpace)objectSpace,BoundaryConditions.PERIODIC));
+            }else{
+                PSFprior = new QuadraticCost(new FiniteDifferenceOperator((DoubleShapedVectorSpace) objectSpace, BoundaryConditions.PERIODIC));
+            }
+            
+            //PSFprior = new QuadraticCost(objectSpace);
 			PSFdeconvolver  = new DeconvolutionJob( fdata,  1.0,PSFprior,  true, nbIterDeconv.getValue(),  PSFHook,  PSFHookfinal);
 			PSFImager.show(psfArray, "PSF");
 

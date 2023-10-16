@@ -32,6 +32,7 @@ import icy.main.Icy;
 import icy.sequence.Sequence;
 import mitiv.array.ArrayUtils;
 import mitiv.base.Shape;
+import mitiv.base.indexing.BoundaryConditions;
 import mitiv.conv.WeightedConvolutionCost;
 import mitiv.cost.FiniteDifferenceOperator;
 import mitiv.cost.HyperbolicTotalVariation;
@@ -391,9 +392,9 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
             // fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
             if  (singlePrecision.getValue()){
-                fprior = new QuadraticCost(new FiniteDifferenceOperator((FloatShapedVectorSpace)objectSpace));
+                fprior = new QuadraticCost(new FiniteDifferenceOperator((FloatShapedVectorSpace)objectSpace,BoundaryConditions.PERIODIC));
             }else{
-                fprior = new QuadraticCost(new FiniteDifferenceOperator((DoubleShapedVectorSpace) objectSpace));
+                fprior = new QuadraticCost(new FiniteDifferenceOperator((DoubleShapedVectorSpace) objectSpace, BoundaryConditions.PERIODIC));
             }
             fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
             fdata.setData(dataArray);
