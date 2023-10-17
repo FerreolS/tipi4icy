@@ -60,3 +60,4 @@ Thumbs.db
 target
 .vscode
 extlibs
+workspace/*

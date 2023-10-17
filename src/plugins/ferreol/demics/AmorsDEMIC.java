@@ -29,6 +29,8 @@ import javax.swing.SwingUtilities;
 import icy.file.Loader;
 import icy.gui.frame.progress.AnnounceFrame;
 import icy.main.Icy;
+import icy.plugin.PluginLauncher;
+import icy.plugin.PluginLoader;
 import icy.sequence.Sequence;
 import mitiv.array.ArrayUtils;
 import mitiv.base.Shape;
@@ -679,5 +681,20 @@ public class AmorsDEMIC extends DEMICSPlug {
             this.saveParameters(pathName);
         }
     }
+
+    /**
+     * Only for test purpose.
+     */
+    public static void main(final String[] args) {
+        // Launch the application.
+        Icy.main(args);
+
+        /*
+         * Programmatically launch a plugin, as if the user had clicked its
+         * button.
+         */
+        PluginLauncher.start(PluginLoader.getPlugin(AmorsDEMIC.class.getName()));
+    }
+
 
 }
