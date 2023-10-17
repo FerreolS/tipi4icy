@@ -398,16 +398,16 @@ public class AmorsDEMIC extends DEMICSPlug {
             cursequence.copyMetaDataFrom(dataSeq, false);
             curImager = new IcyImager(cursequence, isHeadLess());
 
-            DeconvHook ObjectHook = new DeconvHook(curImager, dataShape,null, debug);
-            DeconvHook ObjectHookfinal = new DeconvHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), debug);
+            DeconvHook ObjectHook = new DeconvHook(curImager, dataShape,null, false);
+            DeconvHook ObjectHookfinal = new DeconvHook(curImager, dataShape,"Deconvolved "+dataSeq.getName(), false);
             
 			
             PSFsequence = new Sequence("Current PSF");
             PSFsequence.copyMetaDataFrom(dataSeq, false);
             PSFImager = new IcyImager(PSFsequence, isHeadLess());
 
-            DeconvHook PSFHook = new DeconvHook(PSFImager, dataShape,null, debug);
-            DeconvHook PSFHookfinal = new DeconvHook(PSFImager, dataShape,"Estimated PSF "+dataSeq.getName(), debug);
+            DeconvHook PSFHook = new DeconvHook(PSFImager, dataShape,null, false);
+            DeconvHook PSFHookfinal = new DeconvHook(PSFImager, dataShape,"Estimated PSF "+dataSeq.getName(), false);
 
             buildVectorSpaces();
 			psfArray = ArrayUtils.extract(psfArray, outputShape,0.0); //Padding to the right size
