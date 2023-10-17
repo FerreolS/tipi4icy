@@ -61,3 +61,4 @@ target
 .vscode
 extlibs
 workspace/*
+setting.xml
