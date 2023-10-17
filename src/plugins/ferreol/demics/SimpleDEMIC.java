@@ -390,12 +390,12 @@ public class SimpleDEMIC extends DEMICSPlug implements Block, EzStoppable {
 
             buildVectorSpaces();
 
-            // fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
-            if  (singlePrecision.getValue()){
+            fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+           /*  if  (singlePrecision.getValue()){
                 fprior = new QuadraticCost(new FiniteDifferenceOperator((FloatShapedVectorSpace)objectSpace,BoundaryConditions.PERIODIC));
             }else{
                 fprior = new QuadraticCost(new FiniteDifferenceOperator((DoubleShapedVectorSpace) objectSpace, BoundaryConditions.PERIODIC));
-            }
+            }*/
             fdata =  WeightedConvolutionCost.build( objectSpace, dataSpace);
             fdata.setData(dataArray);
             fdata.setWeights(wgtArray,true);

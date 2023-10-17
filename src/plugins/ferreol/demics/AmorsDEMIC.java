@@ -422,14 +422,18 @@ public class AmorsDEMIC extends DEMICSPlug {
 
 
 
-           	fprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+           	//fprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
+            if  (singlePrecision.getValue()){
+                fprior = new QuadraticCost(new FiniteDifferenceOperator((FloatShapedVectorSpace)objectSpace));
+            }else{
+                fprior = new QuadraticCost(new FiniteDifferenceOperator((DoubleShapedVectorSpace) objectSpace));
+            }
             deconvolver  = new DeconvolutionJob( fdata,  mu.getValue(),fprior,  positivityEV.getValue(),nbIterDeconv.getValue(),  ObjectHook,  ObjectHookfinal);
 			curImager.show(objArray, "obj");
 
            	//PSFprior = new HomogeneousHyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
 			
             
-            // fprior = new HyperbolicTotalVariation(objectSpace, epsilon.getValue(), scale.getValue());
             if  (singlePrecision.getValue()){
                 PSFprior = new QuadraticCost(new FiniteDifferenceOperator((FloatShapedVectorSpace)objectSpace,BoundaryConditions.PERIODIC));
             }else{
