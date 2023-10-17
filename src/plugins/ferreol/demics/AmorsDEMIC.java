@@ -499,8 +499,8 @@ public class AmorsDEMIC extends DEMICSPlug {
     //If the user call the stop button
     @Override
     public void stopExecution() {
-        if (deconvolver !=null)
-            deconvolver.abort();
+        if (amors !=null)
+            amors.abort();
     }
     /**
      *  set default values of the plugin
